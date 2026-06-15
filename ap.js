@@ -1,12 +1,101 @@
 /* =============================================================
    WITCORP DASHBOARD - app.js
-   India Advisors LLP - Full Frontend Logic
-   Handles: Navigation, Theming, Data Rendering, Modals,
-   Kanban, Calendar, Charts, AI Chat, Team Chat, Search, etc.
+   Supabase Connected Version
    ============================================================= */
 
 /* =========================================================
-   1. GLOBAL STATE & DUMMY DATA
+   1. SUPABASE CONFIG — Yahan teri keys hain
+   ========================================================= */
+
+const SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+
+// Supabase REST API helper
+async function supabase(table, options = {}) {
+  const {
+    method = 'GET',
+    filters = '',
+    body = null,
+    select = '*',
+    order = 'created_at.desc',
+    limit = null
+  } = options;
+
+  let url = `${SUPABASE_URL}/rest/v1/${table}?select=${select}`;
+  if (filters) url += `&${filters}`;
+  if (order) url += `&order=${order}`;
+  if (limit) url += `&limit=${limit}`;
+
+  const headers = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
+  };
+
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : null
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`Supabase error [${table}]:`, err);
+    return [];
+  }
+
+  if (method === 'DELETE' || method === 'PATCH') return true;
+  const data = await res.json();
+  return data;
+}
+
+async function supabaseInsert(table, body) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) { console.error('Insert error:', await res.text()); return null; }
+  return await res.json();
+}
+
+async function supabaseUpdate(table, id, body) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) { console.error('Update error:', await res.text()); return null; }
+  return true;
+}
+
+async function supabaseDelete(table, id) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    }
+  });
+  return res.ok;
+}
+
+/* =========================================================
+   2. GLOBAL STATE
    ========================================================= */
 
 const STATE = {
@@ -15,234 +104,30 @@ const STATE = {
   sidebarOpen: false,
   notifOpen: false,
   activeTheme: 'theme-violet',
-  calendar: {
-    month: 4, // 0-indexed -> May
-    year: 2025
-  },
-  pagination: {
-    clients: { page: 1, perPage: 10 }
-  },
-  filters: {
-    clients: { search: '', status: '' }
-  },
+  calendar: { month: 4, year: 2025 },
+  pagination: { clients: { page: 1, perPage: 10 } },
+  filters: { clients: { search: '', status: '', type: '' } },
   activeChatContact: 'rajesh',
-  taskIdCounter: 1000
+  // cached data from DB
+  clients: [],
+  gstReturns: [],
+  rocFilings: [],
+  itrFilings: [],
+  tdsReturns: [],
+  audits: [],
+  dscRecords: [],
+  accountingEntries: [],
+  tasks: [],
+  documents: [],
+  calendarEvents: [],
+  // dashboard stats
+  stats: { clients: 0, gstFiled: 0, pendingTasks: 0, upcomingDue: 0, todayFilings: 0 }
 };
 
-/* ---------- CLIENT DATA ---------- */
-const CLIENTS = [
-  { id: 1, name: 'ABC Pvt. Ltd.', pan: 'AAACA1234B', type: 'Company', gst: '27AAACA1234B1Z5', email: 'accounts@abcpvt.com', phone: '+91 98765 43210', status: 'Active' },
-  { id: 2, name: 'XYZ Traders', pan: 'AAFXY5678C', type: 'Partnership', gst: '27AAFXY5678C1Z2', email: 'xyztraders@gmail.com', phone: '+91 91234 56780', status: 'Active' },
-  { id: 3, name: 'Rajesh Kumar', pan: 'AKQPR9012D', type: 'Individual', gst: '-', email: 'rajesh.kumar@gmail.com', phone: '+91 99887 76655', status: 'Active' },
-  { id: 4, name: 'Priya Patel', pan: 'BNZPP3456E', type: 'Individual', gst: '-', email: 'priya.patel@yahoo.com', phone: '+91 90011 22334', status: 'Pending' },
-  { id: 5, name: 'Raj Enterprises', pan: 'AAFRE6789F', type: 'LLP', gst: '24AAFRE6789F1Z8', email: 'info@rajenterprises.in', phone: '+91 98123 45678', status: 'Active' },
-  { id: 6, name: 'Sunrise Textiles LLP', pan: 'AAGST1122G', type: 'LLP', gst: '27AAGST1122G1Z1', email: 'sunrise.textiles@outlook.com', phone: '+91 99220 11334', status: 'Active' },
-  { id: 7, name: 'Mehta & Sons', pan: 'AABFM4455H', type: 'Partnership', gst: '24AABFM4455H1Z7', email: 'mehtasons@rediffmail.com', phone: '+91 98700 12345', status: 'Inactive' },
-  { id: 8, name: 'Neha Sharma', pan: 'CKQPN7788J', type: 'Individual', gst: '-', email: 'neha.sharma@gmail.com', phone: '+91 91122 33445', status: 'Active' },
-  { id: 9, name: 'Global Exports India', pan: 'AAHGE9900K', type: 'Company', gst: '07AAHGE9900K1Z3', email: 'finance@globalexports.in', phone: '+91 98989 89898', status: 'Active' },
-  { id: 10, name: 'Patel Bros Hardware', pan: 'AAEPP2233L', type: 'Partnership', gst: '24AAEPP2233L1Z9', email: 'patelbros@gmail.com', phone: '+91 99776 65544', status: 'Pending' },
-  { id: 11, name: 'TechNova Solutions Pvt Ltd', pan: 'AACT4455M', type: 'Company', gst: '29AACT4455M1ZQ', email: 'admin@technova.io', phone: '+91 90123 45670', status: 'Active' },
-  { id: 12, name: 'Ananya Verma', pan: 'DKQPV1111N', type: 'Individual', gst: '-', email: 'ananya.verma@gmail.com', phone: '+91 97654 32109', status: 'Active' },
-  { id: 13, name: 'Krishna Agro Industries', pan: 'AAFKA7766P', type: 'LLP', gst: '23AAFKA7766P1Z4', email: 'krishnaagro@gmail.com', phone: '+91 98456 12378', status: 'Active' },
-  { id: 14, name: 'Modern Furnishings', pan: 'AAGMF3322Q', type: 'Company', gst: '27AAGMF3322Q1Z6', email: 'sales@modernfurnishings.com', phone: '+91 99001 12233', status: 'Inactive' },
-  { id: 15, name: 'Suresh Auto Parts', pan: 'AAESA5566R', type: 'Partnership', gst: '24AAESA5566R1Z2', email: 'sureshauto@yahoo.in', phone: '+91 98112 23344', status: 'Active' },
-  { id: 16, name: 'Vikas Sharma', pan: 'EKQPV8899S', type: 'Individual', gst: '-', email: 'vikas.sharma@gmail.com', phone: '+91 91009 88776', status: 'Pending' },
-  { id: 17, name: 'Bright Star Pharma', pan: 'AAHBS6677T', type: 'Company', gst: '06AAHBS6677T1Z1', email: 'contact@brightstarpharma.com', phone: '+91 98700 99887', status: 'Active' },
-  { id: 18, name: 'Om Sai Logistics', pan: 'AAFOS4488U', type: 'LLP', gst: '27AAFOS4488U1Z5', email: 'omsai.logistics@gmail.com', phone: '+91 99887 11223', status: 'Active' },
-  { id: 19, name: 'Deepak Mehra', pan: 'FKQPD2200V', type: 'Individual', gst: '-', email: 'deepak.mehra@gmail.com', phone: '+91 90876 54321', status: 'Active' },
-  { id: 20, name: 'Greenfield Constructions', pan: 'AAGGC9911W', type: 'Company', gst: '08AAGGC9911W1Z0', email: 'info@greenfieldcon.in', phone: '+91 98234 56712', status: 'Active' },
-  { id: 21, name: 'Kavita Joshi', pan: 'GKQPK5544X', type: 'Individual', gst: '-', email: 'kavita.joshi@gmail.com', phone: '+91 91234 88990', status: 'Active' },
-  { id: 22, name: 'Hindustan Steel Traders', pan: 'AAHHS7733Y', type: 'Partnership', gst: '09AAHHS7733Y1Z8', email: 'hst.traders@gmail.com', phone: '+91 98765 11223', status: 'Active' },
-  { id: 23, name: 'Royal Foods Pvt Ltd', pan: 'AAIRF8822Z', type: 'Company', gst: '24AAIRF8822Z1Z3', email: 'royalfoods@gmail.com', phone: '+91 99443 22110', status: 'Pending' },
-  { id: 24, name: 'Arjun Nair', pan: 'HKQPA3399A', type: 'Individual', gst: '-', email: 'arjun.nair@gmail.com', phone: '+91 90555 66778', status: 'Inactive' },
-  { id: 25, name: 'Shree Balaji Enterprises', pan: 'AAJSB1199B', type: 'LLP', gst: '24AAJSB1199B1Z7', email: 'shreebalaji@gmail.com', phone: '+91 98123 99887', status: 'Active' },
-  { id: 26, name: 'Pooja Singh', pan: 'IKQPP6644C', type: 'Individual', gst: '-', email: 'pooja.singh@gmail.com', phone: '+91 91987 65432', status: 'Active' },
-  { id: 27, name: 'National Plastics Ltd', pan: 'AAKNP2255D', type: 'Company', gst: '27AAKNP2255D1Z9', email: 'info@nationalplastics.com', phone: '+91 98700 22334', status: 'Active' },
-  { id: 28, name: 'Verma Stationers', pan: 'AAFVS4400E', type: 'Partnership', gst: '09AAFVS4400E1Z2', email: 'vermastationers@gmail.com', phone: '+91 99001 99887', status: 'Inactive' },
-  { id: 29, name: 'Saanvi Exports', pan: 'AALSE3366F', type: 'Company', gst: '24AALSE3366F1Z4', email: 'saanvi.exports@gmail.com', phone: '+91 98456 77889', status: 'Active' },
-  { id: 30, name: 'Manoj Kumar Gupta', pan: 'JKQPM7722G', type: 'Individual', gst: '-', email: 'manoj.gupta@gmail.com', phone: '+91 91122 99887', status: 'Active' },
-  { id: 31, name: 'Lotus Hospitality Group', pan: 'AAMLH5588H', type: 'Company', gst: '27AAMLH5588H1Z6', email: 'finance@lotushospitality.in', phone: '+91 98234 11223', status: 'Active' },
-  { id: 32, name: 'Singh Transport Co.', pan: 'AAGST9933I', type: 'Partnership', gst: '06AAGST9933I1Z1', email: 'singhtransport@gmail.com', phone: '+91 99887 44556', status: 'Pending' },
-  { id: 33, name: 'Ritika Kapoor', pan: 'KKQPR1188J', type: 'Individual', gst: '-', email: 'ritika.kapoor@gmail.com', phone: '+91 90123 88776', status: 'Active' },
-  { id: 34, name: 'Apex Engineering Works', pan: 'AANAE6655K', type: 'LLP', gst: '24AANAE6655K1Z3', email: 'apexengg@gmail.com', phone: '+91 98765 99001', status: 'Active' },
-  { id: 35, name: 'Goyal Jewellers', pan: 'AAFGJ8811L', type: 'Partnership', gst: '08AAFGJ8811L1Z5', email: 'goyaljewellers@gmail.com', phone: '+91 99001 33445', status: 'Active' },
-  { id: 36, name: 'Sanjay Mishra', pan: 'LKQPS4477M', type: 'Individual', gst: '-', email: 'sanjay.mishra@gmail.com', phone: '+91 91234 11009', status: 'Inactive' },
-  { id: 37, name: 'Cosmic IT Services', pan: 'AAOCI3322N', type: 'Company', gst: '29AAOCI3322N1Z8', email: 'hr@cosmicit.com', phone: '+91 98700 44332', status: 'Active' },
-  { id: 38, name: 'Bansal Dairy Farms', pan: 'AAGBD7799O', type: 'Partnership', gst: '06AAGBD7799O1Z2', email: 'bansaldairy@gmail.com', phone: '+91 99443 11220', status: 'Active' },
-  { id: 39, name: 'Tanvi Desai', pan: 'MKQPT2266P', type: 'Individual', gst: '-', email: 'tanvi.desai@gmail.com', phone: '+91 90876 99001', status: 'Active' },
-  { id: 40, name: 'Skyline Realtors LLP', pan: 'AAPSR5511Q', type: 'LLP', gst: '27AAPSR5511Q1Z0', email: 'skylinerealtors@gmail.com', phone: '+91 98123 66554', status: 'Pending' },
-  { id: 41, name: 'Anil Kumar Verma', pan: 'NKQPA8833R', type: 'Individual', gst: '-', email: 'anil.verma@gmail.com', phone: '+91 91009 22113', status: 'Active' },
-  { id: 42, name: 'Star Electronics', pan: 'AAQSE1144S', type: 'Company', gst: '24AAQSE1144S1Z7', email: 'starelectronics@gmail.com', phone: '+91 98765 22110', status: 'Active' },
-  { id: 43, name: 'Devika Rao', pan: 'OKQPD9955T', type: 'Individual', gst: '-', email: 'devika.rao@gmail.com', phone: '+91 99887 00112', status: 'Inactive' },
-  { id: 44, name: 'Continental Freight Pvt Ltd', pan: 'AARCF6622U', type: 'Company', gst: '27AARCF6622U1Z9', email: 'ops@continentalfreight.in', phone: '+91 98234 99887', status: 'Active' },
-  { id: 45, name: 'Yadav Furniture Mart', pan: 'AAFYF3300V', type: 'Partnership', gst: '09AAFYF3300V1Z3', email: 'yadavfurniture@gmail.com', phone: '+91 91122 33221', status: 'Active' },
-  { id: 46, name: 'Tushar Bhatt', pan: 'PKQPT7711W', type: 'Individual', gst: '-', email: 'tushar.bhatt@gmail.com', phone: '+91 90555 11223', status: 'Active' },
-  { id: 47, name: 'Pinnacle Consultants LLP', pan: 'AASPC4488X', type: 'LLP', gst: '07AASPC4488X1Z6', email: 'pinnacle.consultants@gmail.com', phone: '+91 98700 55443', status: 'Active' },
-  { id: 48, name: 'Garg Sweets & Bakers', pan: 'AAGGS9922Y', type: 'Partnership', gst: '06AAGGS9922Y1Z2', email: 'gargsweets@gmail.com', phone: '+91 99001 77665', status: 'Pending' }
-];
+/* =========================================================
+   3. TEAM CHAT (Local — no DB needed)
+   ========================================================= */
 
-/* ---------- GST RETURN DATA ---------- */
-const GST_RETURNS = [
-  { client: 'ABC Pvt. Ltd.', type: 'GSTR-3B', period: 'Apr 2025', status: 'Filed', date: '18 May 2025' },
-  { client: 'XYZ Traders', type: 'GSTR-1', period: 'Apr 2025', status: 'Filed', date: '17 May 2025' },
-  { client: 'Raj Enterprises', type: 'GSTR-3B', period: 'Apr 2025', status: 'Pending', date: '-' },
-  { client: 'Sunrise Textiles LLP', type: 'GSTR-1', period: 'Apr 2025', status: 'Filed', date: '15 May 2025' },
-  { client: 'Global Exports India', type: 'GSTR-3B', period: 'Mar 2025', status: 'Overdue', date: '-' },
-  { client: 'Mehta & Sons', type: 'GSTR-1', period: 'Apr 2025', status: 'Pending', date: '-' },
-  { client: 'TechNova Solutions Pvt Ltd', type: 'GSTR-3B', period: 'Apr 2025', status: 'Filed', date: '19 May 2025' },
-  { client: 'Krishna Agro Industries', type: 'GSTR-9', period: 'FY 2024-25', status: 'Pending', date: '-' }
-];
-
-const GST_UPCOMING = [
-  { name: 'GSTR-1 Filing', sub: 'For April 2025 - All eligible clients', date: '22 May 2025' },
-  { name: 'GSTR-3B Filing', sub: 'For April 2025 - All registered taxpayers', date: '20 May 2025' },
-  { name: 'GST Payment', sub: 'Challan due for Q4 clients', date: '27 May 2025' },
-  { name: 'GSTR-9 Annual Return', sub: 'FY 2024-25 - Annual filers', date: '31 Dec 2025' }
-];
-
-/* ---------- ROC DATA ---------- */
-const ROC_FILINGS = [
-  { company: 'ABC Pvt. Ltd.', cin: 'U74999MH2015PTC123456', form: 'AOC-4', due: '30 May 2025', status: 'In Progress' },
-  { company: 'TechNova Solutions Pvt Ltd', cin: 'U72200KA2018PTC987654', form: 'MGT-7', due: '28 May 2025', status: 'In Progress' },
-  { company: 'Global Exports India', cin: 'U51909DL2012PTC234567', form: 'AOC-4', due: '15 May 2025', status: 'Overdue' },
-  { company: 'Royal Foods Pvt Ltd', cin: 'U15400MH2016PTC345678', form: 'DIR-3 KYC', due: '30 Sep 2025', status: 'Filed' },
-  { company: 'National Plastics Ltd', cin: 'U25200GJ2010PLC456789', form: 'MGT-7', due: '29 May 2025', status: 'In Progress' },
-  { company: 'Bright Star Pharma', cin: 'U24230MH2014PLC567890', form: 'AOC-4', due: '22 May 2025', status: 'Filed' },
-  { company: 'Saanvi Exports', cin: 'U51909GJ2017PTC678901', form: 'ADT-1', due: '14 May 2025', status: 'Overdue' },
-  { company: 'Cosmic IT Services', cin: 'U72900KA2019PTC789012', form: 'AOC-4', due: '31 May 2025', status: 'In Progress' },
-  { company: 'Lotus Hospitality Group', cin: 'U55101MH2013PLC890123', form: 'MGT-14', due: '10 May 2025', status: 'Filed' },
-  { company: 'Continental Freight Pvt Ltd', cin: 'U63000DL2011PTC901234', form: 'AOC-4', due: '30 May 2025', status: 'In Progress' }
-];
-
-/* ---------- ITR DATA ---------- */
-const ITR_FILINGS = [
-  { name: 'Rajesh Kumar', form: 'ITR-1', ay: '2024-25', amount: '₹ 42,500', status: 'Filed', date: '12 May 2025' },
-  { name: 'Priya Patel', form: 'ITR-2', ay: '2024-25', amount: '₹ 1,15,000', status: 'Filed', date: '10 May 2025' },
-  { name: 'ABC Corp', form: 'ITR-6', ay: '2024-25', amount: '₹ 8,40,000', status: 'In Progress', date: '-' },
-  { name: 'Neha Sharma', form: 'ITR-1', ay: '2024-25', amount: '₹ 18,200', status: 'Filed', date: '14 May 2025' },
-  { name: 'Ananya Verma', form: 'ITR-2', ay: '2024-25', amount: '₹ 64,800', status: 'Pending', date: '-' },
-  { name: 'Deepak Mehra', form: 'ITR-3', ay: '2024-25', amount: '₹ 2,30,000', status: 'In Progress', date: '-' },
-  { name: 'Vikas Sharma', form: 'ITR-4', ay: '2024-25', amount: '₹ 76,400', status: 'Filed', date: '8 May 2025' }
-];
-
-/* ---------- TDS DATA ---------- */
-const TDS_FILINGS = [
-  { deductor: 'ABC Pvt. Ltd.', tan: 'MUMA12345B', quarter: 'Q4 (Jan-Mar)', form: '24Q', amount: '₹ 1,25,000', status: 'Filed' },
-  { deductor: 'TechNova Solutions Pvt Ltd', tan: 'BLRT54321C', quarter: 'Q4 (Jan-Mar)', form: '26Q', amount: '₹ 84,500', status: 'Filed' },
-  { deductor: 'Global Exports India', tan: 'DELG67890D', quarter: 'Q4 (Jan-Mar)', form: '26Q', amount: '₹ 1,52,300', status: 'Pending' },
-  { deductor: 'National Plastics Ltd', tan: 'AHMN11223E', quarter: 'Q4 (Jan-Mar)', form: '24Q', amount: '₹ 97,600', status: 'Filed' },
-  { deductor: 'Continental Freight Pvt Ltd', tan: 'DELC44556F', quarter: 'Q4 (Jan-Mar)', form: '26Q', amount: '₹ 2,10,000', status: 'Pending' },
-  { deductor: 'Bright Star Pharma', tan: 'MUMB99887G', quarter: 'Q3 (Oct-Dec)', form: '24Q', amount: '₹ 1,38,900', status: 'Filed' },
-  { deductor: 'Cosmic IT Services', tan: 'BLRC22334H', quarter: 'Q4 (Jan-Mar)', form: '27Q', amount: '₹ 45,200', status: 'Filed' }
-];
-
-/* ---------- AUDIT DATA ---------- */
-const AUDITS = [
-  { client: 'ABC Pvt. Ltd.', type: 'Statutory Audit', auditor: 'Karan Mehta', start: '01 Apr 2025', end: '15 Jun 2025', status: 'In Progress' },
-  { client: 'TechNova Solutions Pvt Ltd', type: 'Tax Audit', auditor: 'Anjali Rao', start: '10 Apr 2025', end: '30 Jun 2025', status: 'In Progress' },
-  { client: 'Global Exports India', type: 'Internal Audit', auditor: 'Karan Mehta', start: '01 Mar 2025', end: '30 Apr 2025', status: 'Completed' },
-  { client: 'National Plastics Ltd', type: 'Statutory Audit', auditor: 'Sameer Joshi', start: '05 Apr 2025', end: '20 Jun 2025', status: 'In Progress' },
-  { client: 'Lotus Hospitality Group', type: 'Tax Audit', auditor: 'Anjali Rao', start: '15 Apr 2025', end: '15 Jul 2025', status: 'In Review' },
-  { client: 'Bright Star Pharma', type: 'Statutory Audit', auditor: 'Sameer Joshi', start: '01 Feb 2025', end: '31 Mar 2025', status: 'Completed' },
-  { client: 'Continental Freight Pvt Ltd', type: 'Stock Audit', auditor: 'Karan Mehta', start: '20 Apr 2025', end: '10 May 2025', status: 'In Review' },
-  { client: 'Saanvi Exports', type: 'Tax Audit', auditor: 'Anjali Rao', start: '01 Apr 2025', end: '30 Sep 2025', status: 'In Progress' }
-];
-
-/* ---------- DSC ALERTS ---------- */
-const DSC_ALERTS = [
-  { name: 'Rajesh Kumar', purpose: 'Income Tax', expiry: '25 May 2025', daysLeft: 5 },
-  { name: 'ABC Pvt. Ltd. (Director)', purpose: 'MCA/ROC', expiry: '02 Jun 2025', daysLeft: 13 },
-  { name: 'Priya Patel', purpose: 'GST', expiry: '10 Jun 2025', daysLeft: 21 },
-  { name: 'TechNova Solutions (CFO)', purpose: 'MCA/ROC', expiry: '15 Jun 2025', daysLeft: 26 },
-  { name: 'Neha Sharma', purpose: 'Income Tax', expiry: '28 May 2025', daysLeft: 8 }
-];
-
-/* ---------- ACCOUNTING TRANSACTIONS ---------- */
-const ACCOUNTING_TXNS = [
-  { narration: 'Professional Fees - ABC Pvt. Ltd.', date: '19 May 2025', amount: '₹ 45,000', type: 'credit' },
-  { narration: 'Office Rent - May 2025', date: '18 May 2025', amount: '₹ 60,000', type: 'debit' },
-  { narration: 'Audit Fee - TechNova Solutions', date: '17 May 2025', amount: '₹ 1,25,000', type: 'credit' },
-  { narration: 'Software Subscription - Tally', date: '16 May 2025', amount: '₹ 18,000', type: 'debit' },
-  { narration: 'GST Filing Charges - XYZ Traders', date: '15 May 2025', amount: '₹ 8,500', type: 'credit' },
-  { narration: 'Staff Salary - May 2025', date: '15 May 2025', amount: '₹ 3,20,000', type: 'debit' },
-  { narration: 'Consultation Fee - Global Exports', date: '14 May 2025', amount: '₹ 22,000', type: 'credit' },
-  { narration: 'Electricity Bill - Office', date: '12 May 2025', amount: '₹ 9,400', type: 'debit' }
-];
-
-/* ---------- TASKS (KANBAN) ---------- */
-let TASKS = [
-  { id: 1, title: 'File GSTR-1 for Sunrise Textiles', tags: ['GST', 'High'], assignee: 'Karan', due: '22 May', col: 'todo' },
-  { id: 2, title: 'Prepare ITR for ABC Corp', tags: ['Income Tax'], assignee: 'Anjali', due: '25 May', col: 'todo' },
-  { id: 3, title: 'Review ROC AOC-4 draft - National Plastics', tags: ['ROC', 'Review'], assignee: 'Sameer', due: '29 May', col: 'todo' },
-  { id: 4, title: 'Collect documents from Krishna Agro', tags: ['Documents'], assignee: 'Karan', due: '24 May', col: 'todo' },
-  { id: 5, title: 'TDS Return Q4 - Global Exports', tags: ['TDS', 'High'], assignee: 'Anjali', due: '24 May', col: 'inprogress' },
-  { id: 6, title: 'Stock Audit - Continental Freight', tags: ['Audit'], assignee: 'Karan', due: '10 May', col: 'inprogress' },
-  { id: 7, title: 'DSC Renewal - Rajesh Kumar', tags: ['DSC'], assignee: 'Sameer', due: '25 May', col: 'inprogress' },
-  { id: 8, title: 'Reconcile books - Mehta & Sons', tags: ['Accounting'], assignee: 'Anjali', due: '23 May', col: 'inprogress' },
-  { id: 9, title: 'GSTR-3B filed - ABC Pvt. Ltd.', tags: ['GST'], assignee: 'Karan', due: '18 May', col: 'done' },
-  { id: 10, title: 'ITR-1 filed - Rajesh Kumar', tags: ['Income Tax'], assignee: 'Anjali', due: '12 May', col: 'done' },
-  { id: 11, title: 'DSC issued - Neha Sharma', tags: ['DSC'], assignee: 'Sameer', due: '14 May', col: 'done' },
-  { id: 12, title: 'GSTR-1 filed - XYZ Traders', tags: ['GST'], assignee: 'Karan', due: '17 May', col: 'done' }
-];
-
-/* ---------- DOCUMENTS ---------- */
-const DOCUMENTS = [
-  { name: 'ABC Pvt Ltd - Balance Sheet FY24-25.pdf', type: 'PDF', icon: '📕', meta: 'ABC Pvt. Ltd. • 2.4 MB' },
-  { name: 'XYZ Traders - GST Returns.xlsx', type: 'Excel', icon: '📗', meta: 'XYZ Traders • 850 KB' },
-  { name: 'Rajesh Kumar - ITR Acknowledgement.pdf', type: 'PDF', icon: '📕', meta: 'Rajesh Kumar • 320 KB' },
-  { name: 'Audit Report - TechNova.docx', type: 'Word', icon: '📘', meta: 'TechNova Solutions • 1.1 MB' },
-  { name: 'GSTR-9 Working Sheet.xlsx', type: 'Excel', icon: '📗', meta: 'Krishna Agro • 540 KB' },
-  { name: 'Board Resolution - AOC4.pdf', type: 'PDF', icon: '📕', meta: 'National Plastics • 410 KB' },
-  { name: 'Company PAN Card.jpg', type: 'Image', icon: '🖼️', meta: 'Global Exports • 220 KB' },
-  { name: 'TDS Challan Q4.pdf', type: 'PDF', icon: '📕', meta: 'Global Exports • 180 KB' },
-  { name: 'Partnership Deed.pdf', type: 'PDF', icon: '📕', meta: 'Raj Enterprises • 980 KB' },
-  { name: 'Salary Register May25.xlsx', type: 'Excel', icon: '📗', meta: 'Internal • 360 KB' },
-  { name: 'DSC Application Form.pdf', type: 'PDF', icon: '📕', meta: 'Neha Sharma • 150 KB' },
-  { name: 'Audit Checklist 2025.docx', type: 'Word', icon: '📘', meta: 'Internal • 95 KB' }
-];
-
-/* ---------- CALENDAR EVENTS (May 2025) ---------- */
-const CAL_EVENTS = {
-  '2025-5-15': [{ title: 'ADT-1 Due - Saanvi Exports', type: 'ROC' }],
-  '2025-5-18': [{ title: 'GSTR-3B Filed - ABC Pvt. Ltd.', type: 'GST' }],
-  '2025-5-20': [{ title: 'GSTR-3B Due - All Clients', type: 'GST' }],
-  '2025-5-22': [{ title: 'GSTR-1 Filing Due', type: 'GST' }, { title: 'Team Review Meeting', type: 'Internal' }],
-  '2025-5-24': [{ title: 'TDS Return Q4 Due', type: 'TDS' }],
-  '2025-5-25': [{ title: 'DSC Renewal - Rajesh Kumar', type: 'DSC' }],
-  '2025-5-27': [{ title: 'GST Payment Due', type: 'GST' }],
-  '2025-5-28': [{ title: 'MGT-7 Due - TechNova', type: 'ROC' }],
-  '2025-5-29': [{ title: 'MGT-7 Due - National Plastics', type: 'ROC' }],
-  '2025-5-30': [{ title: 'AOC-4 Due - ABC Pvt. Ltd.', type: 'ROC' }, { title: 'AOC-4 Due - Continental Freight', type: 'ROC' }],
-  '2025-5-31': [{ title: 'PF Return Due', type: 'PF' }]
-};
-
-const UPCOMING_DUE = [
-  { day: '22', mon: 'May', title: 'GSTR-1 Filing', sub: 'Due Tomorrow', urgent: true },
-  { day: '24', mon: 'May', title: 'TDS Return - Q4', sub: 'Due in 2 days', urgent: false },
-  { day: '27', mon: 'May', title: 'GST Payment', sub: 'Due in 5 days', urgent: false },
-  { day: '31', mon: 'May', title: 'PF Return', sub: 'Due in 9 days', urgent: false }
-];
-
-const RECENT_ACTIVITY = [
-  { icon: '✅', color: 'green', text: 'GSTR-1 filed for ABC Pvt. Ltd.', time: '2 mins ago' },
-  { icon: '💰', color: 'blue', text: 'ITR filed for Rajesh Kumar', time: '15 mins ago' },
-  { icon: '✍️', color: 'purple', text: 'DSC generated for Neha Sharma', time: '1 hour ago' },
-  { icon: '✅', color: 'orange', text: 'Task "TDS Return Q4" assigned', time: '2 hours ago' },
-  { icon: '🏛️', color: 'blue', text: 'AOC-4 draft prepared - National Plastics', time: '3 hours ago' },
-  { icon: '🧮', color: 'green', text: 'Journal entry posted - Professional Fees', time: '4 hours ago' }
-];
-
-/* ---------- NOTIFICATIONS ---------- */
-const NOTIFICATIONS = [
-  { icon: '⏰', text: 'GSTR-1 filing due tomorrow for 12 clients', time: '5 mins ago' },
-  { icon: '✅', text: 'GSTR-3B successfully filed for ABC Pvt. Ltd.', time: '20 mins ago' },
-  { icon: '⚠️', text: 'DSC for Rajesh Kumar expires in 5 days', time: '1 hour ago' },
-  { icon: '🧾', text: 'TDS Return Q4 reminder for Global Exports', time: '2 hours ago' },
-  { icon: '💬', text: 'New message from Anjali Rao in Team Chat', time: '3 hours ago' },
-  { icon: '🏛️', text: 'ROC AOC-4 overdue for Global Exports India', time: '5 hours ago' }
-];
-
-/* ---------- TEAM CHAT ---------- */
 const TEAM_CONTACTS = [
   { id: 'rajesh', name: 'Rajesh Kumar', initial: 'R', online: true, last: 'Sure, I will check the GST portal' },
   { id: 'anjali', name: 'Anjali Rao', initial: 'A', online: true, last: 'Audit report draft is ready' },
@@ -259,8 +144,7 @@ const TEAM_MESSAGES = {
   ],
   anjali: [
     { from: 'them', text: 'The audit report draft for TechNova is ready for review.', time: '9:40 AM' },
-    { from: 'me', text: 'Awesome, send it over, I will review by EOD.', time: '9:42 AM' },
-    { from: 'them', text: 'Audit report draft is ready, sharing it on the Documents page.', time: '9:45 AM' }
+    { from: 'me', text: 'Awesome, send it over, I will review by EOD.', time: '9:42 AM' }
   ],
   sameer: [
     { from: 'them', text: 'Karan, sent the AOC-4 documents for National Plastics.', time: 'Yesterday' },
@@ -272,97 +156,74 @@ const TEAM_MESSAGES = {
   ],
   vikram: [
     { from: 'them', text: 'We have a client call scheduled at 4 PM today.', time: 'Mon' },
-    { from: 'me', text: 'Noted, will join.', time: 'Mon' },
-    { from: 'them', text: 'Will join the call at 4 PM, sending the agenda shortly.', time: 'Mon' }
+    { from: 'me', text: 'Noted, will join.', time: 'Mon' }
   ]
 };
 
-/* ---------- AI ASSISTANT KNOWLEDGE BASE ---------- */
-const AI_RESPONSES = {
-  'show pending gst returns': () => {
-    const pending = GST_RETURNS.filter(g => g.status === 'Pending' || g.status === 'Overdue');
-    let txt = `There are ${pending.length} GST returns that need attention:<br><br>`;
-    pending.forEach(g => {
-      txt += `• <strong>${g.client}</strong> — ${g.type} (${g.period}) — <span style="color:${g.status === 'Overdue' ? 'var(--danger)' : 'var(--warning)'}">${g.status}</span><br>`;
-    });
-    return txt;
-  },
-  'list overdue tasks': () => {
-    let txt = `Here are tasks marked as overdue or high priority:<br><br>`;
-    TASKS.filter(t => t.tags.includes('High')).forEach(t => {
-      txt += `• <strong>${t.title}</strong> — Assigned to ${t.assignee}, due ${t.due}<br>`;
-    });
-    return txt || 'No overdue tasks found. Great job!';
-  },
-  'gst due this week': () => {
-    let txt = `Upcoming GST-related due dates this week:<br><br>`;
-    UPCOMING_DUE.filter(d => d.title.toLowerCase().includes('gst')).forEach(d => {
-      txt += `• <strong>${d.title}</strong> — ${d.sub} (${d.day} ${d.mon})<br>`;
-    });
-    return txt;
-  },
-  'top clients by revenue': () => {
-    return `Based on professional fees and billing data, your top clients this quarter are:<br><br>
-    • <strong>TechNova Solutions Pvt Ltd</strong> — ₹ 1,25,000<br>
-    • <strong>ABC Pvt. Ltd.</strong> — ₹ 45,000<br>
-    • <strong>Global Exports India</strong> — ₹ 22,000<br>
-    • <strong>XYZ Traders</strong> — ₹ 8,500`;
-  },
-  'tds filing status': () => {
-    const filed = TDS_FILINGS.filter(t => t.status === 'Filed').length;
-    const pending = TDS_FILINGS.filter(t => t.status === 'Pending').length;
-    return `TDS Filing Summary for Q4 (Jan-Mar):<br><br>
-    • Filed: <strong>${filed}</strong><br>
-    • Pending: <strong>${pending}</strong><br><br>
-    Pending deductors: ${TDS_FILINGS.filter(t => t.status === 'Pending').map(t => t.deductor).join(', ')}`;
-  },
-  'upcoming compliances': () => {
-    let txt = `Here are your upcoming compliance deadlines:<br><br>`;
-    UPCOMING_DUE.forEach(d => {
-      txt += `• <strong>${d.title}</strong> — ${d.day} ${d.mon} (${d.sub})<br>`;
-    });
-    return txt;
-  },
-  'show pending tasks': () => {
-    const pending = TASKS.filter(t => t.col !== 'done');
-    let txt = `You have ${pending.length} tasks not yet completed:<br><br>`;
-    pending.slice(0, 6).forEach(t => {
-      txt += `• <strong>${t.title}</strong> — ${t.col === 'todo' ? 'To Do' : 'In Progress'}, due ${t.due}<br>`;
-    });
-    return txt;
-  },
-  'clients with pending filings': () => {
-    return `Clients with at least one pending filing:<br><br>
-    • <strong>Raj Enterprises</strong> — GSTR-3B Pending<br>
-    • <strong>Mehta & Sons</strong> — GSTR-1 Pending<br>
-    • <strong>Krishna Agro Industries</strong> — GSTR-9 Pending<br>
-    • <strong>Global Exports India</strong> — GSTR-3B Overdue, TDS Pending<br>
-    • <strong>Ananya Verma</strong> — ITR-2 Pending`;
-  },
-  'help me with tds': () => {
-    return `Sure! Here's a quick overview of TDS filing:<br><br>
-    1. Select the correct <strong>Form Type</strong> (24Q for salary, 26Q for non-salary, 27Q for foreign payments, 27EQ for TCS)<br>
-    2. Enter the <strong>TAN</strong> and select the relevant <strong>Quarter</strong><br>
-    3. Add the <strong>TDS amount</strong> and challan details<br>
-    4. Submit via the TDS Returns page<br><br>
-    Currently, ${TDS_FILINGS.filter(t => t.status === 'Pending').length} deductors have pending TDS returns for Q4. Would you like me to list them?`;
-  }
-};
-
-const AI_DEFAULT_RESPONSES = [
-  "I can help with that! Could you give me a bit more detail — for example, a client name or filing type?",
-  "I'm pulling that information from your workspace. For specific data, try asking about GST returns, TDS status, pending tasks, or client filings.",
-  "That's a great question. Right now I can best help with GST, TDS, ITR, ROC filings, client data, and task tracking. Try one of the quick suggestions below!"
-];
-
 /* =========================================================
-   2. INITIALIZATION
+   4. AI RESPONSES
    ========================================================= */
 
-document.addEventListener('DOMContentLoaded', () => {
+function getAIResponse(query) {
+  const q = query.toLowerCase().trim();
+  const { clients, gstReturns, tasks, tdsReturns } = STATE;
+
+  if (q.includes('gst') && (q.includes('pending') || q.includes('show'))) {
+    const pending = gstReturns.filter(g => g.status === 'Pending' || g.status === 'Overdue');
+    if (!pending.length) return 'No pending GST returns right now! 🎉';
+    let txt = `${pending.length} GST returns need attention:<br><br>`;
+    pending.forEach(g => {
+      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'var(--danger)':'var(--warning)'}">${g.status}</span><br>`;
+    });
+    return txt;
+  }
+  if (q.includes('task') || q.includes('pending')) {
+    const p = tasks.filter(t => t.column_name !== 'done');
+    let txt = `${p.length} tasks pending:<br><br>`;
+    p.slice(0, 6).forEach(t => {
+      txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name === 'todo' ? 'To Do' : 'In Progress'}, due ${t.due_date || 'TBD'}<br>`;
+    });
+    return txt;
+  }
+  if (q.includes('tds')) {
+    const filed = tdsReturns.filter(t => t.status === 'Filed').length;
+    const pend = tdsReturns.filter(t => t.status === 'Pending').length;
+    return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`;
+  }
+  if (q.includes('client')) {
+    const active = clients.filter(c => c.status === 'Active').length;
+    return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c=>c.status==='Pending').length}</strong>`;
+  }
+  if (q.includes('upcoming') || q.includes('due') || q.includes('compliance')) {
+    return `Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!`;
+  }
+
+  const defaults = [
+    'I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!',
+    'Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.',
+    'Namaste! Try: "pending tasks", "GST due this week", "TDS filing status"'
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
+}
+
+/* =========================================================
+   5. INITIALIZATION
+   ========================================================= */
+
+document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
-  initDarkMode();
   setCurrentDate();
+  attachGlobalListeners();
+  renderTeamContacts();
+  renderTeamMessages();
+
+  // Load all data from Supabase
+  showPageLoader(true);
+  await loadAllData();
+  showPageLoader(false);
+
+  // Render everything
+  updateDashboardStats();
   renderClientTable();
   renderGSTPage();
   renderROCTable();
@@ -377,51 +238,83 @@ document.addEventListener('DOMContentLoaded', () => {
   renderEventList();
   renderDueDates();
   renderActivity();
-  renderNotifications();
   renderBarChart();
-  renderTeamContacts();
-  renderTeamMessages();
-  attachGlobalListeners();
 });
 
-/* =========================================================
-   3. NAVIGATION
-   ========================================================= */
-
-function navigate(page) {
-  STATE.currentPage = page;
-
-  // toggle page sections
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + page);
-  if (target) target.classList.add('active');
-
-  // toggle sidebar nav active state
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.toggle('active', item.getAttribute('data-page') === page);
-  });
-
-  // close mobile sidebar after navigation
-  if (window.innerWidth <= 768) {
-    closeSidebar();
+function showPageLoader(show) {
+  let loader = document.getElementById('pageLoader');
+  if (!loader) {
+    loader = document.createElement('div');
+    loader.id = 'pageLoader';
+    loader.style.cssText = `
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      background:rgba(255,255,255,0.85);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:9999;font-family:Inter,sans-serif;
+    `;
+    loader.innerHTML = `
+      <div class="spinner"></div>
+      <div style="margin-top:16px;font-size:14px;font-weight:600;color:#6366f1">Loading WITCORP...</div>
+      <div style="font-size:12px;color:#64748b;margin-top:6px">Connecting to database...</div>
+    `;
+    document.body.appendChild(loader);
   }
+  loader.style.display = show ? 'flex' : 'none';
+}
 
-  // close notif panel if open
-  closeNotifications();
+async function loadAllData() {
+  try {
+    const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events] = await Promise.all([
+      supabase('clients', { order: 'created_at.desc' }),
+      supabase('gst_returns', { order: 'created_at.desc' }),
+      supabase('roc_filings', { order: 'created_at.desc' }),
+      supabase('itr_filings', { order: 'created_at.desc' }),
+      supabase('tds_returns', { order: 'created_at.desc' }),
+      supabase('audits', { order: 'created_at.desc' }),
+      supabase('dsc_records', { order: 'days_left.asc' }),
+      supabase('accounting_entries', { order: 'created_at.desc' }),
+      supabase('tasks', { order: 'created_at.desc' }),
+      supabase('documents', { order: 'created_at.desc' }),
+      supabase('calendar_events', { order: 'event_date.asc' }),
+    ]);
 
-  // scroll to top of content
-  const pageContent = document.getElementById('pageContent');
-  if (pageContent) pageContent.scrollTop = 0;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  // refresh chart animation if reports page
-  if (page === 'reports') {
-    setTimeout(renderBarChart, 100);
+    STATE.clients = Array.isArray(clients) ? clients : [];
+    STATE.gstReturns = Array.isArray(gst) ? gst : [];
+    STATE.rocFilings = Array.isArray(roc) ? roc : [];
+    STATE.itrFilings = Array.isArray(itr) ? itr : [];
+    STATE.tdsReturns = Array.isArray(tds) ? tds : [];
+    STATE.audits = Array.isArray(audits) ? audits : [];
+    STATE.dscRecords = Array.isArray(dsc) ? dsc : [];
+    STATE.accountingEntries = Array.isArray(acc) ? acc : [];
+    STATE.tasks = Array.isArray(tasks) ? tasks : [];
+    STATE.documents = Array.isArray(docs) ? docs : [];
+    STATE.calendarEvents = Array.isArray(events) ? events : [];
+  } catch (e) {
+    console.error('loadAllData error:', e);
+    showToast('Database connection failed. Check console.');
   }
 }
 
 /* =========================================================
-   4. SIDEBAR TOGGLE (MOBILE)
+   6. NAVIGATION
+   ========================================================= */
+
+function navigate(page) {
+  STATE.currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.toggle('active', item.getAttribute('data-page') === page);
+  });
+  if (window.innerWidth <= 768) closeSidebar();
+  closeNotifications();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (page === 'reports') setTimeout(renderBarChart, 100);
+}
+
+/* =========================================================
+   7. SIDEBAR TOGGLE
    ========================================================= */
 
 function toggleSidebar() {
@@ -441,37 +334,22 @@ function closeSidebar() {
 }
 
 /* =========================================================
-   5. THEME SWITCHING
+   8. THEME & DARK MODE
    ========================================================= */
 
 function initTheme() {
-  const saved = STATE.activeTheme;
-  setTheme(saved, false);
+  setTheme(STATE.activeTheme, false);
 }
 
 function setTheme(themeName, persist = true) {
-  // remove all theme classes
-  const themeClasses = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
-  themeClasses.forEach(t => document.body.classList.remove(t));
+  const themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
+  themes.forEach(t => document.body.classList.remove(t));
   document.body.classList.add(themeName);
   STATE.activeTheme = themeName;
-
-  // update swatch active state
   document.querySelectorAll('.swatch').forEach(sw => {
     sw.classList.toggle('active', sw.getAttribute('data-theme') === themeName);
   });
-
-  if (persist) {
-    showToast('Theme updated to ' + themeName.replace('theme-', '').replace(/^\w/, c => c.toUpperCase()));
-  }
-}
-
-/* =========================================================
-   6. DARK MODE TOGGLE
-   ========================================================= */
-
-function initDarkMode() {
-  STATE.darkMode = false;
+  if (persist) showToast('Theme: ' + themeName.replace('theme-', '').replace(/^\w/, c => c.toUpperCase()));
 }
 
 function toggleDarkMode() {
@@ -487,30 +365,61 @@ function toggleDarkMode() {
 }
 
 /* =========================================================
-   7. CURRENT DATE BADGE
+   9. DATE
    ========================================================= */
 
 function setCurrentDate() {
   const el = document.getElementById('currentDate');
   if (!el) return;
-  // Fixed demo date per design mock
-  el.textContent = '20 May 2025, Tue';
+  const now = new Date();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  el.textContent = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${days[now.getDay()]}`;
 }
 
 /* =========================================================
-   8. CLIENT MANAGEMENT
+   10. DASHBOARD STATS
+   ========================================================= */
+
+function updateDashboardStats() {
+  const totalClients = STATE.clients.length;
+  const gstFiled = STATE.gstReturns.filter(g => g.status === 'Filed').length;
+  const pendingTasks = STATE.tasks.filter(t => t.column_name !== 'done').length;
+  const today = new Date();
+  const upcomingDue = STATE.calendarEvents.filter(e => {
+    const d = new Date(e.event_date);
+    const diff = (d - today) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  }).length;
+  const todayStr = today.toISOString().split('T')[0];
+  const todayFilings = STATE.calendarEvents.filter(e => e.event_date === todayStr).length;
+
+  // Update stat cards
+  const statNums = document.querySelectorAll('.stat-number');
+  if (statNums.length >= 5) {
+    statNums[0].textContent = totalClients;
+    statNums[1].textContent = gstFiled;
+    statNums[2].textContent = pendingTasks;
+    statNums[3].textContent = upcomingDue;
+    statNums[4].textContent = String(todayFilings).padStart(2, '0');
+  }
+}
+
+/* =========================================================
+   11. CLIENT MANAGEMENT
    ========================================================= */
 
 function getFilteredClients() {
-  const { search, status } = STATE.filters.clients;
-  return CLIENTS.filter(c => {
-    const matchesSearch = !search ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.pan.toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase()) ||
-      c.gst.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = !status || c.status === status;
-    return matchesSearch && matchesStatus;
+  const { search, status, type } = STATE.filters.clients;
+  return STATE.clients.filter(c => {
+    const s = search.toLowerCase();
+    const matchSearch = !search ||
+      (c.name || '').toLowerCase().includes(s) ||
+      (c.pan || '').toLowerCase().includes(s) ||
+      (c.email || '').toLowerCase().includes(s);
+    const matchStatus = !status || c.status === status;
+    const matchType = !type || c.type === type;
+    return matchSearch && matchStatus && matchType;
   });
 }
 
@@ -523,50 +432,36 @@ function renderClientTable() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const safePage = Math.min(page, totalPages);
   STATE.pagination.clients.page = safePage;
-
   const start = (safePage - 1) * perPage;
   const pageItems = filtered.slice(start, start + perPage);
 
-  if (pageItems.length === 0) {
+  if (!pageItems.length) {
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
       <div class="empty-state-icon">🔍</div>
       <div class="empty-state-text">No clients found</div>
-      <div class="empty-state-sub">Try adjusting your search or filters</div>
+      <div class="empty-state-sub">Try adjusting filters or add a new client</div>
     </div></td></tr>`;
   } else {
     tbody.innerHTML = pageItems.map(c => `
       <tr>
         <td><strong>${escapeHtml(c.name)}</strong></td>
-        <td>${escapeHtml(c.pan)}</td>
-        <td>${escapeHtml(c.type)}</td>
-        <td>${escapeHtml(c.gst)}</td>
-        <td>${escapeHtml(c.email)}</td>
-        <td>${escapeHtml(c.phone)}</td>
+        <td>${escapeHtml(c.pan || '-')}</td>
+        <td>${escapeHtml(c.type || '-')}</td>
+        <td>${escapeHtml(c.gst || '-')}</td>
+        <td>${escapeHtml(c.email || '-')}</td>
+        <td>${escapeHtml(c.phone || '-')}</td>
         <td>${statusBadge(c.status)}</td>
         <td>
           <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="viewClient(${c.id})">View</button>
-          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px" onclick="editClient(${c.id})">Edit</button>
+          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editClient(${c.id})">Edit</button>
+          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteClientConfirm(${c.id})">Delete</button>
         </td>
       </tr>
     `).join('');
   }
 
-  document.getElementById('clientPageInfo').textContent = `Page ${safePage} of ${totalPages}`;
-}
-
-function statusBadge(status) {
-  const map = {
-    'Active': 'badge-success',
-    'Inactive': 'badge-danger',
-    'Pending': 'badge-warning',
-    'Filed': 'badge-success',
-    'Overdue': 'badge-danger',
-    'In Progress': 'badge-info',
-    'In Review': 'badge-purple',
-    'Completed': 'badge-success'
-  };
-  const cls = map[status] || 'badge-info';
-  return `<span class="badge ${cls}">${status}</span>`;
+  const pageInfo = document.getElementById('clientPageInfo');
+  if (pageInfo) pageInfo.textContent = `Page ${safePage} of ${totalPages} (${filtered.length} clients)`;
 }
 
 function filterClients(value) {
@@ -582,19 +477,16 @@ function filterClientStatus(value) {
 }
 
 function prevPage(section) {
-  if (section === 'clients') {
-    if (STATE.pagination.clients.page > 1) {
-      STATE.pagination.clients.page--;
-      renderClientTable();
-    }
+  if (section === 'clients' && STATE.pagination.clients.page > 1) {
+    STATE.pagination.clients.page--;
+    renderClientTable();
   }
 }
 
 function nextPage(section) {
   if (section === 'clients') {
-    const filtered = getFilteredClients();
-    const totalPages = Math.max(1, Math.ceil(filtered.length / STATE.pagination.clients.perPage));
-    if (STATE.pagination.clients.page < totalPages) {
+    const total = Math.ceil(getFilteredClients().length / STATE.pagination.clients.perPage);
+    if (STATE.pagination.clients.page < total) {
       STATE.pagination.clients.page++;
       renderClientTable();
     }
@@ -602,216 +494,633 @@ function nextPage(section) {
 }
 
 function viewClient(id) {
-  const client = CLIENTS.find(c => c.id === id);
-  if (!client) return;
-  openModalWithContent(`Client Details — ${client.name}`, `
-    <div class="form-group"><label>Client Name</label><div class="form-control" style="background:var(--bg)">${escapeHtml(client.name)}</div></div>
-    <div class="form-group"><label>PAN / TAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(client.pan)}</div></div>
-    <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(client.type)}</div></div>
-    <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(client.gst)}</div></div>
-    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(client.email)}</div></div>
-    <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(client.phone)}</div></div>
-    <div class="form-group"><label>Status</label><div>${statusBadge(client.status)}</div></div>
+  const c = STATE.clients.find(x => x.id === id);
+  if (!c) return;
+  openModalWithContent(`👥 ${escapeHtml(c.name)}`, `
+    <div class="form-group"><label>Client Name</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.name)}</div></div>
+    <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan||'-')}</div></div>
+    <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.type||'-')}</div></div>
+    <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.gst||'-')}</div></div>
+    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email||'-')}</div></div>
+    <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone||'-')}</div></div>
+    <div class="form-group"><label>Status</label><div>${statusBadge(c.status)}</div></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
 
 function editClient(id) {
-  const client = CLIENTS.find(c => c.id === id);
-  if (!client) return;
-  openModalWithContent(`Edit Client — ${client.name}`, `
-    <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeHtml(client.name)}" /></div>
-    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(client.email)}" /></div>
-    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(client.phone)}" /></div>
-    <div class="form-group">
-      <label>Status</label>
+  const c = STATE.clients.find(x => x.id === id);
+  if (!c) return;
+  openModalWithContent(`✏️ Edit — ${escapeHtml(c.name)}`, `
+    <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeHtml(c.name)}" /></div>
+    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(c.email||'')}" /></div>
+    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(c.phone||'')}" /></div>
+    <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="editClientGST" value="${escapeHtml(c.gst||'')}" /></div>
+    <div class="form-group"><label>Status</label>
       <select class="form-control" id="editClientStatus">
-        <option ${client.status === 'Active' ? 'selected' : ''}>Active</option>
-        <option ${client.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-        <option ${client.status === 'Pending' ? 'selected' : ''}>Pending</option>
+        <option ${c.status==='Active'?'selected':''}>Active</option>
+        <option ${c.status==='Inactive'?'selected':''}>Inactive</option>
+        <option ${c.status==='Pending'?'selected':''}>Pending</option>
       </select>
     </div>
-    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveClientEdit(${client.id})">Save Changes</button>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveClientEdit(${id})">💾 Save Changes</button>
   `);
 }
 
-function saveClientEdit(id) {
-  const client = CLIENTS.find(c => c.id === id);
-  if (!client) return;
-  client.name = document.getElementById('editClientName').value || client.name;
-  client.email = document.getElementById('editClientEmail').value || client.email;
-  client.phone = document.getElementById('editClientPhone').value || client.phone;
-  client.status = document.getElementById('editClientStatus').value || client.status;
-  closeModal();
-  renderClientTable();
-  showToast('Client details updated successfully');
+async function saveClientEdit(id) {
+  const name = document.getElementById('editClientName').value.trim();
+  if (!name) { showToast('Client name required'); return; }
+  const updated = {
+    name,
+    email: document.getElementById('editClientEmail').value.trim(),
+    phone: document.getElementById('editClientPhone').value.trim(),
+    gst: document.getElementById('editClientGST').value.trim(),
+    status: document.getElementById('editClientStatus').value
+  };
+  const ok = await supabaseUpdate('clients', id, updated);
+  if (ok) {
+    const idx = STATE.clients.findIndex(c => c.id === id);
+    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated };
+    closeModal();
+    renderClientTable();
+    updateDashboardStats();
+    showToast('✅ Client updated successfully!');
+  } else {
+    showToast('❌ Update failed. Try again.');
+  }
+}
+
+function deleteClientConfirm(id) {
+  const c = STATE.clients.find(x => x.id === id);
+  if (!c) return;
+  openModalWithContent('🗑️ Delete Client', `
+    <div style="text-align:center;padding:10px 0">
+      <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">Delete "${escapeHtml(c.name)}"?</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Yeh action permanent hai. Undo nahi hoga.</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" style="flex:1;background:var(--danger)" onclick="deleteClientConfirmed(${id})">Delete</button>
+      </div>
+    </div>
+  `);
+}
+
+async function deleteClientConfirmed(id) {
+  const ok = await supabaseDelete('clients', id);
+  if (ok) {
+    STATE.clients = STATE.clients.filter(c => c.id !== id);
+    closeModal();
+    renderClientTable();
+    updateDashboardStats();
+    showToast('🗑️ Client deleted');
+  } else {
+    showToast('❌ Delete failed');
+  }
 }
 
 /* =========================================================
-   9. GST DASHBOARD
+   12. GST DASHBOARD
    ========================================================= */
 
 function renderGSTPage() {
   const listEl = document.getElementById('gstReturnList');
   const upcomingEl = document.getElementById('gstUpcoming');
-  if (!listEl || !upcomingEl) return;
 
-  listEl.innerHTML = GST_RETURNS.map(g => `
-    <div class="gst-item">
-      <div>
-        <div class="gst-item-name">${escapeHtml(g.client)}</div>
-        <div class="gst-item-sub">${escapeHtml(g.type)} • ${escapeHtml(g.period)}</div>
-      </div>
-      ${statusBadge(g.status)}
-    </div>
-  `).join('');
+  if (listEl) {
+    if (!STATE.gstReturns.length) {
+      listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">No GST returns yet</div></div>';
+    } else {
+      listEl.innerHTML = STATE.gstReturns.map(g => `
+        <div class="gst-item">
+          <div>
+            <div class="gst-item-name">${escapeHtml(g.client_name)}</div>
+            <div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${statusBadge(g.status)}
+            <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteGSTReturn(${g.id})">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
 
-  upcomingEl.innerHTML = GST_UPCOMING.map(u => `
-    <div class="upcoming-item">
-      <div>
-        <div class="gst-item-name">${escapeHtml(u.name)}</div>
-        <div class="gst-item-sub">${escapeHtml(u.sub)}</div>
+  if (upcomingEl) {
+    const upcoming = STATE.calendarEvents.slice(0, 5);
+    upcomingEl.innerHTML = upcoming.map(e => `
+      <div class="upcoming-item">
+        <div>
+          <div class="gst-item-name">${escapeHtml(e.title)}</div>
+          <div class="gst-item-sub">${escapeHtml(e.event_type)}</div>
+        </div>
+        <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
       </div>
-      <div class="gst-item-sub fw-bold">${escapeHtml(u.date)}</div>
-    </div>
-  `).join('');
+    `).join('') || '<div class="empty-state"><div class="empty-state-text">No upcoming filings</div></div>';
+  }
+
+  // Update GST stats
+  const statNums = document.querySelectorAll('#page-gst .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = STATE.gstReturns.filter(g=>g.status==='Filed').length;
+    statNums[1].textContent = STATE.gstReturns.filter(g=>g.status==='Pending').length;
+    statNums[2].textContent = STATE.gstReturns.filter(g=>g.status==='Overdue').length;
+    const totalTax = STATE.gstReturns.reduce((sum, g) => sum + (g.tax_liability || 0), 0);
+    statNums[3].textContent = '₹ ' + formatAmount(totalTax);
+  }
 }
 
-function submitGSTReturn() {
-  showToast('GST return submitted successfully ✅');
+async function submitGSTReturn() {
+  const clientEl = document.querySelector('#page-gst select');
+  const typeEl = document.querySelectorAll('#page-gst select')[1];
+  const periodEl = document.querySelectorAll('#page-gst select')[2];
+  const inputs = document.querySelectorAll('#page-gst input[type="text"], #page-gst input[type="number"]');
+
+  const clientName = clientEl ? clientEl.value : '';
+  if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
+
+  const body = {
+    client_name: clientName,
+    return_type: typeEl ? typeEl.value : 'GSTR-1',
+    period: periodEl ? periodEl.value : '',
+    gstin: inputs[0] ? inputs[0].value : '',
+    total_turnover: inputs[1] ? parseFloat(inputs[1].value) || 0 : 0,
+    tax_liability: inputs[2] ? parseFloat(inputs[2].value) || 0 : 0,
+    status: 'Filed',
+    filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  };
+
+  const result = await supabaseInsert('gst_returns', body);
+  if (result && result[0]) {
+    STATE.gstReturns.unshift(result[0]);
+    renderGSTPage();
+    showToast('✅ GST Return filed successfully!');
+  } else {
+    showToast('❌ Failed to file GST return');
+  }
+}
+
+async function deleteGSTReturn(id) {
+  const ok = await supabaseDelete('gst_returns', id);
+  if (ok) {
+    STATE.gstReturns = STATE.gstReturns.filter(g => g.id !== id);
+    renderGSTPage();
+    showToast('🗑️ GST return deleted');
+  }
 }
 
 /* =========================================================
-   10. ROC FILINGS
+   13. ROC FILINGS
    ========================================================= */
 
 function renderROCTable() {
   const tbody = document.getElementById('rocTableBody');
   if (!tbody) return;
-  tbody.innerHTML = ROC_FILINGS.map(r => `
+
+  if (!STATE.rocFilings.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🏛️</div><div class="empty-state-text">No ROC filings yet</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = STATE.rocFilings.map(r => `
     <tr>
       <td><strong>${escapeHtml(r.company)}</strong></td>
-      <td>${escapeHtml(r.cin)}</td>
-      <td>${escapeHtml(r.form)}</td>
-      <td>${escapeHtml(r.due)}</td>
+      <td>${escapeHtml(r.cin||'-')}</td>
+      <td>${escapeHtml(r.form||'-')}</td>
+      <td>${escapeHtml(r.due_date||'-')}</td>
       <td>${statusBadge(r.status)}</td>
-      <td><button class="btn-outline" style="padding:5px 12px;font-size:11.5px" onclick="showToast('Opening filing details...')">View</button></td>
+      <td>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteROC(${r.id})">Delete</button>
+      </td>
     </tr>
   `).join('');
+
+  // Update ROC stats
+  const statNums = document.querySelectorAll('#page-roc .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = STATE.rocFilings.filter(r=>r.status==='Filed').length;
+    statNums[1].textContent = STATE.rocFilings.filter(r=>r.status==='In Progress').length;
+    statNums[2].textContent = STATE.rocFilings.filter(r=>r.status==='Overdue').length;
+    statNums[3].textContent = STATE.clients.filter(c=>c.type==='Company').length;
+  }
+}
+
+function editROCStatus(id) {
+  const r = STATE.rocFilings.find(x => x.id === id);
+  if (!r) return;
+  openModalWithContent(`Update ROC Filing — ${escapeHtml(r.company)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="rocStatusSel">
+        <option ${r.status==='In Progress'?'selected':''}>In Progress</option>
+        <option ${r.status==='Filed'?'selected':''}>Filed</option>
+        <option ${r.status==='Overdue'?'selected':''}>Overdue</option>
+      </select>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>
+  `);
+}
+
+async function saveROCStatus(id) {
+  const status = document.getElementById('rocStatusSel').value;
+  const ok = await supabaseUpdate('roc_filings', id, { status });
+  if (ok) {
+    const idx = STATE.rocFilings.findIndex(r => r.id === id);
+    if (idx !== -1) STATE.rocFilings[idx].status = status;
+    closeModal();
+    renderROCTable();
+    showToast('✅ ROC status updated');
+  }
+}
+
+async function deleteROC(id) {
+  const ok = await supabaseDelete('roc_filings', id);
+  if (ok) {
+    STATE.rocFilings = STATE.rocFilings.filter(r => r.id !== id);
+    renderROCTable();
+    showToast('🗑️ ROC filing deleted');
+  }
 }
 
 /* =========================================================
-   11. INCOME TAX
+   14. INCOME TAX
    ========================================================= */
 
 function renderITRList() {
   const el = document.getElementById('itrList');
   if (!el) return;
-  el.innerHTML = ITR_FILINGS.map(itr => `
+
+  if (!STATE.itrFilings.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">No ITR filings yet</div></div>';
+    return;
+  }
+
+  el.innerHTML = STATE.itrFilings.map(itr => `
     <div class="itr-item">
       <div>
-        <div class="gst-item-name">${escapeHtml(itr.name)}</div>
-        <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.ay)} • ${escapeHtml(itr.amount)}</div>
+        <div class="gst-item-name">${escapeHtml(itr.client_name)}</div>
+        <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date||'-')}</div>
       </div>
-      ${statusBadge(itr.status)}
+      <div style="display:flex;align-items:center;gap:8px">
+        ${statusBadge(itr.status)}
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteITR(${itr.id})">✕</button>
+      </div>
     </div>
   `).join('');
+
+  // Update ITR stats
+  const statNums = document.querySelectorAll('#page-incometax .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = STATE.itrFilings.filter(i=>i.status==='Filed').length;
+    statNums[1].textContent = STATE.itrFilings.filter(i=>i.status==='Pending'||i.status==='In Progress').length;
+    const refund = STATE.itrFilings.reduce((s,i) => s + (i.tax_deducted||0), 0);
+    statNums[2].textContent = '₹ ' + formatAmount(refund);
+    statNums[3].textContent = '₹ ' + formatAmount(STATE.itrFilings.reduce((s,i) => s + (i.gross_income||0)*0.1, 0));
+  }
 }
 
-function submitITR() {
-  showToast('ITR calculated & filed successfully ✅');
+async function submitITR() {
+  const selects = document.querySelectorAll('#page-incometax select');
+  const inputs = document.querySelectorAll('#page-incometax input[type="number"]');
+  const clientName = selects[0]?.value;
+  if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
+
+  const body = {
+    client_name: clientName,
+    assessment_year: selects[1]?.value || '2025-26',
+    form: selects[2]?.value || 'ITR-1',
+    gross_income: parseFloat(inputs[0]?.value) || 0,
+    tax_deducted: parseFloat(inputs[1]?.value) || 0,
+    deductions: parseFloat(inputs[2]?.value) || 0,
+    status: 'Filed',
+    filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  };
+
+  const result = await supabaseInsert('itr_filings', body);
+  if (result && result[0]) {
+    STATE.itrFilings.unshift(result[0]);
+    renderITRList();
+    showToast('✅ ITR filed successfully!');
+  } else {
+    showToast('❌ ITR filing failed');
+  }
+}
+
+async function deleteITR(id) {
+  const ok = await supabaseDelete('itr_filings', id);
+  if (ok) {
+    STATE.itrFilings = STATE.itrFilings.filter(i => i.id !== id);
+    renderITRList();
+    showToast('🗑️ ITR filing deleted');
+  }
 }
 
 /* =========================================================
-   12. TDS RETURNS
+   15. TDS RETURNS
    ========================================================= */
 
 function renderTDSTable() {
   const tbody = document.getElementById('tdsTableBody');
   if (!tbody) return;
-  tbody.innerHTML = TDS_FILINGS.map(t => `
+
+  if (!STATE.tdsReturns.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">No TDS returns yet</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = STATE.tdsReturns.map(t => `
     <tr>
       <td><strong>${escapeHtml(t.deductor)}</strong></td>
-      <td>${escapeHtml(t.tan)}</td>
-      <td>${escapeHtml(t.quarter)}</td>
-      <td>${escapeHtml(t.form)}</td>
-      <td>${escapeHtml(t.amount)}</td>
-      <td>${statusBadge(t.status)}</td>
+      <td>${escapeHtml(t.tan||'-')}</td>
+      <td>${escapeHtml(t.quarter||'-')}</td>
+      <td>${escapeHtml(t.form_type||'-')}</td>
+      <td>₹ ${formatAmount(t.amount||0)}</td>
+      <td>
+        ${statusBadge(t.status)}
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px;border-color:var(--danger);color:var(--danger)" onclick="deleteTDS(${t.id})">✕</button>
+      </td>
     </tr>
   `).join('');
+
+  const statNums = document.querySelectorAll('#page-tds .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
+    statNums[1].textContent = STATE.tdsReturns.filter(t=>t.status==='Pending').length;
+    statNums[2].textContent = '₹ ' + formatAmount(STATE.tdsReturns.reduce((s,t)=>s+(t.amount||0),0));
+    statNums[3].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
+  }
 }
 
-function submitTDS() {
-  showToast('TDS return submitted successfully ✅');
+async function submitTDS() {
+  const inputs = document.querySelectorAll('#page-tds input[type="text"], #page-tds input[type="number"]');
+  const selects = document.querySelectorAll('#page-tds select');
+  const deductor = inputs[0]?.value.trim();
+  if (!deductor) { showToast('Please enter deductor name'); return; }
+
+  const body = {
+    deductor,
+    tan: inputs[1]?.value.trim(),
+    quarter: selects[0]?.value,
+    form_type: selects[1]?.value,
+    amount: parseFloat(inputs[2]?.value) || 0,
+    challan_no: inputs[3]?.value.trim(),
+    status: 'Filed'
+  };
+
+  const result = await supabaseInsert('tds_returns', body);
+  if (result && result[0]) {
+    STATE.tdsReturns.unshift(result[0]);
+    renderTDSTable();
+    showToast('✅ TDS return submitted successfully!');
+  } else {
+    showToast('❌ TDS submission failed');
+  }
+}
+
+async function deleteTDS(id) {
+  const ok = await supabaseDelete('tds_returns', id);
+  if (ok) {
+    STATE.tdsReturns = STATE.tdsReturns.filter(t => t.id !== id);
+    renderTDSTable();
+    showToast('🗑️ TDS return deleted');
+  }
 }
 
 /* =========================================================
-   13. AUDIT & ASSURANCE
+   16. AUDIT & ASSURANCE
    ========================================================= */
 
 function renderAuditTable() {
   const tbody = document.getElementById('auditTableBody');
   if (!tbody) return;
-  tbody.innerHTML = AUDITS.map(a => `
+
+  if (!STATE.audits.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">No audits scheduled yet</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = STATE.audits.map(a => `
     <tr>
       <td><strong>${escapeHtml(a.client)}</strong></td>
-      <td>${escapeHtml(a.type)}</td>
-      <td>${escapeHtml(a.auditor)}</td>
-      <td>${escapeHtml(a.start)}</td>
-      <td>${escapeHtml(a.end)}</td>
+      <td>${escapeHtml(a.audit_type||'-')}</td>
+      <td>${escapeHtml(a.auditor||'-')}</td>
+      <td>${escapeHtml(a.start_date||'-')}</td>
+      <td>${escapeHtml(a.end_date||'-')}</td>
       <td>${statusBadge(a.status)}</td>
-      <td><button class="btn-outline" style="padding:5px 12px;font-size:11.5px" onclick="showToast('Opening audit workpapers...')">Open</button></td>
+      <td>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteAudit(${a.id})">Delete</button>
+      </td>
     </tr>
   `).join('');
+
+  const statNums = document.querySelectorAll('#page-audit .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = STATE.audits.filter(a=>a.status==='In Progress').length;
+    statNums[1].textContent = STATE.audits.filter(a=>a.status==='Completed').length;
+    statNums[2].textContent = STATE.audits.filter(a=>a.status==='In Review').length;
+    statNums[3].textContent = 4;
+  }
+}
+
+function editAuditStatus(id) {
+  const a = STATE.audits.find(x => x.id === id);
+  if (!a) return;
+  openModalWithContent(`Update Audit — ${escapeHtml(a.client)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="auditStatusSel">
+        <option ${a.status==='In Progress'?'selected':''}>In Progress</option>
+        <option ${a.status==='In Review'?'selected':''}>In Review</option>
+        <option ${a.status==='Completed'?'selected':''}>Completed</option>
+      </select>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAuditStatus(${id})">Save</button>
+  `);
+}
+
+async function saveAuditStatus(id) {
+  const status = document.getElementById('auditStatusSel').value;
+  const ok = await supabaseUpdate('audits', id, { status });
+  if (ok) {
+    const idx = STATE.audits.findIndex(a => a.id === id);
+    if (idx !== -1) STATE.audits[idx].status = status;
+    closeModal();
+    renderAuditTable();
+    showToast('✅ Audit status updated');
+  }
+}
+
+async function deleteAudit(id) {
+  const ok = await supabaseDelete('audits', id);
+  if (ok) {
+    STATE.audits = STATE.audits.filter(a => a.id !== id);
+    renderAuditTable();
+    showToast('🗑️ Audit deleted');
+  }
 }
 
 /* =========================================================
-   14. DSC & ESIGN
+   17. DSC & ESIGN
    ========================================================= */
 
 function renderDSCAlerts() {
   const el = document.getElementById('dscAlertList');
   if (!el) return;
-  el.innerHTML = DSC_ALERTS.map(d => `
+
+  if (!STATE.dscRecords.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✍️</div><div class="empty-state-text">No DSC records</div></div>';
+    return;
+  }
+
+  el.innerHTML = STATE.dscRecords.map(d => `
     <div class="dsc-alert-item">
-      <div class="activity-dot ${d.daysLeft <= 7 ? 'orange' : 'blue'}">⚠️</div>
+      <div class="activity-dot ${(d.days_left||99) <= 7 ? 'orange' : 'blue'}">⚠️</div>
       <div style="flex:1">
-        <div class="gst-item-name">${escapeHtml(d.name)}</div>
-        <div class="gst-item-sub">${escapeHtml(d.purpose)} • Expires ${escapeHtml(d.expiry)}</div>
+        <div class="gst-item-name">${escapeHtml(d.client_name)}</div>
+        <div class="gst-item-sub">${escapeHtml(d.purpose||'-')} • Expires ${escapeHtml(d.expiry_date||'-')}</div>
       </div>
-      <span class="badge ${d.daysLeft <= 7 ? 'badge-danger' : 'badge-warning'}">${d.daysLeft}d left</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="badge ${(d.days_left||99) <= 7 ? 'badge-danger' : 'badge-warning'}">${d.days_left||'?'}d left</span>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteDSC(${d.id})">✕</button>
+      </div>
     </div>
   `).join('');
+
+  const statNums = document.querySelectorAll('#page-dsc .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = STATE.dscRecords.filter(d=>d.status==='Active').length;
+    statNums[1].textContent = STATE.dscRecords.filter(d=>(d.days_left||99)<=30).length;
+    statNums[2].textContent = STATE.dscRecords.length;
+    statNums[3].textContent = STATE.dscRecords.filter(d=>(d.days_left||99)<=30).length;
+  }
 }
 
-function submitDSC() {
-  showToast('DSC request submitted successfully ✅');
+async function submitDSC() {
+  const inputs = document.querySelectorAll('#page-dsc input[type="text"]');
+  const selects = document.querySelectorAll('#page-dsc select');
+  const clientName = inputs[0]?.value.trim();
+  if (!clientName) { showToast('Please enter client name'); return; }
+
+  const expiryDate = new Date();
+  const validity = selects[1]?.value || '2 Years';
+  expiryDate.setFullYear(expiryDate.getFullYear() + (parseInt(validity) || 2));
+  const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+
+  const body = {
+    client_name: clientName,
+    pan: inputs[1]?.value.trim(),
+    dsc_type: selects[0]?.value,
+    validity,
+    purpose: selects[2]?.value,
+    expiry_date: expiryDate.toISOString().split('T')[0],
+    days_left: daysLeft,
+    status: 'Active'
+  };
+
+  const result = await supabaseInsert('dsc_records', body);
+  if (result && result[0]) {
+    STATE.dscRecords.unshift(result[0]);
+    renderDSCAlerts();
+    showToast('✅ DSC request submitted!');
+  } else {
+    showToast('❌ DSC submission failed');
+  }
+}
+
+async function deleteDSC(id) {
+  const ok = await supabaseDelete('dsc_records', id);
+  if (ok) {
+    STATE.dscRecords = STATE.dscRecords.filter(d => d.id !== id);
+    renderDSCAlerts();
+    showToast('🗑️ DSC record deleted');
+  }
 }
 
 /* =========================================================
-   15. ACCOUNTING HUB
+   18. ACCOUNTING HUB
    ========================================================= */
 
 function renderAccountingList() {
   const el = document.getElementById('accountingList');
   if (!el) return;
-  el.innerHTML = ACCOUNTING_TXNS.map(t => `
+
+  if (!STATE.accountingEntries.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧮</div><div class="empty-state-text">No entries yet</div></div>';
+    return;
+  }
+
+  el.innerHTML = STATE.accountingEntries.map(t => `
     <div class="acc-item">
       <div>
         <div class="gst-item-name">${escapeHtml(t.narration)}</div>
-        <div class="gst-item-sub">${escapeHtml(t.date)}</div>
+        <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
       </div>
-      <div class="acc-amount ${t.type}">${t.type === 'credit' ? '+' : '-'} ${escapeHtml(t.amount)}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteAccEntry(${t.id})">✕</button>
+      </div>
     </div>
   `).join('');
+
+  const totalRevenue = STATE.accountingEntries.filter(t=>t.entry_type==='credit').reduce((s,t)=>s+(t.amount||0),0);
+  const totalExpense = STATE.accountingEntries.filter(t=>t.entry_type==='debit').reduce((s,t)=>s+(t.amount||0),0);
+  const netProfit = totalRevenue - totalExpense;
+  const margin = totalRevenue ? Math.round((netProfit/totalRevenue)*100) : 0;
+
+  const statNums = document.querySelectorAll('#page-accounting .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = '₹ ' + formatAmount(totalRevenue);
+    statNums[1].textContent = '₹ ' + formatAmount(totalExpense);
+    statNums[2].textContent = '₹ ' + formatAmount(netProfit);
+    statNums[3].textContent = margin + '%';
+  }
 }
 
-function submitJournalEntry() {
-  showToast('Journal entry posted successfully ✅');
+async function submitJournalEntry() {
+  const dateEl = document.querySelector('#page-accounting input[type="date"]');
+  const voucherSel = document.querySelector('#page-accounting select');
+  const inputs = document.querySelectorAll('#page-accounting input[type="text"], #page-accounting input[type="number"]');
+  const textarea = document.querySelector('#page-accounting textarea');
+
+  const narration = textarea?.value.trim();
+  const amount = parseFloat(inputs[inputs.length-1]?.value) || 0;
+  if (!narration) { showToast('Please enter narration'); return; }
+  if (!amount) { showToast('Please enter amount'); return; }
+
+  const voucherType = voucherSel?.value || 'Journal';
+  const entryType = ['Receipt','Sales'].includes(voucherType) ? 'credit' : 'debit';
+
+  const body = {
+    narration,
+    voucher_type: voucherType,
+    debit_account: inputs[0]?.value.trim(),
+    credit_account: inputs[1]?.value.trim(),
+    amount,
+    entry_type: entryType,
+    entry_date: dateEl?.value || new Date().toISOString().split('T')[0]
+  };
+
+  const result = await supabaseInsert('accounting_entries', body);
+  if (result && result[0]) {
+    STATE.accountingEntries.unshift(result[0]);
+    renderAccountingList();
+    showToast('✅ Journal entry posted!');
+  } else {
+    showToast('❌ Entry failed');
+  }
+}
+
+async function deleteAccEntry(id) {
+  const ok = await supabaseDelete('accounting_entries', id);
+  if (ok) {
+    STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id);
+    renderAccountingList();
+    showToast('🗑️ Entry deleted');
+  }
 }
 
 /* =========================================================
-   16. TASK MANAGER (KANBAN)
+   19. TASK MANAGER (KANBAN)
    ========================================================= */
 
 function renderKanban() {
@@ -821,23 +1130,22 @@ function renderKanban() {
     const countEl = document.getElementById(col + 'Count');
     if (!container) return;
 
-    const items = TASKS.filter(t => t.col === col);
-    countEl.textContent = items.length;
+    const items = STATE.tasks.filter(t => t.column_name === col);
+    if (countEl) countEl.textContent = items.length;
 
     container.innerHTML = items.map(t => `
-      <div class="task-card" draggable="true" data-id="${t.id}" ondragstart="dragStart(event)" onclick="openTaskDetail(${t.id})">
+      <div class="task-card" data-id="${t.id}" draggable="true" ondragstart="dragStart(event)" onclick="openTaskDetail(${t.id})">
         <div class="task-title">${escapeHtml(t.title)}</div>
         <div class="task-meta">
-          ${t.tags.map(tag => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}
+          ${(t.tags||[]).map(tag => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}
         </div>
         <div class="task-meta">
-          <span>👤 ${escapeHtml(t.assignee)}</span>
-          <span>📅 ${escapeHtml(t.due)}</span>
+          <span>👤 ${escapeHtml(t.assignee||'Unassigned')}</span>
+          <span>📅 ${escapeHtml(t.due_date||'TBD')}</span>
         </div>
       </div>
-    `).join('');
+    `).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
 
-    // drag/drop handlers on column
     container.ondragover = (e) => e.preventDefault();
     container.ondrop = (e) => dropTask(e, col);
   });
@@ -846,18 +1154,20 @@ function renderKanban() {
 let draggedTaskId = null;
 
 function dragStart(e) {
-  draggedTaskId = parseInt(e.target.closest('.task-card').getAttribute('data-id'));
-  e.dataTransfer.effectAllowed = 'move';
+  const card = e.target.closest('.task-card');
+  if (card) draggedTaskId = parseInt(card.getAttribute('data-id'));
 }
 
-function dropTask(e, targetCol) {
+async function dropTask(e, targetCol) {
   e.preventDefault();
-  if (draggedTaskId === null) return;
-  const task = TASKS.find(t => t.id === draggedTaskId);
-  if (task) {
-    task.col = targetCol;
+  if (!draggedTaskId) return;
+  const task = STATE.tasks.find(t => t.id === draggedTaskId);
+  if (task && task.column_name !== targetCol) {
+    await supabaseUpdate('tasks', draggedTaskId, { column_name: targetCol });
+    task.column_name = targetCol;
     renderKanban();
-    showToast(`Task moved to ${columnLabel(targetCol)}`);
+    updateDashboardStats();
+    showToast(`✅ Task moved to ${columnLabel(targetCol)}`);
   }
   draggedTaskId = null;
 }
@@ -867,16 +1177,12 @@ function columnLabel(col) {
 }
 
 function addTask(col) {
-  openModalWithContent('Add New Task', `
-    <div class="form-group"><label>Task Title</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
+  openModalWithContent(`➕ Add Task to ${columnLabel(col)}`, `
+    <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
     <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
     <div class="form-group"><label>Assignee</label>
       <select class="form-control" id="newTaskAssignee">
-        <option>Karan</option>
-        <option>Anjali</option>
-        <option>Sameer</option>
-        <option>Priya</option>
-        <option>Vikram</option>
+        <option>Karan</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option>
       </select>
     </div>
     <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDue" placeholder="e.g. 28 May" /></div>
@@ -884,89 +1190,111 @@ function addTask(col) {
   `);
 }
 
-function createTask(col) {
-  const title = document.getElementById('newTaskTitle').value.trim();
-  if (!title) {
-    showToast('Please enter a task title');
-    return;
-  }
-  const tagsRaw = document.getElementById('newTaskTags').value.trim();
+async function createTask(col) {
+  const title = document.getElementById('newTaskTitle')?.value.trim();
+  if (!title) { showToast('Please enter task title'); return; }
+  const tagsRaw = document.getElementById('newTaskTags')?.value.trim();
   const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
-  const assignee = document.getElementById('newTaskAssignee').value;
-  const due = document.getElementById('newTaskDue').value.trim() || 'TBD';
 
-  STATE.taskIdCounter++;
-  TASKS.push({ id: STATE.taskIdCounter, title, tags, assignee, due, col });
+  const body = {
+    title,
+    tags,
+    assignee: document.getElementById('newTaskAssignee')?.value || 'Karan',
+    due_date: document.getElementById('newTaskDue')?.value.trim() || 'TBD',
+    column_name: col
+  };
 
-  closeModal();
-  renderKanban();
-  showToast('Task added successfully ✅');
+  const result = await supabaseInsert('tasks', body);
+  if (result && result[0]) {
+    STATE.tasks.unshift(result[0]);
+    closeModal();
+    renderKanban();
+    updateDashboardStats();
+    showToast('✅ Task added!');
+  } else {
+    showToast('❌ Failed to add task');
+  }
 }
 
 function openTaskDetail(id) {
-  const task = TASKS.find(t => t.id === id);
+  const task = STATE.tasks.find(t => t.id === id);
   if (!task) return;
-  openModalWithContent('Task Details', `
-    <div class="form-group"><label>Title</label><div class="form-control" style="background:var(--bg)">${escapeHtml(task.title)}</div></div>
-    <div class="form-group"><label>Tags</label><div>${task.tags.map(tag => `<span class="task-tag" style="margin-right:6px">${escapeHtml(tag)}</span>`).join('')}</div></div>
-    <div class="form-group"><label>Assignee</label><div class="form-control" style="background:var(--bg)">${escapeHtml(task.assignee)}</div></div>
-    <div class="form-group"><label>Due Date</label><div class="form-control" style="background:var(--bg)">${escapeHtml(task.due)}</div></div>
+  openModalWithContent('📋 Task Details', `
+    <div class="form-group"><label>Title</label>
+      <input type="text" class="form-control" id="editTaskTitle" value="${escapeHtml(task.title)}" />
+    </div>
+    <div class="form-group"><label>Assignee</label>
+      <select class="form-control" id="taskAssigneeSel">
+        ${['Karan','Anjali','Sameer','Priya','Vikram'].map(a=>`<option ${task.assignee===a?'selected':''}>${a}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Due Date</label>
+      <input type="text" class="form-control" id="editTaskDue" value="${escapeHtml(task.due_date||'')}" />
+    </div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="taskStatusSelect">
-        <option value="todo" ${task.col === 'todo' ? 'selected' : ''}>To Do</option>
-        <option value="inprogress" ${task.col === 'inprogress' ? 'selected' : ''}>In Progress</option>
-        <option value="done" ${task.col === 'done' ? 'selected' : ''}>Done</option>
+        <option value="todo" ${task.column_name==='todo'?'selected':''}>To Do</option>
+        <option value="inprogress" ${task.column_name==='inprogress'?'selected':''}>In Progress</option>
+        <option value="done" ${task.column_name==='done'?'selected':''}>Done</option>
       </select>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn-primary" style="flex:1" onclick="updateTaskStatus(${task.id})">Save</button>
-      <button class="btn-outline" style="flex:1;border-color:var(--danger);color:var(--danger)" onclick="deleteTask(${task.id})">Delete</button>
+      <button class="btn-primary" style="flex:1" onclick="updateTask(${task.id})">💾 Save</button>
+      <button class="btn-outline" style="flex:1;border-color:var(--danger);color:var(--danger)" onclick="deleteTask(${task.id})">🗑️ Delete</button>
     </div>
   `);
 }
 
-function updateTaskStatus(id) {
-  const task = TASKS.find(t => t.id === id);
-  if (!task) return;
-  task.col = document.getElementById('taskStatusSelect').value;
-  closeModal();
-  renderKanban();
-  showToast('Task updated successfully ✅');
+async function updateTask(id) {
+  const title = document.getElementById('editTaskTitle')?.value.trim();
+  if (!title) { showToast('Task title required'); return; }
+  const updated = {
+    title,
+    assignee: document.getElementById('taskAssigneeSel')?.value,
+    due_date: document.getElementById('editTaskDue')?.value.trim(),
+    column_name: document.getElementById('taskStatusSelect')?.value
+  };
+  const ok = await supabaseUpdate('tasks', id, updated);
+  if (ok) {
+    const idx = STATE.tasks.findIndex(t => t.id === id);
+    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated };
+    closeModal();
+    renderKanban();
+    updateDashboardStats();
+    showToast('✅ Task updated!');
+  }
 }
 
-function deleteTask(id) {
-  TASKS = TASKS.filter(t => t.id !== id);
-  closeModal();
-  renderKanban();
-  showToast('Task deleted');
+async function deleteTask(id) {
+  const ok = await supabaseDelete('tasks', id);
+  if (ok) {
+    STATE.tasks = STATE.tasks.filter(t => t.id !== id);
+    closeModal();
+    renderKanban();
+    updateDashboardStats();
+    showToast('🗑️ Task deleted');
+  }
 }
 
 /* =========================================================
-   17. REPORTS & INSIGHTS
+   20. REPORTS
    ========================================================= */
 
 function renderBarChart() {
   const el = document.getElementById('barChart');
   if (!el) return;
-
   const data = [
-    { label: 'Jan', value: 62 },
-    { label: 'Feb', value: 71 },
-    { label: 'Mar', value: 58 },
-    { label: 'Apr', value: 84 },
-    { label: 'May', value: 92 },
-    { label: 'Jun', value: 76 }
+    { label: 'Jan', value: 62 }, { label: 'Feb', value: 71 },
+    { label: 'Mar', value: 58 }, { label: 'Apr', value: 84 },
+    { label: 'May', value: 92 }, { label: 'Jun', value: 76 }
   ];
   const max = Math.max(...data.map(d => d.value));
-
   el.innerHTML = data.map(d => `
     <div class="bar-item">
-      <div class="bar-fill" style="height:0%" data-target="${(d.value / max) * 100}"></div>
+      <div class="bar-fill" style="height:0%" data-target="${(d.value/max)*100}"></div>
       <div class="bar-label">${d.label}</div>
     </div>
   `).join('');
-
-  // animate bars
   requestAnimationFrame(() => {
     setTimeout(() => {
       document.querySelectorAll('#barChart .bar-fill').forEach(bar => {
@@ -974,106 +1302,96 @@ function renderBarChart() {
       });
     }, 100);
   });
+
+  // Update report stats
+  const done = STATE.tasks.filter(t=>t.column_name==='done').length;
+  const total = STATE.tasks.length || 1;
+  const pct = Math.round((done/total)*100);
+  const statNums = document.querySelectorAll('#page-reports .stat-number');
+  if (statNums.length >= 4) {
+    statNums[0].textContent = STATE.clients.length;
+    statNums[1].textContent = STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length;
+    statNums[2].textContent = '₹ ' + formatAmount(STATE.accountingEntries.filter(t=>t.entry_type==='credit').reduce((s,t)=>s+(t.amount||0),0));
+    statNums[3].textContent = pct + '%';
+  }
 }
 
-function exportReport() {
-  showToast('Preparing export... your report will download shortly 📥');
-}
-
-function generateReport() {
-  showToast('Report generated successfully ✅');
-}
+function exportReport() { showToast('📥 Preparing export...'); }
+function generateReport() { showToast('✅ Report generated!'); }
 
 /* =========================================================
-   18. AI ASSISTANT
+   21. AI ASSISTANT
    ========================================================= */
-
-function getAIResponse(query) {
-  const normalized = query.trim().toLowerCase().replace(/[?.!]/g, '');
-  if (AI_RESPONSES[normalized]) {
-    return AI_RESPONSES[normalized]();
-  }
-  // fuzzy match
-  for (const key in AI_RESPONSES) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return AI_RESPONSES[key]();
-    }
-  }
-  // keyword based fallback
-  if (normalized.includes('gst')) return AI_RESPONSES['show pending gst returns']();
-  if (normalized.includes('tds')) return AI_RESPONSES['tds filing status']();
-  if (normalized.includes('task')) return AI_RESPONSES['show pending tasks']();
-  if (normalized.includes('client')) return AI_RESPONSES['clients with pending filings']();
-  if (normalized.includes('due') || normalized.includes('compliance')) return AI_RESPONSES['upcoming compliances']();
-
-  return AI_DEFAULT_RESPONSES[Math.floor(Math.random() * AI_DEFAULT_RESPONSES.length)];
-}
 
 function sendAIMessage(presetMsg) {
   const input = document.getElementById('aiInput');
-  const msg = presetMsg || input.value.trim();
+  const msg = presetMsg || input?.value.trim();
   if (!msg) return;
-
   const chatEl = document.getElementById('chatMessages');
+  if (!chatEl) return;
 
-  // user message
   chatEl.insertAdjacentHTML('beforeend', `
     <div class="chat-msg user">
       <div class="msg-avatar">K</div>
       <div class="msg-content">${escapeHtml(msg)}</div>
     </div>
   `);
-
-  input.value = '';
+  if (input) input.value = '';
   chatEl.scrollTop = chatEl.scrollHeight;
 
-  // typing indicator
   const typingId = 'typing-' + Date.now();
   chatEl.insertAdjacentHTML('beforeend', `
     <div class="chat-msg bot" id="${typingId}">
       <div class="msg-avatar">🤖</div>
-      <div class="msg-content">Typing...</div>
+      <div class="msg-content"><em>Thinking...</em></div>
     </div>
   `);
   chatEl.scrollTop = chatEl.scrollHeight;
 
   setTimeout(() => {
-    const typingEl = document.getElementById(typingId);
-    const response = getAIResponse(msg);
-    if (typingEl) {
-      typingEl.querySelector('.msg-content').innerHTML = response;
-    }
+    const el = document.getElementById(typingId);
+    if (el) el.querySelector('.msg-content').innerHTML = getAIResponse(msg);
     chatEl.scrollTop = chatEl.scrollHeight;
   }, 700);
 }
 
-function aiChip(text) {
-  navigate('ai');
-  setTimeout(() => sendAIMessage(text), 200);
-}
-
-function openAI() {
-  navigate('ai');
-}
+function aiChip(text) { navigate('ai'); setTimeout(() => sendAIMessage(text), 200); }
+function openAI() { navigate('ai'); }
 
 /* =========================================================
-   19. DOCUMENTS
+   22. DOCUMENTS
    ========================================================= */
 
 function renderDocuments() {
   const el = document.getElementById('docsGrid');
   if (!el) return;
-  el.innerHTML = DOCUMENTS.map(d => `
+
+  if (!STATE.documents.length) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📁</div><div class="empty-state-text">No documents yet</div><div class="empty-state-sub">Upload your first document</div></div>';
+    return;
+  }
+
+  el.innerHTML = STATE.documents.map(d => `
     <div class="doc-card" onclick="showToast('Opening ${escapeHtml(d.name)}...')">
-      <div class="doc-icon">${d.icon}</div>
+      <div class="doc-icon">${d.icon||'📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
-      <div class="doc-meta">${escapeHtml(d.meta)}</div>
+      <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
+      <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:var(--danger);color:var(--danger)" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
     </div>
   `).join('');
 }
 
+async function deleteDoc(id) {
+  const ok = await supabaseDelete('documents', id);
+  if (ok) {
+    STATE.documents = STATE.documents.filter(d => d.id !== id);
+    renderDocuments();
+    showToast('🗑️ Document deleted');
+  }
+}
+
 /* =========================================================
-   20. CALENDAR
+   23. CALENDAR
    ========================================================= */
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1090,22 +1408,30 @@ function renderCalendar() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrevMonth = new Date(year, month, 0).getDate();
 
+  // Build event date map from Supabase data
+  const eventMap = {};
+  STATE.calendarEvents.forEach(e => {
+    const d = new Date(e.event_date);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = d.getDate();
+      if (!eventMap[key]) eventMap[key] = [];
+      eventMap[key].push(e);
+    }
+  });
+
+  const today = new Date();
   let html = '';
 
-  // previous month trailing days
   for (let i = firstDay - 1; i >= 0; i--) {
     html += `<div class="cal-day other-month">${daysInPrevMonth - i}</div>`;
   }
 
-  // current month days
   for (let d = 1; d <= daysInMonth; d++) {
-    const key = `${year}-${month + 1}-${d}`;
-    const hasEvent = CAL_EVENTS[key] ? 'has-event' : '';
-    const isToday = (year === 2025 && month === 4 && d === 20) ? 'today' : '';
-    html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents('${key}', ${d})">${d}</div>`;
+    const hasEvent = eventMap[d] ? 'has-event' : '';
+    const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) ? 'today' : '';
+    html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d}, ${JSON.stringify(eventMap[d]||[]).replace(/"/g,'&quot;')})">${d}</div>`;
   }
 
-  // next month leading days to fill grid (up to 42 cells)
   const totalCells = firstDay + daysInMonth;
   const remaining = (7 - (totalCells % 7)) % 7;
   for (let d = 1; d <= remaining; d++) {
@@ -1115,30 +1441,17 @@ function renderCalendar() {
   gridEl.innerHTML = html;
 }
 
-function changeMonth(delta) {
-  STATE.calendar.month += delta;
-  if (STATE.calendar.month > 11) {
-    STATE.calendar.month = 0;
-    STATE.calendar.year++;
-  } else if (STATE.calendar.month < 0) {
-    STATE.calendar.month = 11;
-    STATE.calendar.year--;
-  }
-  renderCalendar();
-}
-
-function showDayEvents(key, day) {
-  const events = CAL_EVENTS[key];
-  if (!events || events.length === 0) {
+function showDayEvents(day, events) {
+  if (!events || !events.length) {
     showToast(`No events on ${day} ${MONTH_NAMES[STATE.calendar.month]}`);
     return;
   }
-  openModalWithContent(`Events — ${day} ${MONTH_NAMES[STATE.calendar.month]} ${STATE.calendar.year}`, `
+  openModalWithContent(`📅 Events — ${day} ${MONTH_NAMES[STATE.calendar.month]}`, `
     ${events.map(e => `
       <div class="upcoming-item" style="margin-bottom:10px">
         <div>
           <div class="gst-item-name">${escapeHtml(e.title)}</div>
-          <div class="gst-item-sub">${escapeHtml(e.type)}</div>
+          <div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div>
         </div>
       </div>
     `).join('')}
@@ -1146,30 +1459,105 @@ function showDayEvents(key, day) {
   `);
 }
 
+function changeMonth(delta) {
+  STATE.calendar.month += delta;
+  if (STATE.calendar.month > 11) { STATE.calendar.month = 0; STATE.calendar.year++; }
+  else if (STATE.calendar.month < 0) { STATE.calendar.month = 11; STATE.calendar.year--; }
+  renderCalendar();
+}
+
 function renderEventList() {
   const el = document.getElementById('eventList');
   if (!el) return;
 
-  const allEvents = [];
-  Object.entries(CAL_EVENTS).forEach(([key, events]) => {
-    const [y, m, d] = key.split('-').map(Number);
-    events.forEach(e => allEvents.push({ ...e, date: `${d} ${MONTH_NAMES[m - 1]} ${y}`, sortKey: d }));
-  });
-  allEvents.sort((a, b) => a.sortKey - b.sortKey);
-
-  el.innerHTML = allEvents.map(e => `
+  const sorted = [...STATE.calendarEvents].sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+  el.innerHTML = sorted.map(e => `
     <div class="upcoming-item" style="margin-bottom:10px">
       <div>
         <div class="gst-item-name">${escapeHtml(e.title)}</div>
-        <div class="gst-item-sub">${escapeHtml(e.type)}</div>
+        <div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div>
       </div>
-      <div class="gst-item-sub fw-bold">${escapeHtml(e.date)}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
+        <button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteEvent(${e.id})">✕</button>
+      </div>
     </div>
-  `).join('');
+  `).join('') || '<div class="empty-state"><div class="empty-state-text">No events</div></div>';
+}
+
+async function deleteEvent(id) {
+  const ok = await supabaseDelete('calendar_events', id);
+  if (ok) {
+    STATE.calendarEvents = STATE.calendarEvents.filter(e => e.id !== id);
+    renderCalendar();
+    renderEventList();
+    renderDueDates();
+    showToast('🗑️ Event deleted');
+  }
 }
 
 /* =========================================================
-   21. TEAM CHAT
+   24. RIGHT PANEL
+   ========================================================= */
+
+function renderDueDates() {
+  const el = document.getElementById('dueDateList');
+  if (!el) return;
+
+  const today = new Date();
+  const upcoming = STATE.calendarEvents
+    .filter(e => new Date(e.event_date) >= today)
+    .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+    .slice(0, 5);
+
+  el.innerHTML = upcoming.map(e => {
+    const d = new Date(e.event_date);
+    const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+    const sub = diff === 0 ? 'Due Today' : diff === 1 ? 'Due Tomorrow' : `Due in ${diff} days`;
+    const urgent = diff <= 1;
+    return `
+      <div class="due-item">
+        <div class="due-date-badge">
+          <div class="due-date-num">${d.getDate()}</div>
+          <div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0,3)}</div>
+        </div>
+        <div style="flex:1">
+          <div class="due-title">${escapeHtml(e.title)}</div>
+          <div class="due-sub ${urgent ? 'red' : ''}">${sub}</div>
+        </div>
+      </div>
+    `;
+  }).join('') || '<div class="empty-state"><div class="empty-state-text">No upcoming dates</div></div>';
+}
+
+function renderActivity() {
+  const el = document.getElementById('activityList');
+  if (!el) return;
+
+  const activities = [];
+  STATE.gstReturns.filter(g => g.status === 'Filed').slice(0, 2).forEach(g => {
+    activities.push({ icon: '✅', color: 'green', text: `GSTR filed for ${g.client_name}`, time: g.filed_date || 'Recently' });
+  });
+  STATE.itrFilings.filter(i => i.status === 'Filed').slice(0, 2).forEach(i => {
+    activities.push({ icon: '💰', color: 'blue', text: `ITR filed for ${i.client_name}`, time: i.filed_date || 'Recently' });
+  });
+  STATE.tasks.filter(t => t.column_name === 'done').slice(0, 2).forEach(t => {
+    activities.push({ icon: '✅', color: 'orange', text: t.title, time: 'Completed' });
+  });
+
+  el.innerHTML = activities.slice(0, 6).map(a => `
+    <div class="activity-item">
+      <div class="activity-dot ${a.color}">${a.icon}</div>
+      <div>
+        <div class="activity-text">${escapeHtml(a.text)}</div>
+        <div class="activity-time">${escapeHtml(a.time)}</div>
+      </div>
+    </div>
+  `).join('') || '<div class="empty-state"><div class="empty-state-text">No recent activity</div></div>';
+}
+
+/* =========================================================
+   25. TEAM CHAT
    ========================================================= */
 
 function renderTeamContacts() {
@@ -1189,7 +1577,8 @@ function renderTeamContacts() {
 function switchChatContact(id) {
   STATE.activeChatContact = id;
   const contact = TEAM_CONTACTS.find(c => c.id === id);
-  document.getElementById('activeChatName').textContent = contact.name;
+  const nameEl = document.getElementById('activeChatName');
+  if (nameEl && contact) nameEl.textContent = contact.name;
   renderTeamContacts();
   renderTeamMessages();
 }
@@ -1199,10 +1588,9 @@ function renderTeamMessages() {
   if (!el) return;
   const messages = TEAM_MESSAGES[STATE.activeChatContact] || [];
   const contact = TEAM_CONTACTS.find(c => c.id === STATE.activeChatContact);
-
   el.innerHTML = messages.map(m => `
     <div class="chat-msg ${m.from === 'me' ? 'user' : ''}">
-      <div class="msg-avatar">${m.from === 'me' ? 'K' : contact.initial}</div>
+      <div class="msg-avatar">${m.from === 'me' ? 'K' : (contact?.initial || '?')}</div>
       <div class="msg-content">${escapeHtml(m.text)}<div style="font-size:10.5px;opacity:.6;margin-top:4px">${escapeHtml(m.time)}</div></div>
     </div>
   `).join('');
@@ -1211,65 +1599,44 @@ function renderTeamMessages() {
 
 function sendTeamMessage() {
   const input = document.getElementById('teamChatInput');
-  const text = input.value.trim();
+  const text = input?.value.trim();
   if (!text) return;
-
   const contactId = STATE.activeChatContact;
   if (!TEAM_MESSAGES[contactId]) TEAM_MESSAGES[contactId] = [];
   TEAM_MESSAGES[contactId].push({ from: 'me', text, time: 'Just now' });
-  input.value = '';
+  if (input) input.value = '';
   renderTeamMessages();
-
-  // simulate reply
   setTimeout(() => {
-    TEAM_MESSAGES[contactId].push({ from: 'them', text: 'Got it, thanks for letting me know!', time: 'Just now' });
+    TEAM_MESSAGES[contactId].push({ from: 'them', text: 'Got it, thanks!', time: 'Just now' });
     renderTeamMessages();
   }, 1200);
 }
 
 /* =========================================================
-   22. RIGHT PANEL - DUE DATES & ACTIVITY
+   26. NOTIFICATIONS
    ========================================================= */
 
-function renderDueDates() {
-  const el = document.getElementById('dueDateList');
-  if (!el) return;
-  el.innerHTML = UPCOMING_DUE.map(d => `
-    <div class="due-item">
-      <div class="due-date-badge">
-        <div class="due-date-num">${d.day}</div>
-        <div class="due-date-mon">${d.mon}</div>
-      </div>
-      <div style="flex:1">
-        <div class="due-title">${escapeHtml(d.title)}</div>
-        <div class="due-sub ${d.urgent ? 'red' : ''}">${escapeHtml(d.sub)}</div>
-      </div>
-    </div>
-  `).join('');
-}
+function openNotifications() {
+  const panel = document.getElementById('notifPanel');
+  STATE.notifOpen = !STATE.notifOpen;
+  if (panel) panel.classList.toggle('show', STATE.notifOpen);
 
-function renderActivity() {
-  const el = document.getElementById('activityList');
-  if (!el) return;
-  el.innerHTML = RECENT_ACTIVITY.map(a => `
-    <div class="activity-item">
-      <div class="activity-dot ${a.color}">${a.icon}</div>
-      <div>
-        <div class="activity-text">${escapeHtml(a.text)}</div>
-        <div class="activity-time">${escapeHtml(a.time)}</div>
-      </div>
-    </div>
-  `).join('');
-}
+  // Build notifications from real data
+  const notifList = document.getElementById('notifList');
+  if (!notifList) return;
 
-/* =========================================================
-   23. NOTIFICATIONS PANEL
-   ========================================================= */
+  const notifs = [];
+  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => {
+    notifs.push({ icon: '📊', text: `GSTR pending: ${g.client_name} — ${g.return_type}`, time: 'Pending' });
+  });
+  STATE.dscRecords.filter(d=>(d.days_left||99)<=30).forEach(d => {
+    notifs.push({ icon: '⚠️', text: `DSC expiring: ${d.client_name} in ${d.days_left} days`, time: 'Alert' });
+  });
+  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => {
+    notifs.push({ icon: '🔴', text: `High priority: ${t.title}`, time: 'Task' });
+  });
 
-function renderNotifications() {
-  const el = document.getElementById('notifList');
-  if (!el) return;
-  el.innerHTML = NOTIFICATIONS.map(n => `
+  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅', text:'No new notifications', time:''}]).map(n => `
     <div class="notif-item">
       <div class="notif-icon">${n.icon}</div>
       <div>
@@ -1278,12 +1645,10 @@ function renderNotifications() {
       </div>
     </div>
   `).join('');
-}
 
-function openNotifications() {
-  const panel = document.getElementById('notifPanel');
-  STATE.notifOpen = !STATE.notifOpen;
-  panel.classList.toggle('show', STATE.notifOpen);
+  // Update badge
+  const dot = document.querySelector('.notif-dot');
+  if (dot) dot.textContent = notifs.length || '0';
 }
 
 function closeNotifications() {
@@ -1293,304 +1658,279 @@ function closeNotifications() {
 }
 
 /* =========================================================
-   24. MODALS
+   27. MODALS
    ========================================================= */
 
 function openModal(type) {
-  const titles = {
-    addClient: 'Add New Client',
-    gstReturn: 'File GST Return',
-    rocFiling: 'New ROC Filing',
-    itrFiling: 'File New ITR',
-    tdsReturn: 'File TDS Return',
-    newAudit: 'Schedule New Audit',
-    newDSC: 'Request New DSC',
-    newEntry: 'Add Journal Entry',
-    newTask: 'Add New Task',
-    uploadDoc: 'Upload Document',
-    newEvent: 'Add Calendar Event'
-  };
+  const clientOptions = STATE.clients.slice(0, 20).map(c => `<option>${escapeHtml(c.name)}</option>`).join('');
 
-  const bodies = {
-    addClient: `
-      <div class="form-grid">
-        <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="addClientName" placeholder="Enter client name" /></div>
-        <div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="Enter PAN/TAN" /></div>
-        <div class="form-group"><label>Type</label>
-          <select class="form-control" id="addClientType">
-            <option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option>
-          </select>
+  const configs = {
+    addClient: {
+      title: '➕ Add New Client',
+      body: `
+        <div class="form-grid">
+          <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="addClientName" placeholder="Enter client name" /></div>
+          <div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="Enter PAN/TAN" /></div>
+          <div class="form-group"><label>Type</label>
+            <select class="form-control" id="addClientType">
+              <option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option>
+            </select>
+          </div>
+          <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="addClientGST" placeholder="Enter GSTIN (optional)" /></div>
+          <div class="form-group"><label>Email</label><input type="text" class="form-control" id="addClientEmail" placeholder="Enter email" /></div>
+          <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="addClientPhone" placeholder="Enter phone" /></div>
         </div>
-        <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="addClientGST" placeholder="Enter GSTIN (optional)" /></div>
-        <div class="form-group"><label>Email</label><input type="text" class="form-control" id="addClientEmail" placeholder="Enter email" /></div>
-        <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="addClientPhone" placeholder="Enter phone" /></div>
-      </div>
-      <button class="btn-primary" style="width:100%" onclick="submitAddClient()">Add Client</button>
-    `,
-    gstReturn: `<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">Use the GST Dashboard form</div><div class="empty-state-sub">Fill in the "File New GST Return" form on the GST Dashboard page.</div></div>
-      <button class="btn-primary" style="width:100%" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button>`,
-    rocFiling: `
-      <div class="form-group"><label>Company Name</label><input type="text" class="form-control" id="rocCompany" placeholder="Enter company name" /></div>
-      <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" placeholder="Enter CIN" /></div>
-      <div class="form-group"><label>Form Type</label>
-        <select class="form-control" id="rocForm">
-          <option>AOC-4</option><option>MGT-7</option><option>ADT-1</option><option>DIR-3 KYC</option><option>MGT-14</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="rocDue" /></div>
-      <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">Create Filing</button>
-    `,
-    itrFiling: `<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">Use the Income Tax form</div><div class="empty-state-sub">Fill in the "File New ITR" form on the Income Tax page.</div></div>
-      <button class="btn-primary" style="width:100%" onclick="closeModal();navigate('incometax')">Go to Income Tax</button>`,
-    tdsReturn: `<div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">Use the TDS Filing form</div><div class="empty-state-sub">Fill in the "TDS Filing Form" on the TDS Returns page.</div></div>
-      <button class="btn-primary" style="width:100%" onclick="closeModal();navigate('tds')">Go to TDS Returns</button>`,
-    newAudit: `
-      <div class="form-group"><label>Client</label>
-        <select class="form-control" id="auditClient">${CLIENTS.slice(0, 15).map(c => `<option>${escapeHtml(c.name)}</option>`).join('')}</select>
-      </div>
-      <div class="form-group"><label>Audit Type</label>
-        <select class="form-control" id="auditType">
-          <option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Auditor</label>
-        <select class="form-control" id="auditAuditor">
-          <option>Karan Mehta</option><option>Anjali Rao</option><option>Sameer Joshi</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div>
-      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div>
-      <button class="btn-primary" style="width:100%" onclick="submitNewAudit()">Schedule Audit</button>
-    `,
-    newDSC: `<div class="empty-state"><div class="empty-state-icon">✍️</div><div class="empty-state-text">Use the DSC Request form</div><div class="empty-state-sub">Fill in the "Request New DSC" form on the DSC & eSign page.</div></div>
-      <button class="btn-primary" style="width:100%" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button>`,
-    newEntry: `<div class="empty-state"><div class="empty-state-icon">🧮</div><div class="empty-state-text">Use the Journal Entry form</div><div class="empty-state-sub">Fill in the "Add Journal Entry" form on the Accounting Hub page.</div></div>
-      <button class="btn-primary" style="width:100%" onclick="closeModal();navigate('accounting')">Go to Accounting Hub</button>`,
-    newTask: `
-      <div class="form-group"><label>Task Title</label><input type="text" class="form-control" id="newTaskTitleModal" placeholder="Enter task title" /></div>
-      <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTagsModal" placeholder="e.g. GST, High" /></div>
-      <div class="form-group"><label>Assignee</label>
-        <select class="form-control" id="newTaskAssigneeModal">
-          <option>Karan</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDueModal" placeholder="e.g. 28 May" /></div>
-      <div class="form-group"><label>Column</label>
-        <select class="form-control" id="newTaskColModal">
-          <option value="todo">To Do</option><option value="inprogress">In Progress</option><option value="done">Done</option>
-        </select>
-      </div>
-      <button class="btn-primary" style="width:100%" onclick="submitNewTaskModal()">Add Task</button>
-    `,
-    uploadDoc: `
-      <div class="form-group"><label>Document Name</label><input type="text" class="form-control" id="uploadDocName" placeholder="e.g. Balance Sheet FY24-25.pdf" /></div>
-      <div class="form-group"><label>Client</label>
-        <select class="form-control" id="uploadDocClient">${CLIENTS.slice(0, 15).map(c => `<option>${escapeHtml(c.name)}</option>`).join('')}<option>Internal</option></select>
-      </div>
-      <div class="form-group"><label>Type</label>
-        <select class="form-control" id="uploadDocType">
-          <option value="PDF">PDF</option><option value="Excel">Excel</option><option value="Word">Word</option><option value="Image">Image</option>
-        </select>
-      </div>
-      <button class="btn-primary" style="width:100%" onclick="submitUploadDoc()">Upload</button>
-    `,
-    newEvent: `
-      <div class="form-group"><label>Event Title</label><input type="text" class="form-control" id="newEventTitle" placeholder="Enter event title" /></div>
-      <div class="form-group"><label>Type</label>
-        <select class="form-control" id="newEventType">
-          <option>GST</option><option>TDS</option><option>ROC</option><option>DSC</option><option>Internal</option><option>PF</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Date</label><input type="date" class="form-control" id="newEventDate" /></div>
-      <button class="btn-primary" style="width:100%" onclick="submitNewEvent()">Add Event</button>
-    `
+        <button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>
+      `
+    },
+    gstReturn: { title: '📊 File GST Return', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">📊</div><p style="margin:12px 0">Use the GST Dashboard form below</p><button class="btn-primary" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button></div>` },
+    rocFiling: {
+      title: '🏛️ New ROC Filing',
+      body: `
+        <div class="form-group"><label>Company Name *</label><input type="text" class="form-control" id="rocCompany" placeholder="Enter company name" /></div>
+        <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" placeholder="Enter CIN" /></div>
+        <div class="form-group"><label>Form Type</label>
+          <select class="form-control" id="rocForm"><option>AOC-4</option><option>MGT-7</option><option>ADT-1</option><option>DIR-3 KYC</option><option>MGT-14</option></select>
+        </div>
+        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="rocDue" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Create Filing</button>
+      `
+    },
+    itrFiling: { title: '💰 File ITR', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">💰</div><p style="margin:12px 0">Use the Income Tax form</p><button class="btn-primary" onclick="closeModal();navigate('incometax')">Go to Income Tax</button></div>` },
+    tdsReturn: { title: '🧾 File TDS', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">🧾</div><p style="margin:12px 0">Use the TDS Returns form</p><button class="btn-primary" onclick="closeModal();navigate('tds')">Go to TDS Returns</button></div>` },
+    newAudit: {
+      title: '🛡️ Schedule Audit',
+      body: `
+        <div class="form-group"><label>Client *</label><select class="form-control" id="auditClient"><option>Select Client</option>${clientOptions}</select></div>
+        <div class="form-group"><label>Audit Type</label>
+          <select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option></select>
+        </div>
+        <div class="form-group"><label>Auditor</label>
+          <select class="form-control" id="auditAuditor"><option>Karan Mehta</option><option>Anjali Rao</option><option>Sameer Joshi</option></select>
+        </div>
+        <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div>
+        <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewAudit()">✅ Schedule Audit</button>
+      `
+    },
+    newDSC: { title: '✍️ New DSC', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
+    newEntry: { title: '🧮 Journal Entry', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">🧮</div><p style="margin:12px 0">Use the Accounting Hub form</p><button class="btn-primary" onclick="closeModal();navigate('accounting')">Go to Accounting Hub</button></div>` },
+    newTask: {
+      title: '✅ Add New Task',
+      body: `
+        <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitleModal" placeholder="Enter task title" /></div>
+        <div class="form-group"><label>Tags</label><input type="text" class="form-control" id="newTaskTagsModal" placeholder="e.g. GST, High" /></div>
+        <div class="form-group"><label>Assignee</label>
+          <select class="form-control" id="newTaskAssigneeModal"><option>Karan</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
+        </div>
+        <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDueModal" placeholder="e.g. 28 May" /></div>
+        <div class="form-group"><label>Column</label>
+          <select class="form-control" id="newTaskColModal"><option value="todo">To Do</option><option value="inprogress">In Progress</option><option value="done">Done</option></select>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewTaskModal()">✅ Add Task</button>
+      `
+    },
+    uploadDoc: {
+      title: '📁 Upload Document',
+      body: `
+        <div class="form-group"><label>Document Name *</label><input type="text" class="form-control" id="uploadDocName" placeholder="e.g. Balance Sheet FY24-25.pdf" /></div>
+        <div class="form-group"><label>Client</label>
+          <select class="form-control" id="uploadDocClient"><option>Internal</option>${clientOptions}</select>
+        </div>
+        <div class="form-group"><label>Type</label>
+          <select class="form-control" id="uploadDocType"><option value="PDF">PDF</option><option value="Excel">Excel</option><option value="Word">Word</option><option value="Image">Image</option></select>
+        </div>
+        <div class="form-group"><label>File Size</label><input type="text" class="form-control" id="uploadDocSize" placeholder="e.g. 2.4 MB" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitUploadDoc()">⬆ Upload</button>
+      `
+    },
+    newEvent: {
+      title: '📅 Add Calendar Event',
+      body: `
+        <div class="form-group"><label>Event Title *</label><input type="text" class="form-control" id="newEventTitle" placeholder="Enter event title" /></div>
+        <div class="form-group"><label>Type</label>
+          <select class="form-control" id="newEventType"><option>GST</option><option>TDS</option><option>ROC</option><option>DSC</option><option>Income Tax</option><option>PF</option><option>Internal</option></select>
+        </div>
+        <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="newEventDate" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewEvent()">✅ Add Event</button>
+      `
+    }
   };
 
-  openModalWithContent(titles[type] || 'Modal', bodies[type] || '<p>Coming soon...</p>');
+  const config = configs[type];
+  if (config) openModalWithContent(config.title, config.body);
 }
 
 function openModalWithContent(title, bodyHtml) {
-  document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalBody').innerHTML = bodyHtml;
-  document.getElementById('modalOverlay').classList.add('show');
+  const titleEl = document.getElementById('modalTitle');
+  const bodyEl = document.getElementById('modalBody');
+  const overlay = document.getElementById('modalOverlay');
+  if (titleEl) titleEl.textContent = title;
+  if (bodyEl) bodyEl.innerHTML = bodyHtml;
+  if (overlay) overlay.classList.add('show');
 }
 
 function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('show');
+  const overlay = document.getElementById('modalOverlay');
+  if (overlay) overlay.classList.remove('show');
 }
 
-/* ---- Modal Form Submit Handlers ---- */
+/* ---- Modal Submits ---- */
 
-function submitAddClient() {
-  const name = document.getElementById('addClientName').value.trim();
-  if (!name) {
-    showToast('Please enter client name');
-    return;
-  }
-  const newClient = {
-    id: CLIENTS.length + 1,
+async function submitAddClient() {
+  const name = document.getElementById('addClientName')?.value.trim();
+  if (!name) { showToast('Client name is required'); return; }
+  const body = {
     name,
-    pan: document.getElementById('addClientPAN').value.trim() || '-',
-    type: document.getElementById('addClientType').value,
-    gst: document.getElementById('addClientGST').value.trim() || '-',
-    email: document.getElementById('addClientEmail').value.trim() || '-',
-    phone: document.getElementById('addClientPhone').value.trim() || '-',
+    pan: document.getElementById('addClientPAN')?.value.trim() || '-',
+    type: document.getElementById('addClientType')?.value,
+    gst: document.getElementById('addClientGST')?.value.trim() || '-',
+    email: document.getElementById('addClientEmail')?.value.trim() || '-',
+    phone: document.getElementById('addClientPhone')?.value.trim() || '-',
     status: 'Active'
   };
-  CLIENTS.unshift(newClient);
-  closeModal();
-  STATE.pagination.clients.page = 1;
-  renderClientTable();
-  showToast('Client added successfully ✅');
+  const result = await supabaseInsert('clients', body);
+  if (result && result[0]) {
+    STATE.clients.unshift(result[0]);
+    closeModal();
+    renderClientTable();
+    updateDashboardStats();
+    showToast('✅ Client added successfully!');
+  } else {
+    showToast('❌ Failed to add client');
+  }
 }
 
-function submitROCFiling() {
-  const company = document.getElementById('rocCompany').value.trim();
-  if (!company) {
-    showToast('Please enter company name');
-    return;
-  }
-  ROC_FILINGS.unshift({
+async function submitROCFiling() {
+  const company = document.getElementById('rocCompany')?.value.trim();
+  if (!company) { showToast('Company name required'); return; }
+  const body = {
     company,
-    cin: document.getElementById('rocCIN').value.trim() || '-',
-    form: document.getElementById('rocForm').value,
-    due: formatDateInput(document.getElementById('rocDue').value) || 'TBD',
+    cin: document.getElementById('rocCIN')?.value.trim() || '-',
+    form: document.getElementById('rocForm')?.value,
+    due_date: document.getElementById('rocDue')?.value || 'TBD',
     status: 'In Progress'
-  });
-  closeModal();
-  renderROCTable();
-  showToast('ROC filing created successfully ✅');
-}
-
-function submitNewAudit() {
-  AUDITS.unshift({
-    client: document.getElementById('auditClient').value,
-    type: document.getElementById('auditType').value,
-    auditor: document.getElementById('auditAuditor').value,
-    start: formatDateInput(document.getElementById('auditStart').value) || 'TBD',
-    end: formatDateInput(document.getElementById('auditEnd').value) || 'TBD',
-    status: 'In Progress'
-  });
-  closeModal();
-  renderAuditTable();
-  showToast('Audit scheduled successfully ✅');
-}
-
-function submitNewTaskModal() {
-  const title = document.getElementById('newTaskTitleModal').value.trim();
-  if (!title) {
-    showToast('Please enter a task title');
-    return;
+  };
+  const result = await supabaseInsert('roc_filings', body);
+  if (result && result[0]) {
+    STATE.rocFilings.unshift(result[0]);
+    closeModal();
+    renderROCTable();
+    showToast('✅ ROC filing created!');
+  } else {
+    showToast('❌ ROC filing failed');
   }
-  const tagsRaw = document.getElementById('newTaskTagsModal').value.trim();
-  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
-  STATE.taskIdCounter++;
-  TASKS.push({
-    id: STATE.taskIdCounter,
+}
+
+async function submitNewAudit() {
+  const client = document.getElementById('auditClient')?.value;
+  if (!client || client === 'Select Client') { showToast('Please select a client'); return; }
+  const body = {
+    client,
+    audit_type: document.getElementById('auditType')?.value,
+    auditor: document.getElementById('auditAuditor')?.value,
+    start_date: document.getElementById('auditStart')?.value || 'TBD',
+    end_date: document.getElementById('auditEnd')?.value || 'TBD',
+    status: 'In Progress'
+  };
+  const result = await supabaseInsert('audits', body);
+  if (result && result[0]) {
+    STATE.audits.unshift(result[0]);
+    closeModal();
+    renderAuditTable();
+    showToast('✅ Audit scheduled!');
+  } else {
+    showToast('❌ Audit scheduling failed');
+  }
+}
+
+async function submitNewTaskModal() {
+  const title = document.getElementById('newTaskTitleModal')?.value.trim();
+  if (!title) { showToast('Task title required'); return; }
+  const tagsRaw = document.getElementById('newTaskTagsModal')?.value.trim();
+  const body = {
     title,
-    tags,
-    assignee: document.getElementById('newTaskAssigneeModal').value,
-    due: document.getElementById('newTaskDueModal').value.trim() || 'TBD',
-    col: document.getElementById('newTaskColModal').value
-  });
-  closeModal();
-  renderKanban();
-  showToast('Task added successfully ✅');
+    tags: tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [],
+    assignee: document.getElementById('newTaskAssigneeModal')?.value || 'Karan',
+    due_date: document.getElementById('newTaskDueModal')?.value.trim() || 'TBD',
+    column_name: document.getElementById('newTaskColModal')?.value || 'todo'
+  };
+  const result = await supabaseInsert('tasks', body);
+  if (result && result[0]) {
+    STATE.tasks.unshift(result[0]);
+    closeModal();
+    renderKanban();
+    updateDashboardStats();
+    showToast('✅ Task added!');
+  }
 }
 
-function submitUploadDoc() {
-  const name = document.getElementById('uploadDocName').value.trim();
-  if (!name) {
-    showToast('Please enter document name');
-    return;
-  }
-  const type = document.getElementById('uploadDocType').value;
+async function submitUploadDoc() {
+  const name = document.getElementById('uploadDocName')?.value.trim();
+  if (!name) { showToast('Document name required'); return; }
+  const typeVal = document.getElementById('uploadDocType')?.value || 'PDF';
   const iconMap = { PDF: '📕', Excel: '📗', Word: '📘', Image: '🖼️' };
-  DOCUMENTS.unshift({
+  const body = {
     name,
-    type,
-    icon: iconMap[type] || '📄',
-    meta: `${document.getElementById('uploadDocClient').value} • New upload`
-  });
-  closeModal();
-  renderDocuments();
-  showToast('Document uploaded successfully ✅');
-}
-
-function submitNewEvent() {
-  const title = document.getElementById('newEventTitle').value.trim();
-  const dateVal = document.getElementById('newEventDate').value;
-  if (!title || !dateVal) {
-    showToast('Please fill in all fields');
-    return;
+    doc_type: typeVal,
+    icon: iconMap[typeVal] || '📄',
+    client_name: document.getElementById('uploadDocClient')?.value || 'Internal',
+    file_size: document.getElementById('uploadDocSize')?.value.trim() || 'Unknown'
+  };
+  const result = await supabaseInsert('documents', body);
+  if (result && result[0]) {
+    STATE.documents.unshift(result[0]);
+    closeModal();
+    renderDocuments();
+    showToast('✅ Document uploaded!');
   }
-  const date = new Date(dateVal);
-  const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-  if (!CAL_EVENTS[key]) CAL_EVENTS[key] = [];
-  CAL_EVENTS[key].push({ title, type: document.getElementById('newEventType').value });
-
-  closeModal();
-  renderCalendar();
-  renderEventList();
-  showToast('Event added to calendar ✅');
 }
 
-function formatDateInput(value) {
-  if (!value) return '';
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+async function submitNewEvent() {
+  const title = document.getElementById('newEventTitle')?.value.trim();
+  const dateVal = document.getElementById('newEventDate')?.value;
+  if (!title || !dateVal) { showToast('Please fill all fields'); return; }
+  const body = {
+    title,
+    event_type: document.getElementById('newEventType')?.value,
+    event_date: dateVal
+  };
+  const result = await supabaseInsert('calendar_events', body);
+  if (result && result[0]) {
+    STATE.calendarEvents.push(result[0]);
+    closeModal();
+    renderCalendar();
+    renderEventList();
+    renderDueDates();
+    showToast('✅ Event added to calendar!');
+  }
 }
 
 /* =========================================================
-   25. QUICK ACTION MENU
+   28. QUICK ACTION
    ========================================================= */
 
 function openQuickAction() {
-  openModalWithContent('Quick Action', `
+  openModalWithContent('⚡ Quick Action', `
     <div class="quick-action-grid">
-      <button class="qa-btn" onclick="closeModal();openModal('addClient')">
-        <span class="qa-btn-icon">👥</span>
-        <span class="qa-btn-label">Add Client</span>
-      </button>
-      <button class="qa-btn" onclick="closeModal();navigate('gst')">
-        <span class="qa-btn-icon">📊</span>
-        <span class="qa-btn-label">File GST Return</span>
-      </button>
-      <button class="qa-btn" onclick="closeModal();navigate('incometax')">
-        <span class="qa-btn-icon">💰</span>
-        <span class="qa-btn-label">File ITR</span>
-      </button>
-      <button class="qa-btn" onclick="closeModal();navigate('tds')">
-        <span class="qa-btn-icon">🧾</span>
-        <span class="qa-btn-label">File TDS Return</span>
-      </button>
-      <button class="qa-btn" onclick="closeModal();openModal('newAudit')">
-        <span class="qa-btn-icon">🛡️</span>
-        <span class="qa-btn-label">Schedule Audit</span>
-      </button>
-      <button class="qa-btn" onclick="closeModal();openModal('newTask')">
-        <span class="qa-btn-icon">✅</span>
-        <span class="qa-btn-label">Add Task</span>
-      </button>
-      <button class="qa-btn" onclick="closeModal();openModal('newDSC')">
-        <span class="qa-btn-icon">✍️</span>
-        <span class="qa-btn-label">Request DSC</span>
-      </button>
-      <button class="qa-btn" onclick="closeModal();openModal('newEvent')">
-        <span class="qa-btn-icon">📅</span>
-        <span class="qa-btn-label">Add Event</span>
-      </button>
+      <button class="qa-btn" onclick="closeModal();openModal('addClient')"><span class="qa-btn-icon">👥</span><span class="qa-btn-label">Add Client</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('gst')"><span class="qa-btn-icon">📊</span><span class="qa-btn-label">File GST Return</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('incometax')"><span class="qa-btn-icon">💰</span><span class="qa-btn-label">File ITR</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('tds')"><span class="qa-btn-icon">🧾</span><span class="qa-btn-label">File TDS Return</span></button>
+      <button class="qa-btn" onclick="closeModal();openModal('newAudit')"><span class="qa-btn-icon">🛡️</span><span class="qa-btn-label">Schedule Audit</span></button>
+      <button class="qa-btn" onclick="closeModal();openModal('newTask')"><span class="qa-btn-icon">✅</span><span class="qa-btn-label">Add Task</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('dsc')"><span class="qa-btn-icon">✍️</span><span class="qa-btn-label">Request DSC</span></button>
+      <button class="qa-btn" onclick="closeModal();openModal('newEvent')"><span class="qa-btn-icon">📅</span><span class="qa-btn-label">Add Event</span></button>
     </div>
   `);
 }
 
 /* =========================================================
-   26. PROFILE
+   29. PROFILE
    ========================================================= */
 
 function openProfile() {
-  openModalWithContent('My Profile', `
+  openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
       <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">K</div>
       <div style="font-weight:700;font-size:16px">Karan Mehta</div>
@@ -1599,38 +1939,31 @@ function openProfile() {
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">karan@witcorp.in</div></div>
     <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">+91 98200 11223</div></div>
     <div class="form-group"><label>Role</label><div class="form-control" style="background:var(--bg)">Partner</div></div>
+    <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
     <button class="btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)" onclick="showToast('Logged out (demo only)')">Logout</button>
   `);
 }
 
 /* =========================================================
-   27. GLOBAL SEARCH
+   30. GLOBAL SEARCH
    ========================================================= */
 
 function handleSearch(query) {
   if (!query || query.trim().length < 2) return;
-  const q = query.trim().toLowerCase();
-
-  // search clients
-  const matchedClients = CLIENTS.filter(c => c.name.toLowerCase().includes(q)).slice(0, 5);
-
-  // search tasks
-  const matchedTasks = TASKS.filter(t => t.title.toLowerCase().includes(q)).slice(0, 5);
-
-  if (matchedClients.length === 0 && matchedTasks.length === 0) return;
-
-  // debounce-ish: only show suggestions on enter or pause - simplified to show toast summary
   clearTimeout(window._searchTimeout);
   window._searchTimeout = setTimeout(() => {
-    let msg = '';
-    if (matchedClients.length) msg += `${matchedClients.length} client(s) found. `;
-    if (matchedTasks.length) msg += `${matchedTasks.length} task(s) found.`;
-    if (msg) showToast(msg);
-  }, 600);
+    const q = query.toLowerCase();
+    const clients = STATE.clients.filter(c => (c.name||'').toLowerCase().includes(q)).length;
+    const tasks = STATE.tasks.filter(t => (t.title||'').toLowerCase().includes(q)).length;
+    let msg = [];
+    if (clients) msg.push(`${clients} client(s)`);
+    if (tasks) msg.push(`${tasks} task(s)`);
+    if (msg.length) showToast(`Found: ${msg.join(', ')}`);
+  }, 500);
 }
 
 /* =========================================================
-   28. TOAST NOTIFICATIONS
+   31. TOAST
    ========================================================= */
 
 let toastTimeout = null;
@@ -1640,26 +1973,20 @@ function showToast(message) {
   if (!toast) return;
   toast.textContent = message;
   toast.classList.add('show');
-
   if (toastTimeout) clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => {
-    toast.classList.remove('show');
-  }, 2800);
+  toastTimeout = setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 /* =========================================================
-   29. KEYBOARD SHORTCUTS
+   32. KEYBOARD & GLOBAL LISTENERS
    ========================================================= */
 
 function attachGlobalListeners() {
   document.addEventListener('keydown', (e) => {
-    // Cmd/Ctrl + K to focus search
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      const search = document.getElementById('globalSearch');
-      if (search) search.focus();
+      document.getElementById('globalSearch')?.focus();
     }
-    // Escape closes modal & notif panel
     if (e.key === 'Escape') {
       closeModal();
       closeNotifications();
@@ -1667,29 +1994,22 @@ function attachGlobalListeners() {
     }
   });
 
-  // close notif panel on outside click
   document.addEventListener('click', (e) => {
     const panel = document.getElementById('notifPanel');
-    const btn = e.target.closest('.icon-btn');
-    if (panel && panel.classList.contains('show')) {
-      if (!panel.contains(e.target) && (!btn || !btn.onclick || btn.onclick.toString().indexOf('openNotifications') === -1)) {
-        if (!panel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) {
-          closeNotifications();
-        }
+    if (panel?.classList.contains('show')) {
+      if (!panel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) {
+        closeNotifications();
       }
     }
   });
 
-  // responsive: close sidebar on resize to desktop
   window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
-      closeSidebar();
-    }
+    if (window.innerWidth > 768) closeSidebar();
   });
 }
 
 /* =========================================================
-   30. UTILITY FUNCTIONS
+   33. UTILITY
    ========================================================= */
 
 function escapeHtml(str) {
@@ -1702,6 +2022,23 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function formatAmount(num) {
+  if (!num) return '0';
+  if (num >= 100000) return (num / 100000).toFixed(1) + 'L';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toLocaleString('en-IN');
+}
+
+function statusBadge(status) {
+  const map = {
+    'Active': 'badge-success', 'Inactive': 'badge-danger', 'Pending': 'badge-warning',
+    'Filed': 'badge-success', 'Overdue': 'badge-danger', 'In Progress': 'badge-info',
+    'In Review': 'badge-purple', 'Completed': 'badge-success', 'Expiring Soon': 'badge-warning',
+    'Expired': 'badge-danger'
+  };
+  return `<span class="badge ${map[status]||'badge-info'}">${escapeHtml(status)}</span>`;
+}
+
 /* =========================================================
-   END OF app.js
+   END OF app.js — WITCORP Supabase Edition
    ========================================================= */
