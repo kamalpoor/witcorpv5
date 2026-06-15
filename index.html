@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="description" content="WITCORP - India Advisors LLP Dashboard" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="WITCORP" />
+  <title>WITCORP – India Advisors LLP</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="theme-violet">
+
+<!-- ========== MOBILE OVERLAY ========== -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- ========== SIDEBAR ========== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">W</div>
+    <div class="logo-text">
+      <span class="logo-name">WITCORP</span>
+      <span class="logo-sub">India Advisors LLP</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Dashboard</span>
+    </a>
+    <a class="nav-item" data-page="clients" onclick="navigate('clients')">
+      <span class="nav-icon">👥</span>
+      <span class="nav-label">Client Management</span>
+    </a>
+    <a class="nav-item" data-page="gst" onclick="navigate('gst')">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">GST Dashboard</span>
+    </a>
+    <a class="nav-item" data-page="roc" onclick="navigate('roc')">
+      <span class="nav-icon">🏛️</span>
+      <span class="nav-label">ROC Filings</span>
+    </a>
+    <div class="nav-section-label">Tax & Compliance</div>
+    <a class="nav-item" data-page="incometax" onclick="navigate('incometax')">
+      <span class="nav-icon">💰</span>
+      <span class="nav-label">Income Tax</span>
+    </a>
+    <a class="nav-item" data-page="tds" onclick="navigate('tds')">
+      <span class="nav-icon">🧾</span>
+      <span class="nav-label">TDS Returns</span>
+    </a>
+    <a class="nav-item" data-page="audit" onclick="navigate('audit')">
+      <span class="nav-icon">🛡️</span>
+      <span class="nav-label">Audit & Assurance</span>
+    </a>
+    <div class="nav-section-label">Tools</div>
+    <a class="nav-item" data-page="dsc" onclick="navigate('dsc')">
+      <span class="nav-icon">✍️</span>
+      <span class="nav-label">DSC & eSign</span>
+    </a>
+    <a class="nav-item" data-page="accounting" onclick="navigate('accounting')">
+      <span class="nav-icon">🧮</span>
+      <span class="nav-label">Accounting Hub</span>
+    </a>
+    <a class="nav-item" data-page="tasks" onclick="navigate('tasks')">
+      <span class="nav-icon">✅</span>
+      <span class="nav-label">Task Manager</span>
+    </a>
+    <a class="nav-item" data-page="reports" onclick="navigate('reports')">
+      <span class="nav-icon">📈</span>
+      <span class="nav-label">Reports & Insights</span>
+    </a>
+    <a class="nav-item" data-page="ai" onclick="navigate('ai')">
+      <span class="nav-icon">🤖</span>
+      <span class="nav-label">AI Assistant</span>
+      <span class="nav-badge">New</span>
+    </a>
+    <div class="nav-section-label">Other</div>
+    <a class="nav-item" data-page="documents" onclick="navigate('documents')">
+      <span class="nav-icon">📁</span>
+      <span class="nav-label">Documents</span>
+    </a>
+    <a class="nav-item" data-page="calendar" onclick="navigate('calendar')">
+      <span class="nav-icon">📅</span>
+      <span class="nav-label">Calendar</span>
+    </a>
+    <a class="nav-item" data-page="teamchat" onclick="navigate('teamchat')">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label">Team Chat</span>
+    </a>
+  </nav>
+
+  <!-- Theme Picker -->
+  <div class="theme-section">
+    <div class="theme-label">Theme</div>
+    <div class="theme-swatches">
+      <button class="swatch active" data-theme="theme-violet" style="background:#6366f1" onclick="setTheme('theme-violet')" title="Violet"></button>
+      <button class="swatch" data-theme="theme-blue" style="background:#3b82f6" onclick="setTheme('theme-blue')" title="Blue"></button>
+      <button class="swatch" data-theme="theme-emerald" style="background:#10b981" onclick="setTheme('theme-emerald')" title="Emerald"></button>
+      <button class="swatch" data-theme="theme-rose" style="background:#f43f5e" onclick="setTheme('theme-rose')" title="Rose"></button>
+      <button class="swatch" data-theme="theme-amber" style="background:#f59e0b" onclick="setTheme('theme-amber')" title="Amber"></button>
+      <button class="swatch" data-theme="theme-cyan" style="background:#06b6d4" onclick="setTheme('theme-cyan')" title="Cyan"></button>
+      <button class="swatch" data-theme="theme-dark" style="background:#1e293b" onclick="setTheme('theme-dark')" title="Dark"></button>
+      <button class="swatch" data-theme="theme-midnight" style="background:#0f172a" onclick="setTheme('theme-midnight')" title="Midnight"></button>
+      <button class="swatch" data-theme="theme-forest" style="background:#166534" onclick="setTheme('theme-forest')" title="Forest"></button>
+      <button class="swatch" data-theme="theme-sunset" style="background:#ea580c" onclick="setTheme('theme-sunset')" title="Sunset"></button>
+      <button class="swatch" data-theme="theme-sakura" style="background:#ec4899" onclick="setTheme('theme-sakura')" title="Sakura"></button>
+      <button class="swatch" data-theme="theme-gold" style="background:#ca8a04" onclick="setTheme('theme-gold')" title="Gold"></button>
+    </div>
+  </div>
+</aside>
+
+<!-- ========== MAIN CONTENT ========== -->
+<div class="main-wrapper">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Search clients, tasks, compliances..." id="globalSearch" oninput="handleSearch(this.value)" />
+      <span class="search-shortcut">⌘ K</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-btn" onclick="openAI()">✨ Ask AI</button>
+      <button class="topbar-btn icon-btn" onclick="openNotifications()">
+        🔔 <span class="notif-dot">3</span>
+      </button>
+      <button class="topbar-btn icon-btn" onclick="toggleDarkMode()">🌙</button>
+      <div class="user-avatar" onclick="openProfile()">
+        <span>K</span>
+        <div class="user-info">
+          <span class="user-name">Karan</span>
+          <span class="user-role">Partner</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PAGE CONTENT -->
+  <main class="page-content" id="pageContent">
+
+    <!-- ===== DASHBOARD PAGE ===== -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h1>Welcome back, Karan 👋</h1>
+          <p>Here's what's happening with your workspace today.</p>
+        </div>
+        <div class="page-header-right">
+          <div class="date-badge">📅 <span id="currentDate"></span></div>
+          <button class="btn-primary" onclick="openQuickAction()">+ Quick Action</button>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="stats-grid">
+        <div class="stat-card" onclick="navigate('clients')">
+          <div class="stat-icon purple">👥</div>
+          <div class="stat-info">
+            <div class="stat-number">248</div>
+            <div class="stat-label">Total Clients</div>
+            <div class="stat-trend up">↑ 12% this month</div>
+          </div>
+        </div>
+        <div class="stat-card" onclick="navigate('gst')">
+          <div class="stat-icon green">📊</div>
+          <div class="stat-info">
+            <div class="stat-number">128</div>
+            <div class="stat-label">GST Returns Filed</div>
+            <div class="stat-trend up">↑ 18% this month</div>
+          </div>
+        </div>
+        <div class="stat-card" onclick="navigate('tasks')">
+          <div class="stat-icon orange">✅</div>
+          <div class="stat-info">
+            <div class="stat-number">32</div>
+            <div class="stat-label">Pending Tasks</div>
+            <div class="stat-trend down">↓ 8% vs last month</div>
+          </div>
+        </div>
+        <div class="stat-card" onclick="navigate('calendar')">
+          <div class="stat-icon red">⏰</div>
+          <div class="stat-info">
+            <div class="stat-number">19</div>
+            <div class="stat-label">Upcoming Due</div>
+            <div class="stat-trend neutral">Due in next 7 days</div>
+          </div>
+        </div>
+        <div class="stat-card" onclick="navigate('gst')">
+          <div class="stat-icon blue">📋</div>
+          <div class="stat-info">
+            <div class="stat-number">07</div>
+            <div class="stat-label">Today's Filings</div>
+            <div class="stat-trend neutral">Due today</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modules Grid -->
+      <div class="section-title">All Modules</div>
+      <div class="modules-grid">
+        <div class="module-card" onclick="navigate('clients')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">👥</div>
+          <div class="module-info">
+            <div class="module-name">Client Management</div>
+            <div class="module-desc">Manage all your clients & contacts</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('gst')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#34d399,#059669)">📊</div>
+          <div class="module-info">
+            <div class="module-name">GST Dashboard</div>
+            <div class="module-desc">Track & file GST returns</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('roc')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#60a5fa,#2563eb)">🏛️</div>
+          <div class="module-info">
+            <div class="module-name">ROC Filings</div>
+            <div class="module-desc">Company filings & compliance</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('incometax')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#fbbf24,#d97706)">💰</div>
+          <div class="module-info">
+            <div class="module-name">Income Tax</div>
+            <div class="module-desc">ITR & Tax Management</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('tds')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#c084fc,#9333ea)">🧾</div>
+          <div class="module-info">
+            <div class="module-name">TDS Returns</div>
+            <div class="module-desc">Manage TDS filings</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('audit')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">🛡️</div>
+          <div class="module-info">
+            <div class="module-name">Audit & Assurance</div>
+            <div class="module-desc">Plan & manage audits</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('dsc')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#4ade80,#16a34a)">✍️</div>
+          <div class="module-info">
+            <div class="module-name">DSC & eSign</div>
+            <div class="module-desc">Digital signature services</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('accounting')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#f472b6,#db2777)">🧮</div>
+          <div class="module-info">
+            <div class="module-name">Accounting Hub</div>
+            <div class="module-desc">Accounting & bookkeeping</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('tasks')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#fde68a,#f59e0b)">✅</div>
+          <div class="module-info">
+            <div class="module-name">Task Manager</div>
+            <div class="module-desc">Tasks & team collaboration</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+        <div class="module-card" onclick="navigate('reports')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#f87171,#dc2626)">📈</div>
+          <div class="module-info">
+            <div class="module-name">Reports & Insights</div>
+            <div class="module-desc">Analytics & reports</div>
+          </div>
+          <span class="module-arrow">›</span>
+        </div>
+      </div>
+
+      <!-- AI Banner -->
+      <div class="ai-banner" onclick="navigate('ai')">
+        <div class="ai-globe">🌐</div>
+        <div class="ai-text">
+          <div class="ai-title">Ask Witcorp AI <span class="ai-tag">Powered by AI</span></div>
+          <div class="ai-desc">Search anything, ask questions or get insights about your clients, filings, tasks...</div>
+          <div class="ai-input-fake">
+            <span>Ask anything... (e.g. Show me pending GST returns)</span>
+          </div>
+          <div class="ai-chips">
+            <span onclick="event.stopPropagation();aiChip('Show pending tasks')">Show pending tasks</span>
+            <span onclick="event.stopPropagation();aiChip('GST due this week')">GST due this week</span>
+            <span onclick="event.stopPropagation();aiChip('Clients with pending filings')">Clients with pending filings</span>
+            <span onclick="event.stopPropagation();aiChip('Help me with TDS')">Help me with TDS</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CLIENT MANAGEMENT PAGE ===== -->
+    <section class="page" id="page-clients">
+      <div class="page-header">
+        <div>
+          <h1>👥 Client Management</h1>
+          <p>Manage all your clients & contacts</p>
+        </div>
+        <button class="btn-primary" onclick="openModal('addClient')">+ Add Client</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" placeholder="Search clients..." class="filter-input" id="clientSearch" oninput="filterClients(this.value)" />
+        <select class="filter-select" onchange="filterClientStatus(this.value)">
+          <option value="">All Status</option>
+          <option>Active</option>
+          <option>Inactive</option>
+          <option>Pending</option>
+        </select>
+        <select class="filter-select">
+          <option>All Types</option>
+          <option>Individual</option>
+          <option>Company</option>
+          <option>LLP</option>
+          <option>Partnership</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table" id="clientTable">
+          <thead>
+            <tr>
+              <th>Client Name</th>
+              <th>PAN/TAN</th>
+              <th>Type</th>
+              <th>GST No.</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clientTableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <button class="page-btn" onclick="prevPage('clients')">‹ Prev</button>
+        <span class="page-info" id="clientPageInfo">Page 1 of 5</span>
+        <button class="page-btn" onclick="nextPage('clients')">Next ›</button>
+      </div>
+    </section>
+
+    <!-- ===== GST DASHBOARD PAGE ===== -->
+    <section class="page" id="page-gst">
+      <div class="page-header">
+        <div>
+          <h1>📊 GST Dashboard</h1>
+          <p>Track & file GST returns</p>
+        </div>
+        <button class="btn-primary" onclick="openModal('gstReturn')">+ File Return</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">128</div><div class="stat-label">Filed This Month</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">22</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">❗</div><div class="stat-info"><div class="stat-number">5</div><div class="stat-label">Overdue</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">₹ 4.2L</div><div class="stat-label">Tax Collected</div></div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">GST Return Status</div>
+          <div class="gst-return-list" id="gstReturnList"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Upcoming Filings</div>
+          <div class="upcoming-list" id="gstUpcoming"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">File New GST Return</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Client Name</label>
+            <select class="form-control"><option>Select Client</option><option>ABC Pvt. Ltd.</option><option>XYZ Traders</option><option>Raj Enterprises</option></select>
+          </div>
+          <div class="form-group">
+            <label>Return Type</label>
+            <select class="form-control"><option>GSTR-1</option><option>GSTR-3B</option><option>GSTR-9</option><option>GSTR-2A</option></select>
+          </div>
+          <div class="form-group">
+            <label>Period</label>
+            <select class="form-control"><option>May 2025</option><option>April 2025</option><option>March 2025</option></select>
+          </div>
+          <div class="form-group">
+            <label>GSTIN</label>
+            <input type="text" class="form-control" placeholder="Enter GSTIN" />
+          </div>
+          <div class="form-group">
+            <label>Total Turnover (₹)</label>
+            <input type="number" class="form-control" placeholder="Enter amount" />
+          </div>
+          <div class="form-group">
+            <label>Tax Liability (₹)</label>
+            <input type="number" class="form-control" placeholder="Enter amount" />
+          </div>
+        </div>
+        <button class="btn-primary" onclick="submitGSTReturn()">Submit Return</button>
+      </div>
+    </section>
+
+    <!-- ===== ROC FILINGS PAGE ===== -->
+    <section class="page" id="page-roc">
+      <div class="page-header">
+        <div><h1>🏛️ ROC Filings</h1><p>Company filings & compliance</p></div>
+        <button class="btn-primary" onclick="openModal('rocFiling')">+ New Filing</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue">📄</div><div class="stat-info"><div class="stat-number">47</div><div class="stat-label">Filed This Year</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">8</div><div class="stat-label">In Progress</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><div class="stat-number">3</div><div class="stat-label">Overdue</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">🏢</div><div class="stat-info"><div class="stat-number">62</div><div class="stat-label">Total Companies</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">ROC Filing Tracker</div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Company</th><th>CIN</th><th>Form</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="rocTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== INCOME TAX PAGE ===== -->
+    <section class="page" id="page-incometax">
+      <div class="page-header">
+        <div><h1>💰 Income Tax</h1><p>ITR & Tax Management</p></div>
+        <button class="btn-primary" onclick="openModal('itrFiling')">+ File ITR</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green">📑</div><div class="stat-info"><div class="stat-number">89</div><div class="stat-label">ITRs Filed</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">34</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">💵</div><div class="stat-info"><div class="stat-number">₹ 12.4L</div><div class="stat-label">Refund Claimed</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">📊</div><div class="stat-info"><div class="stat-number">₹ 8.7L</div><div class="stat-label">Tax Paid</div></div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">File New ITR</div>
+          <div class="form-group"><label>Client Name</label><select class="form-control"><option>Select Client</option><option>Rahul Sharma</option><option>Priya Patel</option><option>ABC Corp</option></select></div>
+          <div class="form-group"><label>Assessment Year</label><select class="form-control"><option>2025-26</option><option>2024-25</option><option>2023-24</option></select></div>
+          <div class="form-group"><label>ITR Form</label><select class="form-control"><option>ITR-1 (Sahaj)</option><option>ITR-2</option><option>ITR-3</option><option>ITR-4 (Sugam)</option></select></div>
+          <div class="form-group"><label>Gross Income (₹)</label><input type="number" class="form-control" placeholder="Enter gross income" /></div>
+          <div class="form-group"><label>Tax Deducted (₹)</label><input type="number" class="form-control" placeholder="Enter TDS amount" /></div>
+          <div class="form-group"><label>Deductions (80C, 80D etc.)</label><input type="number" class="form-control" placeholder="Total deductions" /></div>
+          <button class="btn-primary" onclick="submitITR()">Calculate & File ITR</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent ITR Filings</div>
+          <div id="itrList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TDS RETURNS PAGE ===== -->
+    <section class="page" id="page-tds">
+      <div class="page-header">
+        <div><h1>🧾 TDS Returns</h1><p>Manage TDS filings</p></div>
+        <button class="btn-primary" onclick="openModal('tdsReturn')">+ File TDS</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">56</div><div class="stat-label">Returns Filed</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">12</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">💰</div><div class="stat-info"><div class="stat-number">₹ 6.8L</div><div class="stat-label">TDS Collected</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">📋</div><div class="stat-info"><div class="stat-number">24</div><div class="stat-label">Challans Paid</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">TDS Filing Form</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Deductor Name</label><input type="text" class="form-control" placeholder="Company/Individual name" /></div>
+          <div class="form-group"><label>TAN Number</label><input type="text" class="form-control" placeholder="Enter TAN" /></div>
+          <div class="form-group"><label>Quarter</label><select class="form-control"><option>Q1 (Apr-Jun)</option><option>Q2 (Jul-Sep)</option><option>Q3 (Oct-Dec)</option><option>Q4 (Jan-Mar)</option></select></div>
+          <div class="form-group"><label>Form Type</label><select class="form-control"><option>24Q (Salary)</option><option>26Q (Non-Salary)</option><option>27Q (Foreign)</option><option>27EQ (TCS)</option></select></div>
+          <div class="form-group"><label>TDS Amount (₹)</label><input type="number" class="form-control" placeholder="Enter TDS amount" /></div>
+          <div class="form-group"><label>Challan No.</label><input type="text" class="form-control" placeholder="BSR Code / Challan" /></div>
+        </div>
+        <button class="btn-primary" onclick="submitTDS()">Submit TDS Return</button>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">Recent TDS Filings</div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Deductor</th><th>TAN</th><th>Quarter</th><th>Form</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody id="tdsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AUDIT & ASSURANCE PAGE ===== -->
+    <section class="page" id="page-audit">
+      <div class="page-header">
+        <div><h1>🛡️ Audit & Assurance</h1><p>Plan & manage audits</p></div>
+        <button class="btn-primary" onclick="openModal('newAudit')">+ New Audit</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">18</div><div class="stat-label">Active Audits</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">34</div><div class="stat-label">Completed</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">🔄</div><div class="stat-info"><div class="stat-number">6</div><div class="stat-label">In Review</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">📅</div><div class="stat-info"><div class="stat-number">4</div><div class="stat-label">Due This Month</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Audit Tracker</div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Client</th><th>Audit Type</th><th>Auditor</th><th>Start Date</th><th>End Date</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== DSC & ESIGN PAGE ===== -->
+    <section class="page" id="page-dsc">
+      <div class="page-header">
+        <div><h1>✍️ DSC & eSign</h1><p>Digital signature services</p></div>
+        <button class="btn-primary" onclick="openModal('newDSC')">+ New DSC</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green">🔐</div><div class="stat-info"><div class="stat-number">156</div><div class="stat-label">Active DSCs</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><div class="stat-number">12</div><div class="stat-label">Expiring Soon</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">✍️</div><div class="stat-info"><div class="stat-number">89</div><div class="stat-label">eSigns Done</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">7</div><div class="stat-label">Pending Renewal</div></div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Request New DSC</div>
+          <div class="form-group"><label>Client Name</label><input type="text" class="form-control" placeholder="Enter client name" /></div>
+          <div class="form-group"><label>PAN Number</label><input type="text" class="form-control" placeholder="Enter PAN" /></div>
+          <div class="form-group"><label>DSC Type</label><select class="form-control"><option>Class 2</option><option>Class 3</option><option>DGFT</option></select></div>
+          <div class="form-group"><label>Validity</label><select class="form-control"><option>1 Year</option><option>2 Years</option><option>3 Years</option></select></div>
+          <div class="form-group"><label>Purpose</label><select class="form-control"><option>Income Tax</option><option>GST</option><option>MCA/ROC</option><option>Tender</option></select></div>
+          <button class="btn-primary" onclick="submitDSC()">Request DSC</button>
+        </div>
+        <div class="card">
+          <div class="card-title">DSC Expiry Alerts</div>
+          <div id="dscAlertList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ACCOUNTING HUB PAGE ===== -->
+    <section class="page" id="page-accounting">
+      <div class="page-header">
+        <div><h1>🧮 Accounting Hub</h1><p>Accounting & bookkeeping</p></div>
+        <button class="btn-primary" onclick="openModal('newEntry')">+ New Entry</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green">📈</div><div class="stat-info"><div class="stat-number">₹ 48.2L</div><div class="stat-label">Total Revenue</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">📉</div><div class="stat-info"><div class="stat-number">₹ 31.6L</div><div class="stat-label">Total Expenses</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">💼</div><div class="stat-info"><div class="stat-number">₹ 16.6L</div><div class="stat-label">Net Profit</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">📊</div><div class="stat-info"><div class="stat-number">34%</div><div class="stat-label">Profit Margin</div></div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Add Journal Entry</div>
+          <div class="form-group"><label>Date</label><input type="date" class="form-control" /></div>
+          <div class="form-group"><label>Voucher Type</label><select class="form-control"><option>Payment</option><option>Receipt</option><option>Journal</option><option>Contra</option><option>Sales</option><option>Purchase</option></select></div>
+          <div class="form-group"><label>Account Head (Dr)</label><input type="text" class="form-control" placeholder="Debit account" /></div>
+          <div class="form-group"><label>Account Head (Cr)</label><input type="text" class="form-control" placeholder="Credit account" /></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" class="form-control" placeholder="Enter amount" /></div>
+          <div class="form-group"><label>Narration</label><textarea class="form-control" rows="2" placeholder="Entry description"></textarea></div>
+          <button class="btn-primary" onclick="submitJournalEntry()">Post Entry</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent Transactions</div>
+          <div id="accountingList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TASK MANAGER PAGE ===== -->
+    <section class="page" id="page-tasks">
+      <div class="page-header">
+        <div><h1>✅ Task Manager</h1><p>Tasks & team collaboration</p></div>
+        <button class="btn-primary" onclick="openModal('newTask')">+ New Task</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">64</div><div class="stat-label">Completed</div><div class="stat-trend up">64%</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">🔄</div><div class="stat-info"><div class="stat-number">22</div><div class="stat-label">In Progress</div><div class="stat-trend neutral">22%</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">14</div><div class="stat-label">Pending</div><div class="stat-trend down">14%</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">❗</div><div class="stat-info"><div class="stat-number">3</div><div class="stat-label">Overdue</div></div></div>
+      </div>
+      <div class="kanban-board">
+        <div class="kanban-col">
+          <div class="kanban-col-header todo">📋 To Do <span class="kanban-count" id="todoCount">0</span></div>
+          <div class="kanban-cards" id="todoCards"></div>
+          <button class="kanban-add" onclick="addTask('todo')">+ Add Task</button>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-header inprogress">🔄 In Progress <span class="kanban-count" id="inprogressCount">0</span></div>
+          <div class="kanban-cards" id="inprogressCards"></div>
+          <button class="kanban-add" onclick="addTask('inprogress')">+ Add Task</button>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-header done">✅ Done <span class="kanban-count" id="doneCount">0</span></div>
+          <div class="kanban-cards" id="doneCards"></div>
+          <button class="kanban-add" onclick="addTask('done')">+ Add Task</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== REPORTS PAGE ===== -->
+    <section class="page" id="page-reports">
+      <div class="page-header">
+        <div><h1>📈 Reports & Insights</h1><p>Analytics & reports</p></div>
+        <button class="btn-primary" onclick="exportReport()">⬇ Export Report</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green">📊</div><div class="stat-info"><div class="stat-number">248</div><div class="stat-label">Total Clients</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">384</div><div class="stat-label">Total Filings</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">💰</div><div class="stat-info"><div class="stat-number">₹ 18.4L</div><div class="stat-label">Revenue</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⭐</div><div class="stat-info"><div class="stat-number">94%</div><div class="stat-label">Client Satisfaction</div></div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Monthly Performance</div>
+          <div class="bar-chart" id="barChart"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Task Completion</div>
+          <div class="donut-wrapper">
+            <div class="donut-chart">
+              <div class="donut-center">64%</div>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-item"><span class="legend-dot green"></span> Completed 64%</div>
+              <div class="legend-item"><span class="legend-dot blue"></span> In Progress 22%</div>
+              <div class="legend-item"><span class="legend-dot orange"></span> Pending 14%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">Generate Custom Report</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Report Type</label><select class="form-control"><option>GST Summary</option><option>TDS Summary</option><option>Client Report</option><option>Tax Liability</option></select></div>
+          <div class="form-group"><label>From Date</label><input type="date" class="form-control" /></div>
+          <div class="form-group"><label>To Date</label><input type="date" class="form-control" /></div>
+          <div class="form-group"><label>Format</label><select class="form-control"><option>PDF</option><option>Excel</option><option>CSV</option></select></div>
+        </div>
+        <button class="btn-primary" onclick="generateReport()">Generate Report</button>
+      </div>
+    </section>
+
+    <!-- ===== AI ASSISTANT PAGE ===== -->
+    <section class="page" id="page-ai">
+      <div class="page-header">
+        <div><h1>🤖 AI Assistant</h1><p>Ask anything about your workspace</p></div>
+      </div>
+      <div class="ai-chat-container">
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg bot">
+            <div class="msg-avatar">🤖</div>
+            <div class="msg-content">Namaste! I'm your Witcorp AI Assistant. Ask me anything about GST, TDS, ITR filings, client data, or compliance. How can I help you today?</div>
+          </div>
+        </div>
+        <div class="ai-quick-chips">
+          <button onclick="sendAIMessage('Show pending GST returns')">Show pending GST returns</button>
+          <button onclick="sendAIMessage('List overdue tasks')">List overdue tasks</button>
+          <button onclick="sendAIMessage('GST due this week')">GST due this week</button>
+          <button onclick="sendAIMessage('Top clients by revenue')">Top clients by revenue</button>
+          <button onclick="sendAIMessage('TDS filing status')">TDS filing status</button>
+          <button onclick="sendAIMessage('Upcoming compliances')">Upcoming compliances</button>
+        </div>
+        <div class="chat-input-bar">
+          <input type="text" id="aiInput" placeholder="Ask anything..." onkeydown="if(event.key==='Enter')sendAIMessage()" />
+          <button class="btn-primary" onclick="sendAIMessage()">➤ Send</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== DOCUMENTS PAGE ===== -->
+    <section class="page" id="page-documents">
+      <div class="page-header">
+        <div><h1>📁 Documents</h1><p>All your important files</p></div>
+        <button class="btn-primary" onclick="openModal('uploadDoc')">⬆ Upload</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" placeholder="Search documents..." class="filter-input" />
+        <select class="filter-select"><option>All Types</option><option>PDF</option><option>Excel</option><option>Word</option><option>Image</option></select>
+        <select class="filter-select"><option>All Clients</option><option>ABC Pvt. Ltd.</option><option>XYZ Traders</option></select>
+      </div>
+      <div class="docs-grid" id="docsGrid"></div>
+    </section>
+
+    <!-- ===== CALENDAR PAGE ===== -->
+    <section class="page" id="page-calendar">
+      <div class="page-header">
+        <div><h1>📅 Calendar</h1><p>Due dates & important events</p></div>
+        <button class="btn-primary" onclick="openModal('newEvent')">+ Add Event</button>
+      </div>
+      <div class="calendar-wrapper">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+          <span class="cal-title" id="calTitle">May 2025</span>
+          <button class="cal-nav" onclick="changeMonth(1)">›</button>
+        </div>
+        <div class="cal-grid-header">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">Upcoming Events</div>
+        <div id="eventList"></div>
+      </div>
+    </section>
+
+    <!-- ===== TEAM CHAT PAGE ===== -->
+    <section class="page" id="page-teamchat">
+      <div class="page-header">
+        <div><h1>💬 Team Chat</h1><p>Collaborate with your team</p></div>
+      </div>
+      <div class="chat-layout">
+        <div class="chat-sidebar">
+          <div class="chat-search"><input type="text" placeholder="Search team..." /></div>
+          <div class="chat-contacts" id="chatContacts"></div>
+        </div>
+        <div class="chat-main">
+          <div class="chat-header-bar">
+            <div class="chat-header-info">
+              <div class="chat-avatar-sm">R</div>
+              <div><div class="chat-contact-name" id="activeChatName">Rajesh Kumar</div><div class="chat-online">● Online</div></div>
+            </div>
+          </div>
+          <div class="chat-messages" id="teamMessages"></div>
+          <div class="chat-input-bar">
+            <input type="text" id="teamChatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendTeamMessage()" />
+            <button class="btn-primary" onclick="sendTeamMessage()">Send</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ========== MODALS ========== -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal" id="modalBox" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modalTitle">Modal</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ========== NOTIFICATION PANEL ========== -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-header">
+    <h3>Notifications</h3>
+    <button onclick="closeNotifications()">✕</button>
+  </div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+
+<!-- ========== TOAST ========== -->
+<div class="toast" id="toast"></div>
+
+<!-- RIGHT PANEL (Due Dates + Activity) -->
+<aside class="right-panel" id="rightPanel">
+  <div class="card">
+    <div class="card-title">Upcoming Due Dates <button class="view-all" onclick="navigate('calendar')">View All</button></div>
+    <div id="dueDateList"></div>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title">Recent Activity <button class="view-all">View All</button></div>
+    <div id="activityList"></div>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title">Workspace Overview</div>
+    <div class="workspace-overview">
+      <div class="overview-item"><span class="ov-dot green"></span><span>Tasks Completed</span><strong>64%</strong></div>
+      <div class="overview-item"><span class="ov-dot blue"></span><span>In Progress</span><strong>22%</strong></div>
+      <div class="overview-item"><span class="ov-dot orange"></span><span>Pending</span><strong>14%</strong></div>
+    </div>
+    <button class="btn-outline" style="width:100%;margin-top:.5rem" onclick="navigate('reports')">📊 View Detailed Report →</button>
+  </div>
+</aside>
+
+<script src="app.js"></script>
+</body>
+</html>
