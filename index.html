@@ -16,6 +16,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>W</text></svg>" />
+<script src="auth.js"></script>
+<script>
+  (async function() {
+    const token = localStorage.getItem('witcorp-access-token');
+    if (!token) {
+      window.location.href = 'login.html';
+      return;
+    }
+    const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
+      headers: {
+        'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    if (!res.ok) {
+      localStorage.removeItem('witcorp-access-token');
+      window.location.href = 'login.html';
+    }
+  })();
+</script>
 </head>
 <body class="theme-violet">
 
@@ -137,13 +157,13 @@
         🔔 <span class="notif-dot">3</span>
       </button>
       <button class="topbar-btn icon-btn" onclick="toggleDarkMode()">🌙</button>
-      <div class="user-avatar" onclick="openProfile()">
-        <span>K</span>
-        <div class="user-info">
-          <span class="user-name">Kamlesh</span>
-          <span class="user-role">Developer</span>
-        </div>
-      </div>
+      <div class="user-avatar" onclick="openProfile()" id="userAvatarBtn">
+  <span id="userInitial">?</span>
+  <div class="user-info">
+    <span class="user-name" id="userDisplayName">Loading...</span>
+    <span class="user-role" id="userDisplayRole">Member</span>
+  </div>
+</div>
     </div>
   </header>
 
