@@ -520,9 +520,15 @@ body {
 .filter-select:focus { border-color: var(--primary); }
 
 /* ========== TABLE ========== */
-.table-wrapper { overflow-x: auto; border-radius: var(--radius); border: 1.5px solid var(--border); }
+.table-wrapper { 
+  overflow-x: auto; 
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius); 
+  border: 1.5px solid var(--border); 
+}
 .data-table {
   width: 100%;
+  min-width: 850px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -543,6 +549,7 @@ body {
   border-bottom: 1px solid var(--border);
   color: var(--text);
   vertical-align: middle;
+  white-space: nowrap;
 }
 .data-table tbody tr { background: var(--surface); transition: background .15s; }
 .data-table tbody tr:hover { background: var(--surface2); }
