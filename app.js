@@ -216,16 +216,16 @@ function updateThemePickerActive() {
    ========================================================= */
 
 const TEAM_CONTACTS = [
-  { id: 'rajesh', name: 'Rajesh Kumar', initial: 'R', online: true, last: 'Sure, I will check the GST portal' },
-  { id: 'anjali', name: 'Anjali Rao', initial: 'A', online: true, last: 'Audit report draft is ready' },
-  { id: 'sameer', name: 'Sameer Joshi', initial: 'S', online: false, last: 'Sent the AOC-4 documents' },
-  { id: 'priya', name: 'Priya Desai', initial: 'P', online: true, last: 'Thanks for the update!' },
-  { id: 'vikram', name: 'Vikram Singh', initial: 'V', online: false, last: 'Will join the call at 4 PM' }
+  { id: 'kamlesh', name: 'Kamlesh Yadav', initial: 'R', online: true, last: 'Sure, I will check the GST portal' },
+  { id: 'punit', name: 'Punit V', initial: 'A', online: true, last: 'Audit report draft is ready' },
+  { id: 'shankar', name: 'Shankar N', initial: 'S', online: false, last: 'Sent the AOC-4 documents' },
+  { id: 'ganga', name: 'Ganga Ma', initial: 'P', online: true, last: 'Thanks for the update!' },
+  { id: 'damini', name: 'Damini Agarwal', initial: 'V', online: false, last: 'Will join the call at 4 PM' }
 ];
 
 const TEAM_MESSAGES = {
   rajesh: [
-    { from: 'them', text: 'Hi Karan, the GSTR-1 for Sunrise Textiles is almost ready.', time: '10:02 AM' },
+    { from: 'them', text: 'Hi Kamlesh, the GSTR-1 for Sunrise Textiles is almost ready.', time: '10:02 AM' },
     { from: 'me', text: 'Great, please file it before tomorrow evening.', time: '10:05 AM' },
     { from: 'them', text: 'Sure, I will check the GST portal and confirm once filed.', time: '10:06 AM' }
   ],
@@ -234,8 +234,8 @@ const TEAM_MESSAGES = {
     { from: 'me', text: 'Awesome, send it over, I will review by EOD.', time: '9:42 AM' }
   ],
   sameer: [
-    { from: 'them', text: 'Karan, sent the AOC-4 documents for National Plastics.', time: 'Yesterday' },
-    { from: 'me', text: 'Got it, thanks Sameer.', time: 'Yesterday' }
+    { from: 'them', text: 'Kamlesh, sent the AOC-4 documents for National Plastics.', time: 'Yesterday' },
+    { from: 'me', text: 'Got it, thanks Shankar.', time: 'Yesterday' }
   ],
   priya: [
     { from: 'me', text: 'Please update the client master sheet with new entries.', time: 'Yesterday' },
@@ -1137,7 +1137,7 @@ function addTask(col) {
     <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
     <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
     <div class="form-group"><label>Assignee</label>
-      <select class="form-control" id="newTaskAssignee"><option>Karan</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
+      <select class="form-control" id="newTaskAssignee"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
     </div>
     <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDue" placeholder="e.g. 28 May" /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="createTask('${col}')">Add Task</button>
@@ -1151,7 +1151,7 @@ async function createTask(col) {
   const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
   const body = {
     title, tags,
-    assignee: document.getElementById('newTaskAssignee')?.value || 'Karan',
+    assignee: document.getElementById('newTaskAssignee')?.value || 'Kamlesh',
     due_date: document.getElementById('newTaskDue')?.value.trim() || 'TBD',
     column_name: col
   };
@@ -1167,7 +1167,7 @@ function openTaskDetail(id) {
     <div class="form-group"><label>Title</label><input type="text" class="form-control" id="editTaskTitle" value="${escapeHtml(task.title)}" /></div>
     <div class="form-group"><label>Assignee</label>
       <select class="form-control" id="taskAssigneeSel">
-        ${['Karan','Anjali','Sameer','Priya','Vikram'].map(a=>`<option ${task.assignee===a?'selected':''}>${a}</option>`).join('')}
+        ${['Kamlesh','Punit','Shankar','Ganga','Damini'].map(a=>`<option ${task.assignee===a?'selected':''}>${a}</option>`).join('')}
       </select>
     </div>
     <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="editTaskDue" value="${escapeHtml(task.due_date||'')}" /></div>
@@ -1574,7 +1574,7 @@ function openModal(type) {
           <select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option></select>
         </div>
         <div class="form-group"><label>Auditor</label>
-          <select class="form-control" id="auditAuditor"><option>Karan Mehta</option><option>Anjali Rao</option><option>Sameer Joshi</option></select>
+          <select class="form-control" id="auditAuditor"><option>Kamlesh Yadav</option><option>Anjali Rao</option><option>Sameer Joshi</option></select>
         </div>
         <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div>
         <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div>
@@ -1589,7 +1589,7 @@ function openModal(type) {
         <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitleModal" placeholder="Enter task title" /></div>
         <div class="form-group"><label>Tags</label><input type="text" class="form-control" id="newTaskTagsModal" placeholder="e.g. GST, High" /></div>
         <div class="form-group"><label>Assignee</label>
-          <select class="form-control" id="newTaskAssigneeModal"><option>Karan</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
+          <select class="form-control" id="newTaskAssigneeModal"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
         </div>
         <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDueModal" placeholder="e.g. 28 May" /></div>
         <div class="form-group"><label>Column</label>
@@ -1700,7 +1700,7 @@ async function submitNewTaskModal() {
   const body = {
     title,
     tags: tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [],
-    assignee: document.getElementById('newTaskAssigneeModal')?.value || 'Karan',
+    assignee: document.getElementById('newTaskAssigneeModal')?.value || 'Kamlesh',
     due_date: document.getElementById('newTaskDueModal')?.value.trim() || 'TBD',
     column_name: document.getElementById('newTaskColModal')?.value || 'todo'
   };
@@ -1761,10 +1761,10 @@ function openProfile() {
   openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
       <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">K</div>
-      <div style="font-weight:700;font-size:16px">Karan Mehta</div>
+      <div style="font-weight:700;font-size:16px">Kamlesh Yadav</div>
       <div style="color:var(--text-muted);font-size:13px">Partner — WITCORP India Advisors LLP</div>
     </div>
-    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">karan@witcorp.in</div></div>
+    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">kamlesh@witcorp.in</div></div>
     <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">+91 98200 11223</div></div>
     <div class="form-group"><label>Role</label><div class="form-control" style="background:var(--bg)">Partner</div></div>
     <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
