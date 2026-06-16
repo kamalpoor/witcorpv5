@@ -763,15 +763,21 @@
       </div>
       <div class="chat-layout">
         <div class="chat-sidebar">
-         <div class="chat-search">
-  <input type="text" id="newChatEmail" placeholder="Email for New Message..." />
-  <button class="btn-primary" style="margin-top:6px;width:100%;padding:8px;font-size:12px" onclick="startNewChat()">+ New Chat</button>
-</div>
+          <div class="chat-search">
+            <input type="text" id="newChatEmail" placeholder="Email for New Message..." />
+            <button class="btn-primary" style="margin-top:6px;width:100%;padding:8px;font-size:12px" onclick="startNewChat()">+ New Chat</button>
+          </div>
+          <div class="chat-contacts" id="chatContacts"></div>
+        </div>
+
         <div class="chat-main">
           <div class="chat-header-bar">
             <div class="chat-header-info">
-              <div class="chat-avatar-sm">R</div>
-              <div><div class="chat-contact-name" id="activeChatName">Rajesh Kumar</div><div class="chat-online">● Online</div></div>
+              <div class="chat-avatar-sm">K</div>
+              <div>
+                <div class="chat-contact-name" id="activeChatName">Select a contact</div>
+                <div class="chat-online">● Online</div>
+              </div>
             </div>
           </div>
           <div class="chat-messages" id="teamMessages"></div>
@@ -780,6 +786,7 @@
             <button class="btn-primary" onclick="sendTeamMessage()">Send</button>
           </div>
         </div>
+
       </div>
     </section>
 
