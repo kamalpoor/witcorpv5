@@ -74,23 +74,32 @@ function loginWithGoogle() {
 function handleOAuthCallback() {
   const hash = window.location.hash;
   if (!hash) return false;
+
   const params = new URLSearchParams(hash.replace('#', ''));
   const access_token = params.get('access_token');
   const refresh_token = params.get('refresh_token');
+
   if (!access_token) return false;
 
-  // Build minimal session object
-  const payload = JSON.parse(atob(access_token.split('.')[1]));
-  saveSession({
-    access_token,
-    refresh_token,
-    user: { id: payload.sub, email: payload.email }
-  });
-  // Clean URL
+  try {
+    const payload = JSON.parse(atob(access_token.split('.')[1]));
+    saveSession({
+      access_token,
+      refresh_token,
+      user: {
+        id: payload.sub,
+        email: payload.email,
+        user_metadata: payload.user_metadata || {}
+      }
+    });
+  } catch (e) {
+    console.error('Token parse error:', e);
+    return false;
+  }
+
   window.history.replaceState({}, document.title, window.location.pathname);
   return true;
 }
-
 /* ── Forgot Password ── */
 
 async function sendPasswordReset(email) {
