@@ -63,7 +63,9 @@ async function loginWithEmail(email, password) {
 /* ── Google OAuth Login ── */
 
 function loginWithGoogle() {
-  const redirectTo = encodeURIComponent(window.location.origin + '/index.html');
+  const redirectTo = encodeURIComponent(
+  'https://kamalpoor.github.io/witcorpv5/'
+);
   window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
 }
 
