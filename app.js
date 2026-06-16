@@ -275,6 +275,35 @@ function getAIResponse(query) {
 /* =========================================================
    6. INITIALIZATION
    ========================================================= */
+/* ========== MOBILE के लिए RIGHT PANEL TOGGLE ========== */
+function toggleRightPanel() {
+  const panel = document.getElementById('rightPanel');
+  if (panel) {
+    panel.classList.toggle('show-mobile');
+  }
+}
+
+function initRightPanelMobile() {
+  const btn = document.getElementById('toggleRightPanel');
+  
+  const handleResize = () => {
+    if (window.innerWidth <= 768) {
+      // Mobile है
+      if (btn) btn.style.display = 'flex';
+    } else {
+      // Desktop है
+      if (btn) btn.style.display = 'none';
+      const panel = document.getElementById('rightPanel');
+      if (panel) panel.classList.remove('show-mobile');
+    }
+  };
+  
+  handleResize();
+  window.addEventListener('resize', handleResize);
+}
+
+document.addEventListener('DOMContentLoaded', initRightPanelMobile);
+/* ========================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadUserInfo();
