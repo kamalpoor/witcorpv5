@@ -140,6 +140,7 @@ async function updatePassword(newPassword) {
 /* ── Logout ── */
 
 async function logout() {
+   if (typeof closeModal === 'function') closeModal();
   const token = localStorage.getItem('witcorp-access-token');
   if (token) {
     await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
