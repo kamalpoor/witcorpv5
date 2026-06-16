@@ -1430,43 +1430,81 @@ function renderActivity() {
 async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
+
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-  if (!myEmail) {
-    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Login required</div>';
+
+  // Supabase se saare team members fetch karo
+  const members = await supabase('team_members', { order: 'full_name.asc' });
+
+  if (!members || !members.length) {
+    el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">
+      No team members yet.<br>Add members in Supabase.
+    </div>`;
     return;
   }
-  const sent = await supabase('team_messages', { filters: 'sender_email=eq.' + myEmail, select: 'receiver_email' });
-  const received = await supabase('team_messages', { filters: 'receiver_email=eq.' + myEmail, select: 'sender_email' });
-  const emailSet = new Set();
-  (sent || []).forEach(m => emailSet.add(m.receiver_email));
-  (received || []).forEach(m => emailSet.add(m.sender_email));
-  const contacts = Array.from(emailSet).map(email => ({
-    email,
-    name: email.split('@')[0],
-    initial: email.charAt(0).toUpperCase()
-  }));
-  if (!contacts.length) {
-    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No contacts yet.<br>Enter email below and send a message.</div>';
-  } else {
-    el.innerHTML = contacts.map(c => `
-      <div class="contact-item ${c.email === STATE.activeChatContact ? 'active' : ''}" onclick="switchChatContact('${c.email}')">
-        <div class="contact-avatar">${c.initial}</div>
-        <div style="flex:1;overflow:hidden">
-          <div class="contact-name">${escapeHtml(c.name)}</div>
-          <div class="contact-last">${escapeHtml(c.email)}</div>
-        </div>
-      </div>
-    `).join('');
-  }
-}
 
-function switchChatContact(email) {
+  // Apne aap ko filter karo
+  const others = members.filter(m => m.email !== myEmail);
+
+  if (!others.length) {
+    el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">
+      No other team members found.
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = others.map(m => `
+    <div class="contact-item ${m.email === STATE.activeChatContact ? 'active' : ''}"
+         onclick="switchChatContact('${m.email}', '${m.full_name || m.email.split('@')[0]}')">
+      <div class="contact-avatar" style="background:linear-gradient(135deg,var(--primary),#4f46e5)">
+        ${m.avatar_initial || m.full_name?.charAt(0).toUpperCase() || '?'}
+      </div>
+      <div style="flex:1;overflow:hidden">
+        <div class="contact-name">${escapeHtml(m.full_name || m.email.split('@')[0])}</div>
+        <div class="contact-last" style="font-size:11px;opacity:.65">${escapeHtml(m.role || 'Member')}</div>
+      </div>
+      <div style="width:8px;height:8px;border-radius:50%;background:${m.is_online ? '#22c55e' : '#94a3b8'};flex-shrink:0"></div>
+    </div>
+  `).join('');
+}
+function switchChatContact(email, name) {
   STATE.activeChatContact = email;
   const nameEl = document.getElementById('activeChatName');
-  if (nameEl) nameEl.textContent = email.split('@')[0];
+  // Name show karo, email nahi
+  if (nameEl) nameEl.textContent = name || email.split('@')[0];
   renderTeamContacts();
   renderTeamMessages();
+}
+async function addTeamMember() {
+  const emailEl = document.getElementById('newChatEmail');
+  const email = emailEl?.value.trim().toLowerCase();
+  if (!email || !email.includes('@')) { showToast('Valid email daalo'); return; }
+
+  // Pehle check karo exist karta hai kya
+  const existing = await supabase('team_members', { filters: 'email=eq.' + email });
+  if (existing && existing.length) {
+    switchChatContact(existing[0].email, existing[0].full_name);
+    if (emailEl) emailEl.value = '';
+    return;
+  }
+
+  // Naya member add karo
+  const result = await supabaseInsert('team_members', {
+    email,
+    full_name: email.split('@')[0],
+    role: 'Member',
+    avatar_initial: email.charAt(0).toUpperCase()
+  });
+
+  if (result && result[0]) {
+    if (emailEl) emailEl.value = '';
+    await renderTeamContacts();
+    switchChatContact(email, result[0].full_name);
+    showToast('Team member added: ' + email);
+  } else {
+    showToast('Failed to add member');
+  }
 }
 
 async function renderTeamMessages() {
