@@ -13,7 +13,7 @@
   --primary-dark: #4f46e5;
   --primary-light: #a5b4fc;
   --primary-glow: rgba(99,102,241,0.25);
-  --bg: #0a0a1a;
+  --bg: #0d0d2b;
   --surface: rgba(255,255,255,0.05);
   --surface2: rgba(255,255,255,0.08);
   --surface-solid: #12122a;
@@ -47,7 +47,7 @@
 .theme-violet {
   --primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#a5b4fc;
   --primary-glow:rgba(99,102,241,.25);
-  --bg: #0a0a1a;
+  --bg: #0d0d2b;
   --mesh1: #6366f1; --mesh2: #8b5cf6; --mesh3: #ec4899;
 }
 .theme-blue {
@@ -140,7 +140,7 @@ body::before {
     radial-gradient(ellipse 60% 50% at 80% 10%, var(--mesh2, #8b5cf6) 0%, transparent 45%),
     radial-gradient(ellipse 70% 60% at 50% 90%, var(--mesh3, #ec4899) 0%, transparent 50%),
     radial-gradient(ellipse 50% 40% at 90% 70%, var(--mesh1, #6366f1) 0%, transparent 40%);
-  opacity: 0.12;
+  opacity: 0.20;
   pointer-events: none;
   z-index: 0;
   animation: meshMove 20s ease-in-out infinite alternate;
@@ -570,7 +570,7 @@ body::after {
 .btn-primary:active { transform: translateY(0); }
 
 .btn-outline {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.08);
   color: var(--primary-light);
   border: 1.5px solid rgba(99,102,241,0.4);
   border-radius: 12px;
@@ -784,8 +784,8 @@ body::after {
   flex-shrink: 0;
   box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
 }
-.module-name { font-weight: 700; font-size: 13.5px; color: var(--text); }
-.module-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+.module-name { font-weight: 700; font-size: 13.5px; color: #ffffff; }
+.module-desc { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 3px; }
 .module-arrow { color: var(--text-muted); font-size: 20px; margin-left: auto; transition: transform 0.2s; }
 .module-card:hover .module-arrow { transform: translateX(4px); color: var(--primary-light); }
 
