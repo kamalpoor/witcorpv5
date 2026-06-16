@@ -1434,58 +1434,43 @@ async function renderTeamContacts() {
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
 
-  // Supabase Auth se saare users fetch karo
-  const token = localStorage.getItem('witcorp-access-token');
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + token
-    }
-  });
+  // profiles table se fetch karo (admin endpoint nahi)
+  const profiles = await supabase('profiles', { order: 'full_name.asc' });
+  const others = (profiles || []).filter(p => p.email !== myEmail);
 
-  if (!res.ok) {
+  if (!others.length) {
     el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">
-      Could not load team members.
+      No team members yet.
     </div>`;
     return;
   }
 
-  const data = await res.json();
-  const users = (data.users || []).filter(u => u.email !== myEmail);
-
-  if (!users.length) {
-    el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">
-      No other team members found.
-    </div>`;
-    return;
-  }
-
-  el.innerHTML = users.map(u => {
-    const name = (u.user_metadata?.full_name) || u.email.split('@')[0];
-    const initial = name.charAt(0).toUpperCase();
-    const isActive = u.email === STATE.activeChatContact;
+  el.innerHTML = others.map(p => {
+    const name = p.full_name || p.email.split('@')[0];
+    const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
+    const isActive = p.email === STATE.activeChatContact;
     return `
       <div class="contact-item ${isActive ? 'active' : ''}"
-           onclick="switchChatContact('${u.email}', '${escapeHtml(name)}')">
-        <div class="contact-avatar"
-             style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#4f46e5);
+           onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
+        <div style="width:38px;height:38px;border-radius:50%;
+                    background:linear-gradient(135deg,var(--primary),#4f46e5);
                     display:flex;align-items:center;justify-content:center;
                     color:#fff;font-weight:700;font-size:15px;flex-shrink:0">
           ${initial}
         </div>
-        <div style="flex:1;overflow:hidden">
-          <div class="contact-name" style="font-weight:600;font-size:13.5px">${escapeHtml(name)}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(u.email)}</div>
+        <div style="flex:1;overflow:hidden;margin-left:10px">
+          <div style="font-weight:600;font-size:13.5px">${escapeHtml(name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(p.email)}</div>
         </div>
       </div>
     `;
   }).join('');
 }
+
 function switchChatContact(email, name) {
   STATE.activeChatContact = email;
   const nameEl = document.getElementById('activeChatName');
   if (nameEl) nameEl.textContent = name || email.split('@')[0];
-  // Avatar bhi update karo header mein
   const avatarEl = document.querySelector('.chat-avatar-sm');
   if (avatarEl) avatarEl.textContent = name ? name.charAt(0).toUpperCase() : '?';
   renderTeamContacts();
