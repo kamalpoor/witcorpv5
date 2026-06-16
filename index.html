@@ -16,41 +16,107 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>W</text></svg>" />
-<script src="auth.js"></script>
-<script>
-  (async function() {
 
-    // STEP 1: Pehle dekho kya Google ne token bheja hash mein
-    if (handleOAuthCallback()) {
-      window.location.replace('index.html');
-      return;
-    }
-
-    // STEP 2: Agar token nahi toh login pe bhejo
-    const token = localStorage.getItem('witcorp-access-token');
-    if (!token) {
-      window.location.href = 'login.html';
-      return;
-    }
-
-    // STEP 3: Token valid hai ya nahi check karo
-    const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-      headers: {
-        'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
-        'Authorization': 'Bearer ' + token
+  <!-- ===== AUTH GUARD ===== -->
+  <script src="auth.js"></script>
+  <script>
+    (async function () {
+      // STEP 1: Google OAuth hash mein token?
+      if (handleOAuthCallback()) {
+        window.location.replace('index.html');
+        return;
       }
-    });
-    if (!res.ok) {
-      localStorage.removeItem('witcorp-access-token');
-      window.location.href = 'login.html';
+      // STEP 2: Token hai?
+      const token = localStorage.getItem('witcorp-access-token');
+      if (!token) {
+        window.location.href = 'login.html';
+        return;
+      }
+      // STEP 3: Token valid?
+      const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
+        headers: {
+          'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      if (!res.ok) {
+        localStorage.removeItem('witcorp-access-token');
+        window.location.href = 'login.html';
+      }
+    })();
+  </script>
+
+  <!-- ===== INLINE FIXES: toggleDarkMode + setTheme (missing from app.js) ===== -->
+  <script>
+    /* ---------- Dark Mode Toggle ---------- */
+    function toggleDarkMode() {
+      const isDark = document.body.classList.toggle('force-dark');
+      localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
+      const btn = document.querySelector('[onclick="toggleDarkMode()"]');
+      if (btn) btn.textContent = isDark ? '☀️' : '🌙';
     }
 
-  })();
-</script>
+    /* ---------- Sidebar Theme Swatches ---------- */
+    function setTheme(themeName) {
+      // Remove all theme classes from body
+      const themes = [
+        'theme-violet','theme-blue','theme-emerald','theme-rose',
+        'theme-amber','theme-cyan','theme-dark','theme-midnight',
+        'theme-forest','theme-sunset','theme-sakura','theme-gold'
+      ];
+      themes.forEach(t => document.body.classList.remove(t));
+      document.body.classList.add(themeName);
+      localStorage.setItem('witcorp-body-theme', themeName);
+      // Active swatch highlight
+      document.querySelectorAll('.swatch').forEach(s => {
+        s.classList.toggle('active', s.dataset.theme === themeName);
+      });
+    }
+
+    /* ---------- Restore dark mode + theme on load ---------- */
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedDark = localStorage.getItem('witcorp-dark-mode');
+      if (savedDark === '1') {
+        document.body.classList.add('force-dark');
+        const btn = document.querySelector('[onclick="toggleDarkMode()"]');
+        if (btn) btn.textContent = '☀️';
+      }
+      const savedTheme = localStorage.getItem('witcorp-body-theme');
+      if (savedTheme) setTheme(savedTheme);
+    });
+
+    /* ---------- filterClientType (missing from app.js) ---------- */
+    function filterClientType(value) {
+      if (typeof STATE !== 'undefined') {
+        STATE.filters.clients.type = value;
+        STATE.pagination.clients.page = 1;
+        if (typeof renderClientTable === 'function') renderClientTable();
+      }
+    }
+
+    /* ---------- loadUserInfo extended (role support) ---------- */
+    function loadUserInfoExtended() {
+      const userRaw = localStorage.getItem('witcorp-user');
+      if (!userRaw) return;
+      const user = JSON.parse(userRaw);
+      const meta = user.user_metadata || {};
+      const name = meta.full_name || (user.email ? user.email.split('@')[0] : 'User');
+      const role = meta.role || 'Member';
+      const initial = name.charAt(0).toUpperCase();
+      const initEl = document.getElementById('userInitial');
+      const nameEl = document.getElementById('userDisplayName');
+      const roleEl = document.getElementById('userDisplayRole');
+      if (initEl) initEl.textContent = initial;
+      if (nameEl) nameEl.textContent = name;
+      if (roleEl) roleEl.textContent = role;
+    }
+    document.addEventListener('DOMContentLoaded', loadUserInfoExtended);
+  </script>
 </head>
+
 <body class="theme-violet">
 
-<!-- ========== MOBILE OVERLAY ========== -->
+<!-- ========== MOBILE SIDEBAR OVERLAY ========== -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
 <!-- ========== SIDEBAR ========== -->
@@ -66,92 +132,80 @@
   <nav class="sidebar-nav">
     <div class="nav-section-label">Main</div>
     <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
-      <span class="nav-icon">🏠</span>
-      <span class="nav-label">Dashboard</span>
+      <span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span>
     </a>
     <a class="nav-item" data-page="clients" onclick="navigate('clients')">
-      <span class="nav-icon">👥</span>
-      <span class="nav-label">Client Management</span>
+      <span class="nav-icon">👥</span><span class="nav-label">Client Management</span>
     </a>
     <a class="nav-item" data-page="gst" onclick="navigate('gst')">
-      <span class="nav-icon">📊</span>
-      <span class="nav-label">GST Dashboard</span>
+      <span class="nav-icon">📊</span><span class="nav-label">GST Dashboard</span>
     </a>
     <a class="nav-item" data-page="roc" onclick="navigate('roc')">
-      <span class="nav-icon">🏛️</span>
-      <span class="nav-label">ROC Filings</span>
+      <span class="nav-icon">🏛️</span><span class="nav-label">ROC Filings</span>
     </a>
-    <div class="nav-section-label">Tax & Compliance</div>
+
+    <div class="nav-section-label">Tax &amp; Compliance</div>
     <a class="nav-item" data-page="incometax" onclick="navigate('incometax')">
-      <span class="nav-icon">💰</span>
-      <span class="nav-label">Income Tax</span>
+      <span class="nav-icon">💰</span><span class="nav-label">Income Tax</span>
     </a>
     <a class="nav-item" data-page="tds" onclick="navigate('tds')">
-      <span class="nav-icon">🧾</span>
-      <span class="nav-label">TDS Returns</span>
+      <span class="nav-icon">🧾</span><span class="nav-label">TDS Returns</span>
     </a>
     <a class="nav-item" data-page="audit" onclick="navigate('audit')">
-      <span class="nav-icon">🛡️</span>
-      <span class="nav-label">Audit & Assurance</span>
+      <span class="nav-icon">🛡️</span><span class="nav-label">Audit &amp; Assurance</span>
     </a>
+
     <div class="nav-section-label">Tools</div>
     <a class="nav-item" data-page="dsc" onclick="navigate('dsc')">
-      <span class="nav-icon">✍️</span>
-      <span class="nav-label">DSC & eSign</span>
+      <span class="nav-icon">✍️</span><span class="nav-label">DSC &amp; eSign</span>
     </a>
     <a class="nav-item" data-page="accounting" onclick="navigate('accounting')">
-      <span class="nav-icon">🧮</span>
-      <span class="nav-label">Accounting Hub</span>
+      <span class="nav-icon">🧮</span><span class="nav-label">Accounting Hub</span>
     </a>
     <a class="nav-item" data-page="tasks" onclick="navigate('tasks')">
-      <span class="nav-icon">✅</span>
-      <span class="nav-label">Task Manager</span>
+      <span class="nav-icon">✅</span><span class="nav-label">Task Manager</span>
     </a>
     <a class="nav-item" data-page="reports" onclick="navigate('reports')">
-      <span class="nav-icon">📈</span>
-      <span class="nav-label">Reports & Insights</span>
+      <span class="nav-icon">📈</span><span class="nav-label">Reports &amp; Insights</span>
     </a>
     <a class="nav-item" data-page="ai" onclick="navigate('ai')">
-      <span class="nav-icon">🤖</span>
-      <span class="nav-label">AI Assistant</span>
+      <span class="nav-icon">🤖</span><span class="nav-label">AI Assistant</span>
       <span class="nav-badge">New</span>
     </a>
+
     <div class="nav-section-label">Other</div>
     <a class="nav-item" data-page="documents" onclick="navigate('documents')">
-      <span class="nav-icon">📁</span>
-      <span class="nav-label">Documents</span>
+      <span class="nav-icon">📁</span><span class="nav-label">Documents</span>
     </a>
     <a class="nav-item" data-page="calendar" onclick="navigate('calendar')">
-      <span class="nav-icon">📅</span>
-      <span class="nav-label">Calendar</span>
+      <span class="nav-icon">📅</span><span class="nav-label">Calendar</span>
     </a>
     <a class="nav-item" data-page="teamchat" onclick="navigate('teamchat')">
-      <span class="nav-icon">💬</span>
-      <span class="nav-label">Team Chat</span>
+      <span class="nav-icon">💬</span><span class="nav-label">Team Chat</span>
     </a>
   </nav>
 
-  <!-- Theme Picker -->
+  <!-- Theme Swatches -->
   <div class="theme-section">
     <div class="theme-label">Theme</div>
     <div class="theme-swatches">
-      <button class="swatch active" data-theme="theme-violet" style="background:#6366f1" onclick="setTheme('theme-violet')" title="Violet"></button>
-      <button class="swatch" data-theme="theme-blue" style="background:#3b82f6" onclick="setTheme('theme-blue')" title="Blue"></button>
-      <button class="swatch" data-theme="theme-emerald" style="background:#10b981" onclick="setTheme('theme-emerald')" title="Emerald"></button>
-      <button class="swatch" data-theme="theme-rose" style="background:#f43f5e" onclick="setTheme('theme-rose')" title="Rose"></button>
-      <button class="swatch" data-theme="theme-amber" style="background:#f59e0b" onclick="setTheme('theme-amber')" title="Amber"></button>
-      <button class="swatch" data-theme="theme-cyan" style="background:#06b6d4" onclick="setTheme('theme-cyan')" title="Cyan"></button>
-      <button class="swatch" data-theme="theme-dark" style="background:#1e293b" onclick="setTheme('theme-dark')" title="Dark"></button>
-      <button class="swatch" data-theme="theme-midnight" style="background:#0f172a" onclick="setTheme('theme-midnight')" title="Midnight"></button>
-      <button class="swatch" data-theme="theme-forest" style="background:#166534" onclick="setTheme('theme-forest')" title="Forest"></button>
-      <button class="swatch" data-theme="theme-sunset" style="background:#ea580c" onclick="setTheme('theme-sunset')" title="Sunset"></button>
-      <button class="swatch" data-theme="theme-sakura" style="background:#ec4899" onclick="setTheme('theme-sakura')" title="Sakura"></button>
-      <button class="swatch" data-theme="theme-gold" style="background:#ca8a04" onclick="setTheme('theme-gold')" title="Gold"></button>
+      <button class="swatch active" data-theme="theme-violet"   style="background:#6366f1" onclick="setTheme('theme-violet')"   title="Violet"></button>
+      <button class="swatch"        data-theme="theme-blue"     style="background:#3b82f6" onclick="setTheme('theme-blue')"     title="Blue"></button>
+      <button class="swatch"        data-theme="theme-emerald"  style="background:#10b981" onclick="setTheme('theme-emerald')"  title="Emerald"></button>
+      <button class="swatch"        data-theme="theme-rose"     style="background:#f43f5e" onclick="setTheme('theme-rose')"     title="Rose"></button>
+      <button class="swatch"        data-theme="theme-amber"    style="background:#f59e0b" onclick="setTheme('theme-amber')"    title="Amber"></button>
+      <button class="swatch"        data-theme="theme-cyan"     style="background:#06b6d4" onclick="setTheme('theme-cyan')"     title="Cyan"></button>
+      <button class="swatch"        data-theme="theme-dark"     style="background:#1e293b" onclick="setTheme('theme-dark')"     title="Dark"></button>
+      <button class="swatch"        data-theme="theme-midnight" style="background:#0f172a" onclick="setTheme('theme-midnight')" title="Midnight"></button>
+      <button class="swatch"        data-theme="theme-forest"   style="background:#166534" onclick="setTheme('theme-forest')"   title="Forest"></button>
+      <button class="swatch"        data-theme="theme-sunset"   style="background:#ea580c" onclick="setTheme('theme-sunset')"   title="Sunset"></button>
+      <button class="swatch"        data-theme="theme-sakura"   style="background:#ec4899" onclick="setTheme('theme-sakura')"   title="Sakura"></button>
+      <button class="swatch"        data-theme="theme-gold"     style="background:#ca8a04" onclick="setTheme('theme-gold')"     title="Gold"></button>
     </div>
   </div>
 </aside>
 
-<!-- ========== MAIN CONTENT ========== -->
+<!-- ========== MAIN WRAPPER ========== -->
 <div class="main-wrapper">
 
   <!-- TOP BAR -->
@@ -167,21 +221,21 @@
       <button class="topbar-btn icon-btn" onclick="openNotifications()">
         🔔 <span class="notif-dot">3</span>
       </button>
-      <button class="topbar-btn icon-btn" onclick="toggleDarkMode()">🌙</button>
-      <div class="user-avatar" onclick="openProfile()" id="userAvatarBtn">
-  <span id="userInitial">?</span>
-  <div class="user-info">
-    <span class="user-name" id="userDisplayName">Loading...</span>
-    <span class="user-role" id="userDisplayRole">Member</span>
-  </div>
-</div>
+      <button class="topbar-btn icon-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
+      <div class="user-avatar" onclick="openProfile()" id="userAvatarBtn" style="cursor:pointer;display:flex;align-items:center;gap:8px">
+        <span id="userInitial" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary,#6366f1),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">?</span>
+        <div class="user-info" style="line-height:1.2">
+          <span class="user-name" id="userDisplayName" style="display:block;font-size:13px;font-weight:600">Loading...</span>
+          <span class="user-role" id="userDisplayRole" style="display:block;font-size:11px;opacity:.65">Member</span>
+        </div>
+      </div>
     </div>
   </header>
 
   <!-- PAGE CONTENT -->
   <main class="page-content" id="pageContent">
 
-    <!-- ===== DASHBOARD PAGE ===== -->
+    <!-- ===== DASHBOARD ===== -->
     <section class="page active" id="page-dashboard">
       <div class="page-header">
         <div>
@@ -194,131 +248,99 @@
         </div>
       </div>
 
-      <!-- Stats Row -->
       <div class="stats-grid">
         <div class="stat-card" onclick="navigate('clients')">
           <div class="stat-icon purple">👥</div>
           <div class="stat-info">
-            <div class="stat-number">248</div>
+            <div class="stat-number">0</div>
             <div class="stat-label">Total Clients</div>
-            <div class="stat-trend up">↑ 12% this month</div>
+            <div class="stat-trend up">↑ Active clients</div>
           </div>
         </div>
         <div class="stat-card" onclick="navigate('gst')">
           <div class="stat-icon green">📊</div>
           <div class="stat-info">
-            <div class="stat-number">128</div>
+            <div class="stat-number">0</div>
             <div class="stat-label">GST Returns Filed</div>
-            <div class="stat-trend up">↑ 18% this month</div>
+            <div class="stat-trend up">This month</div>
           </div>
         </div>
         <div class="stat-card" onclick="navigate('tasks')">
           <div class="stat-icon orange">✅</div>
           <div class="stat-info">
-            <div class="stat-number">32</div>
+            <div class="stat-number">0</div>
             <div class="stat-label">Pending Tasks</div>
-            <div class="stat-trend down">↓ 8% vs last month</div>
+            <div class="stat-trend down">Open tasks</div>
           </div>
         </div>
         <div class="stat-card" onclick="navigate('calendar')">
           <div class="stat-icon red">⏰</div>
           <div class="stat-info">
-            <div class="stat-number">19</div>
+            <div class="stat-number">0</div>
             <div class="stat-label">Upcoming Due</div>
             <div class="stat-trend neutral">Due in next 7 days</div>
           </div>
         </div>
-        <div class="stat-card" onclick="navigate('gst')">
+        <div class="stat-card" onclick="navigate('calendar')">
           <div class="stat-icon blue">📋</div>
           <div class="stat-info">
-            <div class="stat-number">07</div>
+            <div class="stat-number">00</div>
             <div class="stat-label">Today's Filings</div>
             <div class="stat-trend neutral">Due today</div>
           </div>
         </div>
       </div>
 
-      <!-- Modules Grid -->
       <div class="section-title">All Modules</div>
       <div class="modules-grid">
         <div class="module-card" onclick="navigate('clients')">
           <div class="module-icon" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">👥</div>
-          <div class="module-info">
-            <div class="module-name">Client Management</div>
-            <div class="module-desc">Manage all your clients & contacts</div>
-          </div>
+          <div class="module-info"><div class="module-name">Client Management</div><div class="module-desc">Manage all your clients &amp; contacts</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('gst')">
           <div class="module-icon" style="background:linear-gradient(135deg,#34d399,#059669)">📊</div>
-          <div class="module-info">
-            <div class="module-name">GST Dashboard</div>
-            <div class="module-desc">Track & file GST returns</div>
-          </div>
+          <div class="module-info"><div class="module-name">GST Dashboard</div><div class="module-desc">Track &amp; file GST returns</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('roc')">
           <div class="module-icon" style="background:linear-gradient(135deg,#60a5fa,#2563eb)">🏛️</div>
-          <div class="module-info">
-            <div class="module-name">ROC Filings</div>
-            <div class="module-desc">Company filings & compliance</div>
-          </div>
+          <div class="module-info"><div class="module-name">ROC Filings</div><div class="module-desc">Company filings &amp; compliance</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('incometax')">
           <div class="module-icon" style="background:linear-gradient(135deg,#fbbf24,#d97706)">💰</div>
-          <div class="module-info">
-            <div class="module-name">Income Tax</div>
-            <div class="module-desc">ITR & Tax Management</div>
-          </div>
+          <div class="module-info"><div class="module-name">Income Tax</div><div class="module-desc">ITR &amp; Tax Management</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('tds')">
           <div class="module-icon" style="background:linear-gradient(135deg,#c084fc,#9333ea)">🧾</div>
-          <div class="module-info">
-            <div class="module-name">TDS Returns</div>
-            <div class="module-desc">Manage TDS filings</div>
-          </div>
+          <div class="module-info"><div class="module-name">TDS Returns</div><div class="module-desc">Manage TDS filings</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('audit')">
           <div class="module-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">🛡️</div>
-          <div class="module-info">
-            <div class="module-name">Audit & Assurance</div>
-            <div class="module-desc">Plan & manage audits</div>
-          </div>
+          <div class="module-info"><div class="module-name">Audit &amp; Assurance</div><div class="module-desc">Plan &amp; manage audits</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('dsc')">
           <div class="module-icon" style="background:linear-gradient(135deg,#4ade80,#16a34a)">✍️</div>
-          <div class="module-info">
-            <div class="module-name">DSC & eSign</div>
-            <div class="module-desc">Digital signature services</div>
-          </div>
+          <div class="module-info"><div class="module-name">DSC &amp; eSign</div><div class="module-desc">Digital signature services</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('accounting')">
           <div class="module-icon" style="background:linear-gradient(135deg,#f472b6,#db2777)">🧮</div>
-          <div class="module-info">
-            <div class="module-name">Accounting Hub</div>
-            <div class="module-desc">Accounting & bookkeeping</div>
-          </div>
+          <div class="module-info"><div class="module-name">Accounting Hub</div><div class="module-desc">Accounting &amp; bookkeeping</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('tasks')">
           <div class="module-icon" style="background:linear-gradient(135deg,#fde68a,#f59e0b)">✅</div>
-          <div class="module-info">
-            <div class="module-name">Task Manager</div>
-            <div class="module-desc">Tasks & team collaboration</div>
-          </div>
+          <div class="module-info"><div class="module-name">Task Manager</div><div class="module-desc">Tasks &amp; team collaboration</div></div>
           <span class="module-arrow">›</span>
         </div>
         <div class="module-card" onclick="navigate('reports')">
           <div class="module-icon" style="background:linear-gradient(135deg,#f87171,#dc2626)">📈</div>
-          <div class="module-info">
-            <div class="module-name">Reports & Insights</div>
-            <div class="module-desc">Analytics & reports</div>
-          </div>
+          <div class="module-info"><div class="module-name">Reports &amp; Insights</div><div class="module-desc">Analytics &amp; reports</div></div>
           <span class="module-arrow">›</span>
         </div>
       </div>
@@ -329,9 +351,7 @@
         <div class="ai-text">
           <div class="ai-title">Ask Witcorp AI <span class="ai-tag">Powered by AI</span></div>
           <div class="ai-desc">Search anything, ask questions or get insights about your clients, filings, tasks...</div>
-          <div class="ai-input-fake">
-            <span>Ask anything... (e.g. Show me pending GST returns)</span>
-          </div>
+          <div class="ai-input-fake"><span>Ask anything... (e.g. Show me pending GST returns)</span></div>
           <div class="ai-chips">
             <span onclick="event.stopPropagation();aiChip('Show pending tasks')">Show pending tasks</span>
             <span onclick="event.stopPropagation();aiChip('GST due this week')">GST due this week</span>
@@ -342,13 +362,10 @@
       </div>
     </section>
 
-    <!-- ===== CLIENT MANAGEMENT PAGE ===== -->
+    <!-- ===== CLIENT MANAGEMENT ===== -->
     <section class="page" id="page-clients">
       <div class="page-header">
-        <div>
-          <h1>👥 Client Management</h1>
-          <p>Manage all your clients & contacts</p>
-        </div>
+        <div><h1>👥 Client Management</h1><p>Manage all your clients &amp; contacts</p></div>
         <button class="btn-primary" onclick="openModal('addClient')">+ Add Client</button>
       </div>
       <div class="filter-bar">
@@ -359,8 +376,8 @@
           <option>Inactive</option>
           <option>Pending</option>
         </select>
-        <select class="filter-select">
-          <option>All Types</option>
+        <select class="filter-select" onchange="filterClientType(this.value)">
+          <option value="">All Types</option>
           <option>Individual</option>
           <option>Company</option>
           <option>LLP</option>
@@ -371,14 +388,8 @@
         <table class="data-table" id="clientTable">
           <thead>
             <tr>
-              <th>Client Name</th>
-              <th>PAN/TAN</th>
-              <th>Type</th>
-              <th>GST No.</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>Client Name</th><th>PAN/TAN</th><th>Type</th><th>GST No.</th>
+              <th>Email</th><th>Phone</th><th>Status</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="clientTableBody"></tbody>
@@ -386,25 +397,22 @@
       </div>
       <div class="pagination">
         <button class="page-btn" onclick="prevPage('clients')">‹ Prev</button>
-        <span class="page-info" id="clientPageInfo">Page 1 of 5</span>
+        <span class="page-info" id="clientPageInfo">Page 1 of 1</span>
         <button class="page-btn" onclick="nextPage('clients')">Next ›</button>
       </div>
     </section>
 
-    <!-- ===== GST DASHBOARD PAGE ===== -->
+    <!-- ===== GST DASHBOARD ===== -->
     <section class="page" id="page-gst">
       <div class="page-header">
-        <div>
-          <h1>📊 GST Dashboard</h1>
-          <p>Track & file GST returns</p>
-        </div>
+        <div><h1>📊 GST Dashboard</h1><p>Track &amp; file GST returns</p></div>
         <button class="btn-primary" onclick="openModal('gstReturn')">+ File Return</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">128</div><div class="stat-label">Filed This Month</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">22</div><div class="stat-label">Pending</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">❗</div><div class="stat-info"><div class="stat-number">5</div><div class="stat-label">Overdue</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">₹ 4.2L</div><div class="stat-label">Tax Collected</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Filed This Month</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">❗</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Overdue</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Tax Collected</div></div></div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -421,15 +429,21 @@
         <div class="form-grid">
           <div class="form-group">
             <label>Client Name</label>
-            <select class="form-control"><option>Select Client</option><option>ABC Pvt. Ltd.</option><option>XYZ Traders</option><option>Raj Enterprises</option></select>
+            <select class="form-control" id="gstClientSel">
+              <option value="">Select Client</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Return Type</label>
-            <select class="form-control"><option>GSTR-1</option><option>GSTR-3B</option><option>GSTR-9</option><option>GSTR-2A</option></select>
+            <select class="form-control">
+              <option>GSTR-1</option><option>GSTR-3B</option><option>GSTR-9</option><option>GSTR-2A</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Period</label>
-            <select class="form-control"><option>May 2025</option><option>April 2025</option><option>March 2025</option></select>
+            <select class="form-control">
+              <option>May 2025</option><option>April 2025</option><option>March 2025</option>
+            </select>
           </div>
           <div class="form-group">
             <label>GSTIN</label>
@@ -448,17 +462,17 @@
       </div>
     </section>
 
-    <!-- ===== ROC FILINGS PAGE ===== -->
+    <!-- ===== ROC FILINGS ===== -->
     <section class="page" id="page-roc">
       <div class="page-header">
-        <div><h1>🏛️ ROC Filings</h1><p>Company filings & compliance</p></div>
+        <div><h1>🏛️ ROC Filings</h1><p>Company filings &amp; compliance</p></div>
         <button class="btn-primary" onclick="openModal('rocFiling')">+ New Filing</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon blue">📄</div><div class="stat-info"><div class="stat-number">47</div><div class="stat-label">Filed This Year</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">8</div><div class="stat-label">In Progress</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><div class="stat-number">3</div><div class="stat-label">Overdue</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">🏢</div><div class="stat-info"><div class="stat-number">62</div><div class="stat-label">Total Companies</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📄</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Filed This Year</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">In Progress</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Overdue</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">🏢</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Companies</div></div></div>
       </div>
       <div class="card">
         <div class="card-title">ROC Filing Tracker</div>
@@ -471,28 +485,28 @@
       </div>
     </section>
 
-    <!-- ===== INCOME TAX PAGE ===== -->
+    <!-- ===== INCOME TAX ===== -->
     <section class="page" id="page-incometax">
       <div class="page-header">
-        <div><h1>💰 Income Tax</h1><p>ITR & Tax Management</p></div>
+        <div><h1>💰 Income Tax</h1><p>ITR &amp; Tax Management</p></div>
         <button class="btn-primary" onclick="openModal('itrFiling')">+ File ITR</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">📑</div><div class="stat-info"><div class="stat-number">89</div><div class="stat-label">ITRs Filed</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">34</div><div class="stat-label">Pending</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">💵</div><div class="stat-info"><div class="stat-number">₹ 12.4L</div><div class="stat-label">Refund Claimed</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">📊</div><div class="stat-info"><div class="stat-number">₹ 8.7L</div><div class="stat-label">Tax Paid</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">📑</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">ITRs Filed</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">💵</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Refund Claimed</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">📊</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Tax Paid</div></div></div>
       </div>
       <div class="two-col">
         <div class="card">
           <div class="card-title">File New ITR</div>
-          <div class="form-group"><label>Client Name</label><select class="form-control"><option>Select Client</option><option>Rahul Sharma</option><option>Priya Patel</option><option>ABC Corp</option></select></div>
+          <div class="form-group"><label>Client Name</label><select class="form-control"><option value="">Select Client</option></select></div>
           <div class="form-group"><label>Assessment Year</label><select class="form-control"><option>2025-26</option><option>2024-25</option><option>2023-24</option></select></div>
           <div class="form-group"><label>ITR Form</label><select class="form-control"><option>ITR-1 (Sahaj)</option><option>ITR-2</option><option>ITR-3</option><option>ITR-4 (Sugam)</option></select></div>
           <div class="form-group"><label>Gross Income (₹)</label><input type="number" class="form-control" placeholder="Enter gross income" /></div>
           <div class="form-group"><label>Tax Deducted (₹)</label><input type="number" class="form-control" placeholder="Enter TDS amount" /></div>
           <div class="form-group"><label>Deductions (80C, 80D etc.)</label><input type="number" class="form-control" placeholder="Total deductions" /></div>
-          <button class="btn-primary" onclick="submitITR()">Calculate & File ITR</button>
+          <button class="btn-primary" onclick="submitITR()">Calculate &amp; File ITR</button>
         </div>
         <div class="card">
           <div class="card-title">Recent ITR Filings</div>
@@ -501,17 +515,17 @@
       </div>
     </section>
 
-    <!-- ===== TDS RETURNS PAGE ===== -->
+    <!-- ===== TDS RETURNS ===== -->
     <section class="page" id="page-tds">
       <div class="page-header">
         <div><h1>🧾 TDS Returns</h1><p>Manage TDS filings</p></div>
         <button class="btn-primary" onclick="openModal('tdsReturn')">+ File TDS</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">56</div><div class="stat-label">Returns Filed</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">12</div><div class="stat-label">Pending</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">💰</div><div class="stat-info"><div class="stat-number">₹ 6.8L</div><div class="stat-label">TDS Collected</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">📋</div><div class="stat-info"><div class="stat-number">24</div><div class="stat-label">Challans Paid</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Returns Filed</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">💰</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">TDS Collected</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">📋</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Challans Paid</div></div></div>
       </div>
       <div class="card">
         <div class="card-title">TDS Filing Form</div>
@@ -536,17 +550,17 @@
       </div>
     </section>
 
-    <!-- ===== AUDIT & ASSURANCE PAGE ===== -->
+    <!-- ===== AUDIT & ASSURANCE ===== -->
     <section class="page" id="page-audit">
       <div class="page-header">
-        <div><h1>🛡️ Audit & Assurance</h1><p>Plan & manage audits</p></div>
+        <div><h1>🛡️ Audit &amp; Assurance</h1><p>Plan &amp; manage audits</p></div>
         <button class="btn-primary" onclick="openModal('newAudit')">+ New Audit</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">18</div><div class="stat-label">Active Audits</div></div></div>
-        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">34</div><div class="stat-label">Completed</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">🔄</div><div class="stat-info"><div class="stat-number">6</div><div class="stat-label">In Review</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">📅</div><div class="stat-info"><div class="stat-number">4</div><div class="stat-label">Due This Month</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Active Audits</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Completed</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">🔄</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">In Review</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">📅</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Due This Month</div></div></div>
       </div>
       <div class="card">
         <div class="card-title">Audit Tracker</div>
@@ -559,17 +573,17 @@
       </div>
     </section>
 
-    <!-- ===== DSC & ESIGN PAGE ===== -->
+    <!-- ===== DSC & ESIGN ===== -->
     <section class="page" id="page-dsc">
       <div class="page-header">
-        <div><h1>✍️ DSC & eSign</h1><p>Digital signature services</p></div>
+        <div><h1>✍️ DSC &amp; eSign</h1><p>Digital signature services</p></div>
         <button class="btn-primary" onclick="openModal('newDSC')">+ New DSC</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">🔐</div><div class="stat-info"><div class="stat-number">156</div><div class="stat-label">Active DSCs</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><div class="stat-number">12</div><div class="stat-label">Expiring Soon</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">✍️</div><div class="stat-info"><div class="stat-number">89</div><div class="stat-label">eSigns Done</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">7</div><div class="stat-label">Pending Renewal</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">🔐</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Active DSCs</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Expiring Soon</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">✍️</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Records</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending Renewal</div></div></div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -588,17 +602,17 @@
       </div>
     </section>
 
-    <!-- ===== ACCOUNTING HUB PAGE ===== -->
+    <!-- ===== ACCOUNTING HUB ===== -->
     <section class="page" id="page-accounting">
       <div class="page-header">
-        <div><h1>🧮 Accounting Hub</h1><p>Accounting & bookkeeping</p></div>
+        <div><h1>🧮 Accounting Hub</h1><p>Accounting &amp; bookkeeping</p></div>
         <button class="btn-primary" onclick="openModal('newEntry')">+ New Entry</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">📈</div><div class="stat-info"><div class="stat-number">₹ 48.2L</div><div class="stat-label">Total Revenue</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">📉</div><div class="stat-info"><div class="stat-number">₹ 31.6L</div><div class="stat-label">Total Expenses</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">💼</div><div class="stat-info"><div class="stat-number">₹ 16.6L</div><div class="stat-label">Net Profit</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">📊</div><div class="stat-info"><div class="stat-number">34%</div><div class="stat-label">Profit Margin</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">📈</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Total Revenue</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">📉</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Total Expenses</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">💼</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Net Profit</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">📊</div><div class="stat-info"><div class="stat-number">0%</div><div class="stat-label">Profit Margin</div></div></div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -618,17 +632,17 @@
       </div>
     </section>
 
-    <!-- ===== TASK MANAGER PAGE ===== -->
+    <!-- ===== TASK MANAGER ===== -->
     <section class="page" id="page-tasks">
       <div class="page-header">
-        <div><h1>✅ Task Manager</h1><p>Tasks & team collaboration</p></div>
+        <div><h1>✅ Task Manager</h1><p>Tasks &amp; team collaboration</p></div>
         <button class="btn-primary" onclick="openModal('newTask')">+ New Task</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">64</div><div class="stat-label">Completed</div><div class="stat-trend up">64%</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">🔄</div><div class="stat-info"><div class="stat-number">22</div><div class="stat-label">In Progress</div><div class="stat-trend neutral">22%</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">14</div><div class="stat-label">Pending</div><div class="stat-trend down">14%</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">❗</div><div class="stat-info"><div class="stat-number">3</div><div class="stat-label">Overdue</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Completed</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">🔄</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">In Progress</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">❗</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Overdue</div></div></div>
       </div>
       <div class="kanban-board">
         <div class="kanban-col">
@@ -649,17 +663,17 @@
       </div>
     </section>
 
-    <!-- ===== REPORTS PAGE ===== -->
+    <!-- ===== REPORTS ===== -->
     <section class="page" id="page-reports">
       <div class="page-header">
-        <div><h1>📈 Reports & Insights</h1><p>Analytics & reports</p></div>
+        <div><h1>📈 Reports &amp; Insights</h1><p>Analytics &amp; reports</p></div>
         <button class="btn-primary" onclick="exportReport()">⬇ Export Report</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">📊</div><div class="stat-info"><div class="stat-number">248</div><div class="stat-label">Total Clients</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">384</div><div class="stat-label">Total Filings</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">💰</div><div class="stat-info"><div class="stat-number">₹ 18.4L</div><div class="stat-label">Revenue</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⭐</div><div class="stat-info"><div class="stat-number">94%</div><div class="stat-label">Client Satisfaction</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">📊</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Clients</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Filings</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">💰</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Revenue</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⭐</div><div class="stat-info"><div class="stat-number">0%</div><div class="stat-label">Task Completion</div></div></div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -669,13 +683,11 @@
         <div class="card">
           <div class="card-title">Task Completion</div>
           <div class="donut-wrapper">
-            <div class="donut-chart">
-              <div class="donut-center">64%</div>
-            </div>
+            <div class="donut-chart"><div class="donut-center">0%</div></div>
             <div class="donut-legend">
-              <div class="legend-item"><span class="legend-dot green"></span> Completed 64%</div>
-              <div class="legend-item"><span class="legend-dot blue"></span> In Progress 22%</div>
-              <div class="legend-item"><span class="legend-dot orange"></span> Pending 14%</div>
+              <div class="legend-item"><span class="legend-dot green"></span> Completed</div>
+              <div class="legend-item"><span class="legend-dot blue"></span> In Progress</div>
+              <div class="legend-item"><span class="legend-dot orange"></span> Pending</div>
             </div>
           </div>
         </div>
@@ -692,7 +704,7 @@
       </div>
     </section>
 
-    <!-- ===== AI ASSISTANT PAGE ===== -->
+    <!-- ===== AI ASSISTANT ===== -->
     <section class="page" id="page-ai">
       <div class="page-header">
         <div><h1>🤖 AI Assistant</h1><p>Ask anything about your workspace</p></div>
@@ -719,7 +731,7 @@
       </div>
     </section>
 
-    <!-- ===== DOCUMENTS PAGE ===== -->
+    <!-- ===== DOCUMENTS ===== -->
     <section class="page" id="page-documents">
       <div class="page-header">
         <div><h1>📁 Documents</h1><p>All your important files</p></div>
@@ -728,15 +740,15 @@
       <div class="filter-bar">
         <input type="text" placeholder="Search documents..." class="filter-input" />
         <select class="filter-select"><option>All Types</option><option>PDF</option><option>Excel</option><option>Word</option><option>Image</option></select>
-        <select class="filter-select"><option>All Clients</option><option>ABC Pvt. Ltd.</option><option>XYZ Traders</option></select>
+        <select class="filter-select"><option>All Clients</option></select>
       </div>
       <div class="docs-grid" id="docsGrid"></div>
     </section>
 
-    <!-- ===== CALENDAR PAGE ===== -->
+    <!-- ===== CALENDAR ===== -->
     <section class="page" id="page-calendar">
       <div class="page-header">
-        <div><h1>📅 Calendar</h1><p>Due dates & important events</p></div>
+        <div><h1>📅 Calendar</h1><p>Due dates &amp; important events</p></div>
         <button class="btn-primary" onclick="openModal('newEvent')">+ Add Event</button>
       </div>
       <div class="calendar-wrapper">
@@ -756,7 +768,7 @@
       </div>
     </section>
 
-    <!-- ===== TEAM CHAT PAGE ===== -->
+    <!-- ===== TEAM CHAT ===== -->
     <section class="page" id="page-teamchat">
       <div class="page-header">
         <div><h1>💬 Team Chat</h1><p>Collaborate with your team</p></div>
@@ -769,7 +781,6 @@
           </div>
           <div class="chat-contacts" id="chatContacts"></div>
         </div>
-
         <div class="chat-main">
           <div class="chat-header-bar">
             <div class="chat-header-info">
@@ -780,18 +791,40 @@
               </div>
             </div>
           </div>
-          <div class="chat-messages" id="teamMessages"></div>
+          <div class="chat-messages" id="teamMessages">
+            <div style="text-align:center;color:var(--text-muted,#64748b);padding:40px 20px">Select a contact or start a new chat</div>
+          </div>
           <div class="chat-input-bar">
             <input type="text" id="teamChatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendTeamMessage()" />
             <button class="btn-primary" onclick="sendTeamMessage()">Send</button>
           </div>
         </div>
-
       </div>
     </section>
 
-  </main>
-</div>
+  </main><!-- /page-content -->
+</div><!-- /main-wrapper -->
+
+<!-- ========== RIGHT PANEL ========== -->
+<aside class="right-panel" id="rightPanel">
+  <div class="card">
+    <div class="card-title">Upcoming Due Dates <button class="view-all" onclick="navigate('calendar')">View All</button></div>
+    <div id="dueDateList"></div>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title">Recent Activity <button class="view-all" onclick="navigate('reports')">View All</button></div>
+    <div id="activityList"></div>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title">Workspace Overview</div>
+    <div class="workspace-overview">
+      <div class="overview-item"><span class="ov-dot green"></span><span>Tasks Completed</span><strong>—</strong></div>
+      <div class="overview-item"><span class="ov-dot blue"></span><span>In Progress</span><strong>—</strong></div>
+      <div class="overview-item"><span class="ov-dot orange"></span><span>Pending</span><strong>—</strong></div>
+    </div>
+    <button class="btn-outline" style="width:100%;margin-top:.5rem" onclick="navigate('reports')">📊 View Detailed Report →</button>
+  </div>
+</aside>
 
 <!-- ========== MODALS ========== -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
@@ -816,27 +849,36 @@
 <!-- ========== TOAST ========== -->
 <div class="toast" id="toast"></div>
 
-<!-- RIGHT PANEL (Due Dates + Activity) -->
-<aside class="right-panel" id="rightPanel">
-  <div class="card">
-    <div class="card-title">Upcoming Due Dates <button class="view-all" onclick="navigate('calendar')">View All</button></div>
-    <div id="dueDateList"></div>
-  </div>
-  <div class="card" style="margin-top:1rem">
-    <div class="card-title">Recent Activity <button class="view-all">View All</button></div>
-    <div id="activityList"></div>
-  </div>
-  <div class="card" style="margin-top:1rem">
-    <div class="card-title">Workspace Overview</div>
-    <div class="workspace-overview">
-      <div class="overview-item"><span class="ov-dot green"></span><span>Tasks Completed</span><strong>64%</strong></div>
-      <div class="overview-item"><span class="ov-dot blue"></span><span>In Progress</span><strong>22%</strong></div>
-      <div class="overview-item"><span class="ov-dot orange"></span><span>Pending</span><strong>14%</strong></div>
-    </div>
-    <button class="btn-outline" style="width:100%;margin-top:.5rem" onclick="navigate('reports')">📊 View Detailed Report →</button>
-  </div>
-</aside>
+<!-- ========== APP SCRIPT ========== -->
+<script src="app.js"></script>
 
-<script src="./app.js"></script>
+<!-- ========== POST-LOAD PATCHES ========== -->
+<script>
+  /* Populate GST client dropdown dynamically after data loads */
+  const _origLoadAll = typeof loadAllData === 'function' ? loadAllData : null;
+  document.addEventListener('DOMContentLoaded', () => {
+    // After app.js DOMContentLoaded fires, patch GST client select
+    setTimeout(() => {
+      const gstSel = document.getElementById('gstClientSel');
+      if (gstSel && typeof STATE !== 'undefined' && STATE.clients.length) {
+        gstSel.innerHTML = '<option value="">Select Client</option>' +
+          STATE.clients.map(c => `<option>${c.name}</option>`).join('');
+      }
+    }, 3000);
+
+    /* Patch submitGSTReturn to use gstClientSel */
+    const origSubmitGST = window.submitGSTReturn;
+    window.submitGSTReturn = function () {
+      const gstSel = document.getElementById('gstClientSel');
+      if (gstSel) {
+        // Temporarily swap first select value so original function reads correctly
+        const allSelects = document.querySelectorAll('#page-gst select');
+        if (allSelects[0] && gstSel) allSelects[0].value = gstSel.value;
+      }
+      if (origSubmitGST) origSubmitGST();
+    };
+  });
+</script>
+
 </body>
 </html>
