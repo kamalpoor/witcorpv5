@@ -214,6 +214,23 @@ function updateThemePickerActive() {
 /* =========================================================
    4. TEAM CHAT (Local)
    ========================================================= */
+function startNewChat() {
+  const emailInput = document.getElementById('newChatEmail');
+  const email = emailInput?.value.trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    showToast('Enter Correct Email');
+    return;
+  }
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  if (email === myEmail) {
+    showToast('Couldn't Meaasge Yourself!');
+    return;
+  }
+  emailInput.value = '';
+  switchChatContact(email);
+  showToast('Start ' + email + ' Chat!');
+}
 
 const TEAM_CONTACTS = [];
 /* =========================================================
