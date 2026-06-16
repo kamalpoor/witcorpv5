@@ -20,30 +20,27 @@
   <!-- ===== AUTH GUARD ===== -->
   <script src="auth.js"></script>
   <script>
-    (async function () {
-      // STEP 1: Google OAuth hash mein token?
-      if (handleOAuthCallback()) {
-        window.location.replace('index.html');
-        return;
-      }
-      // STEP 2: Token hai?
-      const token = localStorage.getItem('witcorp-access-token');
-      if (!token) {
-        window.location.href = 'login.html';
-        return;
-      }
-      // STEP 3: Token valid?
-      const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-        headers: {
-          'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
-          'Authorization': 'Bearer ' + token
-        }
-      });
-      if (!res.ok) {
-        localStorage.removeItem('witcorp-access-token');
-        window.location.href = 'login.html';
-      }
-    })();
+   (async function () {
+  if (handleOAuthCallback()) {
+    window.location.replace('index.html');
+    return;
+  }
+  const token = localStorage.getItem('witcorp-access-token');
+  if (!token) {
+    window.location.replace('login.html');  // replace() use karo, href nahi
+    return;
+  }
+  const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
+    headers: {
+      'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
+      'Authorization': 'Bearer ' + token
+    }
+  });
+  if (!res.ok) {
+    localStorage.clear();
+    window.location.replace('login.html');
+  }
+})();
   </script>
 
   <!-- ===== INLINE FIXES: toggleDarkMode + setTheme (missing from app.js) ===== -->
