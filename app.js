@@ -1,6 +1,6 @@
 /* =============================================================
    WITCORP DASHBOARD - app.js
-   Supabase Connected | No Dummy Data | 30 Themes
+   Supabase Connected | No Dummy Data | 30 Themes | FIXED
    ============================================================= */
 
 /* =========================================================
@@ -68,7 +68,7 @@ const STATE = {
   calendar: { month: new Date().getMonth(), year: new Date().getFullYear() },
   pagination: { clients: { page: 1, perPage: 10 } },
   filters: { clients: { search: '', status: '', type: '' } },
-  activeChatContact: 'rajesh',
+  activeChatContact: null,
   clients: [], gstReturns: [], rocFilings: [], itrFilings: [],
   tdsReturns: [], audits: [], dscRecords: [], accountingEntries: [],
   tasks: [], documents: [], calendarEvents: []
@@ -131,13 +131,12 @@ function applyBgTheme(themeId) {
   const root = document.documentElement;
   root.style.setProperty('--bg', theme.bg);
   root.style.setProperty('--surface', theme.surface);
-  root.style.setProperty('--surface2', adjustColor(theme.surface, -5));
+  root.style.setProperty('--surface2', theme.surface);
   root.style.setProperty('--text', theme.text);
   root.style.setProperty('--text-muted', theme.textMuted);
   root.style.setProperty('--border', theme.border);
   STATE.activeTheme.bg = themeId;
   localStorage.setItem('witcorp-bg-theme', themeId);
-  // Update active state in modal
   document.querySelectorAll('.theme-bg-card').forEach(c => c.classList.toggle('active', c.dataset.id === themeId));
 }
 
@@ -149,17 +148,11 @@ function applySidebarTheme(themeId) {
   document.querySelectorAll('.theme-sidebar-card').forEach(c => c.classList.toggle('active', c.dataset.id === themeId));
 }
 
-function adjustColor(hex, amount) {
-  // Simple lightness adjust
-  return hex; // simplify - surface2 same as surface slightly dimmed via opacity
-}
-
 function initTheme() {
   const savedBg = localStorage.getItem('witcorp-bg-theme') || 'default';
   const savedSidebar = localStorage.getItem('witcorp-sidebar-theme') || 'dark-sidebar';
   applyBgTheme(savedBg);
   applySidebarTheme(savedSidebar);
-  // Also set primary color
   const primaryMap = {
     'default': '#6366f1', 'dark-mode': '#818cf8', 'midnight': '#a78bfa',
     'ocean-blue': '#3b82f6', 'purple-dream': '#a855f7', 'green-nature': '#10b981',
@@ -181,21 +174,18 @@ function initTheme() {
 function openThemePicker() {
   const bgActive = STATE.activeTheme.bg;
   const sbActive = STATE.activeTheme.sidebar;
-
   const bgHtml = BG_THEMES.map(t => `
     <div class="theme-bg-card ${t.id === bgActive ? 'active' : ''}" data-id="${t.id}" onclick="applyBgTheme('${t.id}');updateThemePickerActive()">
       <div class="theme-preview" style="background:${t.gradient}"></div>
       <div class="theme-card-name">${t.name}</div>
     </div>
   `).join('');
-
   const sbHtml = SIDEBAR_THEMES.map(t => `
     <div class="theme-sidebar-card ${t.id === sbActive ? 'active' : ''}" data-id="${t.id}" onclick="applySidebarTheme('${t.id}');updateThemePickerActive()">
       <div class="theme-preview" style="background:${t.gradient}"></div>
       <div class="theme-card-name">${t.name}</div>
     </div>
   `).join('');
-
   openModalWithContent('🎨 Background Themes', `
     <div class="theme-picker-section">
       <div class="theme-picker-label">Background Themes</div>
@@ -212,27 +202,30 @@ function updateThemePickerActive() {
 }
 
 /* =========================================================
-   4. TEAM CHAT (Local)
+   4. TEAM CHAT
    ========================================================= */
+
+/* FIX: apostrophe removed from string — was causing SyntaxError */
 function startNewChat() {
   const emailInput = document.getElementById('newChatEmail');
-  const email = emailInput?.value.trim().toLowerCase();
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
   if (!email || !email.includes('@')) {
-    showToast('Enter Correct Email');
+    showToast('Enter correct email');
     return;
   }
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
   if (email === myEmail) {
-    showToast('Couldn't Meaasge Yourself!');
+    showToast('Cannot message yourself!');
     return;
   }
   emailInput.value = '';
   switchChatContact(email);
-  showToast('Start ' + email + ' Chat!');
+  showToast('Starting chat with ' + email);
 }
 
 const TEAM_CONTACTS = [];
+
 /* =========================================================
    5. AI RESPONSES
    ========================================================= */
@@ -383,16 +376,16 @@ function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
   STATE.sidebarOpen = !STATE.sidebarOpen;
-  sidebar.classList.toggle('open', STATE.sidebarOpen);
-  overlay.classList.toggle('show', STATE.sidebarOpen);
+  if (sidebar) sidebar.classList.toggle('open', STATE.sidebarOpen);
+  if (overlay) overlay.classList.toggle('show', STATE.sidebarOpen);
 }
 
 function closeSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
   STATE.sidebarOpen = false;
-  sidebar.classList.remove('open');
-  overlay.classList.remove('show');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('show');
 }
 
 /* =========================================================
@@ -409,7 +402,7 @@ function setCurrentDate() {
 }
 
 /* =========================================================
-   10. DASHBOARD STATS — All from Supabase, zero hardcoded
+   10. DASHBOARD STATS
    ========================================================= */
 
 function updateDashboardStats() {
@@ -427,7 +420,6 @@ function updateDashboardStats() {
 
   const todayFilings = STATE.calendarEvents.filter(e => e.event_date === todayStr).length;
 
-  // Dashboard page stats
   const dashStats = document.querySelectorAll('#page-dashboard .stat-number');
   if (dashStats[0]) dashStats[0].textContent = totalClients;
   if (dashStats[1]) dashStats[1].textContent = gstFiled;
@@ -435,35 +427,30 @@ function updateDashboardStats() {
   if (dashStats[3]) dashStats[3].textContent = upcomingDue;
   if (dashStats[4]) dashStats[4].textContent = String(todayFilings).padStart(2, '0');
 
-  // GST page stats
   const gstStats = document.querySelectorAll('#page-gst .stat-number');
   if (gstStats[0]) gstStats[0].textContent = STATE.gstReturns.filter(g=>g.status==='Filed').length;
   if (gstStats[1]) gstStats[1].textContent = STATE.gstReturns.filter(g=>g.status==='Pending').length;
   if (gstStats[2]) gstStats[2].textContent = STATE.gstReturns.filter(g=>g.status==='Overdue').length;
   if (gstStats[3]) { const t = STATE.gstReturns.reduce((s,g)=>s+(g.tax_liability||0),0); gstStats[3].textContent = '₹ ' + formatAmount(t); }
 
-  // ROC page stats
   const rocStats = document.querySelectorAll('#page-roc .stat-number');
   if (rocStats[0]) rocStats[0].textContent = STATE.rocFilings.filter(r=>r.status==='Filed').length;
   if (rocStats[1]) rocStats[1].textContent = STATE.rocFilings.filter(r=>r.status==='In Progress').length;
   if (rocStats[2]) rocStats[2].textContent = STATE.rocFilings.filter(r=>r.status==='Overdue').length;
   if (rocStats[3]) rocStats[3].textContent = STATE.clients.filter(c=>c.type==='Company').length;
 
-  // Income Tax page stats
   const itrStats = document.querySelectorAll('#page-incometax .stat-number');
   if (itrStats[0]) itrStats[0].textContent = STATE.itrFilings.filter(i=>i.status==='Filed').length;
   if (itrStats[1]) itrStats[1].textContent = STATE.itrFilings.filter(i=>i.status==='Pending'||i.status==='In Progress').length;
   if (itrStats[2]) { const r = STATE.itrFilings.reduce((s,i)=>s+(i.tax_deducted||0),0); itrStats[2].textContent = '₹ ' + formatAmount(r); }
   if (itrStats[3]) { const t = STATE.itrFilings.reduce((s,i)=>s+(i.gross_income||0)*0.1,0); itrStats[3].textContent = '₹ ' + formatAmount(t); }
 
-  // TDS page stats
   const tdsStats = document.querySelectorAll('#page-tds .stat-number');
   if (tdsStats[0]) tdsStats[0].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
   if (tdsStats[1]) tdsStats[1].textContent = STATE.tdsReturns.filter(t=>t.status==='Pending').length;
   if (tdsStats[2]) { const a = STATE.tdsReturns.reduce((s,t)=>s+(t.amount||0),0); tdsStats[2].textContent = '₹ ' + formatAmount(a); }
   if (tdsStats[3]) tdsStats[3].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
 
-  // Audit page stats
   const auditStats = document.querySelectorAll('#page-audit .stat-number');
   if (auditStats[0]) auditStats[0].textContent = STATE.audits.filter(a=>a.status==='In Progress').length;
   if (auditStats[1]) auditStats[1].textContent = STATE.audits.filter(a=>a.status==='Completed').length;
@@ -475,14 +462,12 @@ function updateDashboardStats() {
   }).length;
   if (auditStats[3]) auditStats[3].textContent = dueThisMonth;
 
-  // DSC page stats
   const dscStats = document.querySelectorAll('#page-dsc .stat-number');
   if (dscStats[0]) dscStats[0].textContent = STATE.dscRecords.filter(d=>d.status==='Active').length;
   if (dscStats[1]) dscStats[1].textContent = STATE.dscRecords.filter(d=>(d.days_left||999)<=30).length;
   if (dscStats[2]) dscStats[2].textContent = STATE.dscRecords.length;
   if (dscStats[3]) dscStats[3].textContent = STATE.dscRecords.filter(d=>(d.days_left||999)<=30).length;
 
-  // Accounting page stats
   const totalRev = STATE.accountingEntries.filter(t=>t.entry_type==='credit').reduce((s,t)=>s+(t.amount||0),0);
   const totalExp = STATE.accountingEntries.filter(t=>t.entry_type==='debit').reduce((s,t)=>s+(t.amount||0),0);
   const netProfit = totalRev - totalExp;
@@ -493,7 +478,6 @@ function updateDashboardStats() {
   if (accStats[2]) accStats[2].textContent = '₹ ' + formatAmount(netProfit);
   if (accStats[3]) accStats[3].textContent = margin + '%';
 
-  // Task page stats
   const done = STATE.tasks.filter(t=>t.column_name==='done').length;
   const inprog = STATE.tasks.filter(t=>t.column_name==='inprogress').length;
   const todo = STATE.tasks.filter(t=>t.column_name==='todo').length;
@@ -501,9 +485,8 @@ function updateDashboardStats() {
   if (taskStats[0]) taskStats[0].textContent = done;
   if (taskStats[1]) taskStats[1].textContent = inprog;
   if (taskStats[2]) taskStats[2].textContent = todo;
-  if (taskStats[3]) taskStats[3].textContent = 0; // overdue - calculate if needed
+  if (taskStats[3]) taskStats[3].textContent = 0;
 
-  // Reports page stats
   const rptStats = document.querySelectorAll('#page-reports .stat-number');
   const totalFilings = STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length;
   const pct = STATE.tasks.length ? Math.round((done/STATE.tasks.length)*100) : 0;
@@ -512,7 +495,6 @@ function updateDashboardStats() {
   if (rptStats[2]) rptStats[2].textContent = '₹ ' + formatAmount(totalRev);
   if (rptStats[3]) rptStats[3].textContent = pct + '%';
 
-  // Update donut chart
   const donutCenter = document.querySelector('#page-reports .donut-center');
   if (donutCenter) donutCenter.textContent = pct + '%';
   const donutChart = document.querySelector('#page-reports .donut-chart');
@@ -587,13 +569,19 @@ function filterClientStatus(value) {
 }
 
 function prevPage(section) {
-  if (section === 'clients' && STATE.pagination.clients.page > 1) { STATE.pagination.clients.page--; renderClientTable(); }
+  if (section === 'clients' && STATE.pagination.clients.page > 1) {
+    STATE.pagination.clients.page--;
+    renderClientTable();
+  }
 }
 
 function nextPage(section) {
   if (section === 'clients') {
     const total = Math.ceil(getFilteredClients().length / STATE.pagination.clients.perPage);
-    if (STATE.pagination.clients.page < total) { STATE.pagination.clients.page++; renderClientTable(); }
+    if (STATE.pagination.clients.page < total) {
+      STATE.pagination.clients.page++;
+      renderClientTable();
+    }
   }
 }
 
@@ -1110,7 +1098,7 @@ async function dropTask(e, targetCol) {
     await supabaseUpdate('tasks', draggedTaskId, { column_name: targetCol });
     task.column_name = targetCol;
     renderKanban();
-    showToast(`✅ Task moved to ${columnLabel(targetCol)}`);
+    showToast('✅ Task moved to ' + columnLabel(targetCol));
   }
   draggedTaskId = null;
 }
@@ -1120,7 +1108,7 @@ function columnLabel(col) {
 }
 
 function addTask(col) {
-  openModalWithContent(`➕ Add Task to ${columnLabel(col)}`, `
+  openModalWithContent('➕ Add Task to ' + columnLabel(col), `
     <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
     <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
     <div class="form-group"><label>Assignee</label>
@@ -1201,7 +1189,6 @@ async function deleteTask(id) {
 function renderBarChart() {
   const el = document.getElementById('barChart');
   if (!el) return;
-  // Build from real data - count filings per month
   const months = ['Jan','Feb','Mar','Apr','May','Jun'];
   const data = months.map((label, i) => {
     const count = STATE.gstReturns.filter(g => {
@@ -1219,7 +1206,7 @@ function renderBarChart() {
   el.innerHTML = data.map(d => `
     <div class="bar-item">
       <div class="bar-fill" style="height:0%" data-target="${(d.value/max)*100}"></div>
-      <div class="bar-label">${d.label} ${d.value > 0 ? `(${d.value})` : ''}</div>
+      <div class="bar-label">${d.label} ${d.value > 0 ? '(' + d.value + ')' : ''}</div>
     </div>
   `).join('');
   requestAnimationFrame(() => {
@@ -1278,7 +1265,7 @@ function renderDocuments() {
     return;
   }
   el.innerHTML = STATE.documents.map(d => `
-    <div class="doc-card" onclick="showToast('Opening ' + '${escapeHtml(d.name)}')">
+    <div class="doc-card" onclick="showToast('Opening ${escapeHtml(d.name)}')">
       <div class="doc-icon">${d.icon||'📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
       <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
@@ -1293,7 +1280,7 @@ async function deleteDoc(id) {
 }
 
 /* =========================================================
-   23. CALENDAR
+   23. CALENDAR — FIX: removed JSON.stringify from onclick
    ========================================================= */
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1303,7 +1290,7 @@ function renderCalendar() {
   const titleEl = document.getElementById('calTitle');
   const gridEl = document.getElementById('calGrid');
   if (!titleEl || !gridEl) return;
-  titleEl.textContent = `${MONTH_NAMES[month]} ${year}`;
+  titleEl.textContent = MONTH_NAMES[month] + ' ' + year;
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrevMonth = new Date(year, month, 0).getDate();
@@ -1322,6 +1309,7 @@ function renderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const hasEvent = eventMap[d] ? 'has-event' : '';
     const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) ? 'today' : '';
+    /* FIX: removed JSON.stringify — now just pass day number, function looks up events itself */
     html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d})">${d}</div>`;
   }
   const totalCells = firstDay + daysInMonth;
@@ -1330,6 +1318,7 @@ function renderCalendar() {
   gridEl.innerHTML = html;
 }
 
+/* FIX: function now looks up events from STATE directly instead of receiving them as param */
 function showDayEvents(day) {
   const events = STATE.calendarEvents.filter(e => {
     const d = new Date(e.event_date);
@@ -1338,10 +1327,10 @@ function showDayEvents(day) {
            d.getDate() === day;
   });
   if (!events || !events.length) {
-    showToast(`No events on ${day} ${MONTH_NAMES[STATE.calendar.month]}`);
+    showToast('No events on ' + day + ' ' + MONTH_NAMES[STATE.calendar.month]);
     return;
   }
-  openModalWithContent(`📅 Events — ${day} ${MONTH_NAMES[STATE.calendar.month]}`, `
+  openModalWithContent('📅 Events — ' + day + ' ' + MONTH_NAMES[STATE.calendar.month], `
     ${events.map(e => `
       <div class="upcoming-item" style="margin-bottom:10px">
         <div>
@@ -1399,7 +1388,7 @@ function renderDueDates() {
   el.innerHTML = upcoming.length ? upcoming.map(e => {
     const d = new Date(e.event_date);
     const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
-    const sub = diff === 0 ? 'Due Today' : diff === 1 ? 'Due Tomorrow' : `Due in ${diff} days`;
+    const sub = diff === 0 ? 'Due Today' : diff === 1 ? 'Due Tomorrow' : 'Due in ' + diff + ' days';
     const urgent = diff <= 1;
     return `
       <div class="due-item">
@@ -1418,10 +1407,10 @@ function renderActivity() {
   if (!el) return;
   const activities = [];
   STATE.gstReturns.filter(g => g.status === 'Filed').slice(0, 2).forEach(g => {
-    activities.push({ icon: '✅', color: 'green', text: `GSTR filed for ${g.client_name}`, time: g.filed_date || 'Recently' });
+    activities.push({ icon: '✅', color: 'green', text: 'GSTR filed for ' + g.client_name, time: g.filed_date || 'Recently' });
   });
   STATE.itrFilings.filter(i => i.status === 'Filed').slice(0, 2).forEach(i => {
-    activities.push({ icon: '💰', color: 'blue', text: `ITR filed for ${i.client_name}`, time: i.filed_date || 'Recently' });
+    activities.push({ icon: '💰', color: 'blue', text: 'ITR filed for ' + i.client_name, time: i.filed_date || 'Recently' });
   });
   STATE.tasks.filter(t => t.column_name === 'done').slice(0, 2).forEach(t => {
     activities.push({ icon: '✅', color: 'orange', text: t.title, time: 'Completed' });
@@ -1441,32 +1430,24 @@ function renderActivity() {
 async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
-
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-
-  // Supabase se saare unique log lao jinhone message bheja ya liya
-  const sent = await supabase('team_messages', {
-    filters: 'sender_email=eq.' + myEmail,
-    select: 'receiver_email'
-  });
-  const received = await supabase('team_messages', {
-    filters: 'receiver_email=eq.' + myEmail,
-    select: 'sender_email'
-  });
-
+  if (!myEmail) {
+    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Login required</div>';
+    return;
+  }
+  const sent = await supabase('team_messages', { filters: 'sender_email=eq.' + myEmail, select: 'receiver_email' });
+  const received = await supabase('team_messages', { filters: 'receiver_email=eq.' + myEmail, select: 'sender_email' });
   const emailSet = new Set();
   (sent || []).forEach(m => emailSet.add(m.receiver_email));
   (received || []).forEach(m => emailSet.add(m.sender_email));
-
   const contacts = Array.from(emailSet).map(email => ({
     email,
     name: email.split('@')[0],
     initial: email.charAt(0).toUpperCase()
   }));
-
   if (!contacts.length) {
-    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Koi contact nahi abhi.<br>Neeche email likho aur message bhejo.</div>';
+    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No contacts yet.<br>Enter email below and send a message.</div>';
   } else {
     el.innerHTML = contacts.map(c => `
       <div class="contact-item ${c.email === STATE.activeChatContact ? 'active' : ''}" onclick="switchChatContact('${c.email}')">
@@ -1491,27 +1472,18 @@ function switchChatContact(email) {
 async function renderTeamMessages() {
   const el = document.getElementById('teamMessages');
   if (!el) return;
-
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
   const contactEmail = STATE.activeChatContact;
-
   if (!contactEmail) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Kisi contact ko select karo ya naya message bhejo</div>';
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>';
     return;
   }
-
   const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(myEmail)},receiver_email.eq.${encodeURIComponent(contactEmail)}),and(sender_email.eq.${encodeURIComponent(contactEmail)},receiver_email.eq.${encodeURIComponent(myEmail)}))&order=created_at.asc`;
-
   const res = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-    }
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
   });
-
   const messages = res.ok ? await res.json() : [];
-
   el.innerHTML = messages.length ? messages.map(m => `
     <div class="chat-msg ${m.sender_email === myEmail ? 'user' : ''}">
       <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
@@ -1522,8 +1494,7 @@ async function renderTeamMessages() {
         </div>
       </div>
     </div>
-  `).join('') : '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Koi message nahi abhi. Pehla message bhejo! 👋</div>';
-
+  `).join('') : '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
   el.scrollTop = el.scrollHeight;
 }
 
@@ -1531,24 +1502,12 @@ async function sendTeamMessage() {
   const input = document.getElementById('teamChatInput');
   const text = input?.value.trim();
   if (!text) return;
-
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
   const contactEmail = STATE.activeChatContact;
-
-  if (!contactEmail) {
-    showToast('Pehle kisi ko select karo ya email daalo');
-    return;
-  }
-
+  if (!contactEmail) { showToast('Select a contact first'); return; }
   input.value = '';
-
-  await supabaseInsert('team_messages', {
-    sender_email: myEmail,
-    receiver_email: contactEmail,
-    message: text
-  });
-
+  await supabaseInsert('team_messages', { sender_email: myEmail, receiver_email: contactEmail, message: text });
   await renderTeamMessages();
   await renderTeamContacts();
 }
@@ -1565,13 +1524,13 @@ function openNotifications() {
   if (!notifList) return;
   const notifs = [];
   STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => {
-    notifs.push({ icon: '📊', text: `GSTR pending: ${g.client_name} — ${g.return_type}`, time: 'Pending' });
+    notifs.push({ icon: '📊', text: 'GSTR pending: ' + g.client_name + ' — ' + g.return_type, time: 'Pending' });
   });
   STATE.dscRecords.filter(d=>(d.days_left||99)<=30).forEach(d => {
-    notifs.push({ icon: '⚠️', text: `DSC expiring: ${d.client_name} in ${d.days_left} days`, time: 'Alert' });
+    notifs.push({ icon: '⚠️', text: 'DSC expiring: ' + d.client_name + ' in ' + d.days_left + ' days', time: 'Alert' });
   });
   STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => {
-    notifs.push({ icon: '🔴', text: `High priority: ${t.title}`, time: 'Task' });
+    notifs.push({ icon: '🔴', text: 'High priority: ' + t.title, time: 'Task' });
   });
   notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅', text:'No new notifications', time:''}]).map(n => `
     <div class="notif-item">
@@ -1595,7 +1554,6 @@ function closeNotifications() {
 
 function openModal(type) {
   const clientOptions = STATE.clients.slice(0, 30).map(c => `<option>${escapeHtml(c.name)}</option>`).join('');
-
   const configs = {
     addClient: {
       title: '➕ Add New Client',
@@ -1684,7 +1642,6 @@ function openModal(type) {
       `
     }
   };
-
   const config = configs[type];
   if (config) openModalWithContent(config.title, config.body);
 }
@@ -1702,8 +1659,6 @@ function closeModal() {
   const overlay = document.getElementById('modalOverlay');
   if (overlay) overlay.classList.remove('show');
 }
-
-/* ---- Modal Submits ---- */
 
 async function submitAddClient() {
   const name = document.getElementById('addClientName')?.value.trim();
@@ -1768,6 +1723,7 @@ async function submitNewTaskModal() {
   };
   const result = await supabaseInsert('tasks', body);
   if (result && result[0]) { STATE.tasks.unshift(result[0]); closeModal(); renderKanban(); showToast('✅ Task added!'); }
+  else { showToast('❌ Failed to add task'); }
 }
 
 async function submitUploadDoc() {
@@ -1782,6 +1738,7 @@ async function submitUploadDoc() {
   };
   const result = await supabaseInsert('documents', body);
   if (result && result[0]) { STATE.documents.unshift(result[0]); closeModal(); renderDocuments(); showToast('✅ Document uploaded!'); }
+  else { showToast('❌ Upload failed'); }
 }
 
 async function submitNewEvent() {
@@ -1793,7 +1750,7 @@ async function submitNewEvent() {
   if (result && result[0]) {
     STATE.calendarEvents.push(result[0]);
     closeModal(); renderCalendar(); renderEventList(); renderDueDates(); showToast('✅ Event added to calendar!');
-  }
+  } else { showToast('❌ Failed to add event'); }
 }
 
 /* =========================================================
@@ -1816,7 +1773,7 @@ function openQuickAction() {
 }
 
 /* =========================================================
-   29. PROFILE
+   29. PROFILE & LOGOUT — FIX: logout() function added
    ========================================================= */
 
 function loadUserInfo() {
@@ -1827,7 +1784,6 @@ function loadUserInfo() {
     ? user.user_metadata.full_name
     : (user.email ? user.email.split('@')[0] : 'User');
   const initial = name.charAt(0).toUpperCase();
-
   const initEl = document.getElementById('userInitial');
   const nameEl = document.getElementById('userDisplayName');
   if (initEl) initEl.textContent = initial;
@@ -1842,7 +1798,6 @@ function openProfile() {
     : (user.email ? user.email.split('@')[0] : 'User');
   const email = user.email || 'Not available';
   const initial = name.charAt(0).toUpperCase();
-
   openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
       <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${initial}</div>
@@ -1855,6 +1810,19 @@ function openProfile() {
     <button class="btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)" onclick="logout()">🚪 Logout</button>
   `);
 }
+
+/* FIX: logout function was missing — added here */
+function logout() {
+  localStorage.removeItem('witcorp-user');
+  localStorage.removeItem('witcorp-bg-theme');
+  localStorage.removeItem('witcorp-sidebar-theme');
+  closeModal();
+  showToast('Logged out successfully');
+  setTimeout(() => {
+    window.location.href = 'login.html';
+  }, 800);
+}
+
 /* =========================================================
    30. GLOBAL SEARCH
    ========================================================= */
@@ -1866,10 +1834,10 @@ function handleSearch(query) {
     const q = query.toLowerCase();
     const clients = STATE.clients.filter(c => (c.name||'').toLowerCase().includes(q)).length;
     const tasks = STATE.tasks.filter(t => (t.title||'').toLowerCase().includes(q)).length;
-    let msg = [];
-    if (clients) msg.push(`${clients} client(s)`);
-    if (tasks) msg.push(`${tasks} task(s)`);
-    if (msg.length) showToast(`Found: ${msg.join(', ')}`);
+    const msg = [];
+    if (clients) msg.push(clients + ' client(s)');
+    if (tasks) msg.push(tasks + ' task(s)');
+    if (msg.length) showToast('Found: ' + msg.join(', '));
   }, 500);
 }
 
@@ -1898,11 +1866,15 @@ function attachGlobalListeners() {
       e.preventDefault();
       document.getElementById('globalSearch')?.focus();
     }
-    if (e.key === 'Escape') { closeModal(); closeNotifications(); if (window.innerWidth <= 768) closeSidebar(); }
+    if (e.key === 'Escape') {
+      closeModal();
+      closeNotifications();
+      if (window.innerWidth <= 768) closeSidebar();
+    }
   });
   document.addEventListener('click', (e) => {
     const panel = document.getElementById('notifPanel');
-    if (panel?.classList.contains('show')) {
+    if (panel && panel.classList.contains('show')) {
       if (!panel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) closeNotifications();
     }
   });
@@ -1915,7 +1887,12 @@ function attachGlobalListeners() {
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 
 function formatAmount(num) {
@@ -1935,5 +1912,5 @@ function statusBadge(status) {
 }
 
 /* =========================================================
-   END OF app.js — WITCORP Clean Edition | No Dummy Data | 30 Themes
+   END OF app.js — WITCORP | Fixed | No Dummy Data | 30 Themes
    ========================================================= */
