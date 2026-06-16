@@ -215,38 +215,7 @@ function updateThemePickerActive() {
    4. TEAM CHAT (Local)
    ========================================================= */
 
-const TEAM_CONTACTS = [
-  { id: 'kamlesh', name: 'Kamlesh Yadav', initial: 'R', online: true, last: 'Sure, I will check the GST portal' },
-  { id: 'punit', name: 'Punit V', initial: 'A', online: true, last: 'Audit report draft is ready' },
-  { id: 'shankar', name: 'Shankar N', initial: 'S', online: false, last: 'Sent the AOC-4 documents' },
-  { id: 'ganga', name: 'Ganga Ma', initial: 'P', online: true, last: 'Thanks for the update!' },
-  { id: 'damini', name: 'Damini Agarwal', initial: 'V', online: false, last: 'Will join the call at 4 PM' }
-];
-
-const TEAM_MESSAGES = {
-  rajesh: [
-    { from: 'them', text: 'Hi Kamlesh, the GSTR-1 for Sunrise Textiles is almost ready.', time: '10:02 AM' },
-    { from: 'me', text: 'Great, please file it before tomorrow evening.', time: '10:05 AM' },
-    { from: 'them', text: 'Sure, I will check the GST portal and confirm once filed.', time: '10:06 AM' }
-  ],
-  anjali: [
-    { from: 'them', text: 'The audit report draft for TechNova is ready for review.', time: '9:40 AM' },
-    { from: 'me', text: 'Awesome, send it over, I will review by EOD.', time: '9:42 AM' }
-  ],
-  sameer: [
-    { from: 'them', text: 'Kamlesh, sent the AOC-4 documents for National Plastics.', time: 'Yesterday' },
-    { from: 'me', text: 'Got it, thanks Shankar.', time: 'Yesterday' }
-  ],
-  priya: [
-    { from: 'me', text: 'Please update the client master sheet with new entries.', time: 'Yesterday' },
-    { from: 'them', text: 'Thanks for the update! Will do it today.', time: 'Yesterday' }
-  ],
-  vikram: [
-    { from: 'them', text: 'We have a client call scheduled at 4 PM today.', time: 'Mon' },
-    { from: 'me', text: 'Noted, will join.', time: 'Mon' }
-  ]
-};
-
+const TEAM_CONTACTS = [];
 /* =========================================================
    5. AI RESPONSES
    ========================================================= */
@@ -298,6 +267,7 @@ function getAIResponse(query) {
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  loadUserInfo();
   initTheme();
   setCurrentDate();
   attachGlobalListeners();
@@ -1439,56 +1409,119 @@ function renderActivity() {
    25. TEAM CHAT
    ========================================================= */
 
-function renderTeamContacts() {
+async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
-  el.innerHTML = TEAM_CONTACTS.map(c => `
-    <div class="contact-item ${c.id === STATE.activeChatContact ? 'active' : ''}" onclick="switchChatContact('${c.id}')">
-      <div class="contact-avatar">${c.initial}</div>
-      <div style="flex:1;overflow:hidden">
-        <div class="contact-name">${escapeHtml(c.name)}</div>
-        <div class="contact-last">${c.online ? '🟢 ' : ''}${escapeHtml(c.last)}</div>
+
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+
+  // Supabase se saare unique log lao jinhone message bheja ya liya
+  const sent = await supabase('team_messages', {
+    filters: 'sender_email=eq.' + myEmail,
+    select: 'receiver_email'
+  });
+  const received = await supabase('team_messages', {
+    filters: 'receiver_email=eq.' + myEmail,
+    select: 'sender_email'
+  });
+
+  const emailSet = new Set();
+  (sent || []).forEach(m => emailSet.add(m.receiver_email));
+  (received || []).forEach(m => emailSet.add(m.sender_email));
+
+  const contacts = Array.from(emailSet).map(email => ({
+    email,
+    name: email.split('@')[0],
+    initial: email.charAt(0).toUpperCase()
+  }));
+
+  if (!contacts.length) {
+    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Koi contact nahi abhi.<br>Neeche email likho aur message bhejo.</div>';
+  } else {
+    el.innerHTML = contacts.map(c => `
+      <div class="contact-item ${c.email === STATE.activeChatContact ? 'active' : ''}" onclick="switchChatContact('${c.email}')">
+        <div class="contact-avatar">${c.initial}</div>
+        <div style="flex:1;overflow:hidden">
+          <div class="contact-name">${escapeHtml(c.name)}</div>
+          <div class="contact-last">${escapeHtml(c.email)}</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+  }
 }
 
-function switchChatContact(id) {
-  STATE.activeChatContact = id;
-  const contact = TEAM_CONTACTS.find(c => c.id === id);
+function switchChatContact(email) {
+  STATE.activeChatContact = email;
   const nameEl = document.getElementById('activeChatName');
-  if (nameEl && contact) nameEl.textContent = contact.name;
+  if (nameEl) nameEl.textContent = email.split('@')[0];
   renderTeamContacts();
   renderTeamMessages();
 }
 
-function renderTeamMessages() {
+async function renderTeamMessages() {
   const el = document.getElementById('teamMessages');
   if (!el) return;
-  const messages = TEAM_MESSAGES[STATE.activeChatContact] || [];
-  const contact = TEAM_CONTACTS.find(c => c.id === STATE.activeChatContact);
-  el.innerHTML = messages.map(m => `
-    <div class="chat-msg ${m.from === 'me' ? 'user' : ''}">
-      <div class="msg-avatar">${m.from === 'me' ? 'K' : (contact?.initial || '?')}</div>
-      <div class="msg-content">${escapeHtml(m.text)}<div style="font-size:10.5px;opacity:.6;margin-top:4px">${escapeHtml(m.time)}</div></div>
+
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const contactEmail = STATE.activeChatContact;
+
+  if (!contactEmail) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Kisi contact ko select karo ya naya message bhejo</div>';
+    return;
+  }
+
+  const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(myEmail)},receiver_email.eq.${encodeURIComponent(contactEmail)}),and(sender_email.eq.${encodeURIComponent(contactEmail)},receiver_email.eq.${encodeURIComponent(myEmail)}))&order=created_at.asc`;
+
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+    }
+  });
+
+  const messages = res.ok ? await res.json() : [];
+
+  el.innerHTML = messages.length ? messages.map(m => `
+    <div class="chat-msg ${m.sender_email === myEmail ? 'user' : ''}">
+      <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
+      <div class="msg-content">
+        ${escapeHtml(m.message)}
+        <div style="font-size:10.5px;opacity:.6;margin-top:4px">
+          ${new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}
+        </div>
+      </div>
     </div>
-  `).join('');
+  `).join('') : '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Koi message nahi abhi. Pehla message bhejo! 👋</div>';
+
   el.scrollTop = el.scrollHeight;
 }
 
-function sendTeamMessage() {
+async function sendTeamMessage() {
   const input = document.getElementById('teamChatInput');
   const text = input?.value.trim();
   if (!text) return;
-  const contactId = STATE.activeChatContact;
-  if (!TEAM_MESSAGES[contactId]) TEAM_MESSAGES[contactId] = [];
-  TEAM_MESSAGES[contactId].push({ from: 'me', text, time: 'Just now' });
-  if (input) input.value = '';
-  renderTeamMessages();
-  setTimeout(() => {
-    TEAM_MESSAGES[contactId].push({ from: 'them', text: 'Got it, thanks!', time: 'Just now' });
-    renderTeamMessages();
-  }, 1200);
+
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const contactEmail = STATE.activeChatContact;
+
+  if (!contactEmail) {
+    showToast('Pehle kisi ko select karo ya email daalo');
+    return;
+  }
+
+  input.value = '';
+
+  await supabaseInsert('team_messages', {
+    sender_email: myEmail,
+    receiver_email: contactEmail,
+    message: text
+  });
+
+  await renderTeamMessages();
+  await renderTeamContacts();
 }
 
 /* =========================================================
@@ -1757,21 +1790,42 @@ function openQuickAction() {
    29. PROFILE
    ========================================================= */
 
-function openProfile() {
-  openModalWithContent('👤 My Profile', `
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">K</div>
-      <div style="font-weight:700;font-size:16px">Kamlesh Yadav</div>
-      <div style="color:var(--text-muted);font-size:13px">Partner — WITCORP India Advisors LLP</div>
-    </div>
-    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">kamlesh@witcorp.in</div></div>
-    <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">+91 98200 11223</div></div>
-    <div class="form-group"><label>Role</label><div class="form-control" style="background:var(--bg)">Partner</div></div>
-    <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
-    <button class="btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)" onclick="showToast('Logged out (demo only)')">Logout</button>
-  `);
+function loadUserInfo() {
+  const userRaw = localStorage.getItem('witcorp-user');
+  if (!userRaw) return;
+  const user = JSON.parse(userRaw);
+  const name = (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name
+    : (user.email ? user.email.split('@')[0] : 'User');
+  const initial = name.charAt(0).toUpperCase();
+
+  const initEl = document.getElementById('userInitial');
+  const nameEl = document.getElementById('userDisplayName');
+  if (initEl) initEl.textContent = initial;
+  if (nameEl) nameEl.textContent = name;
 }
 
+function openProfile() {
+  const userRaw = localStorage.getItem('witcorp-user');
+  const user = userRaw ? JSON.parse(userRaw) : {};
+  const name = (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name
+    : (user.email ? user.email.split('@')[0] : 'User');
+  const email = user.email || 'Not available';
+  const initial = name.charAt(0).toUpperCase();
+
+  openModalWithContent('👤 My Profile', `
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${initial}</div>
+      <div style="font-weight:700;font-size:16px">${escapeHtml(name)}</div>
+      <div style="color:var(--text-muted);font-size:13px">WITCORP India Advisors LLP</div>
+    </div>
+    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(email)}</div></div>
+    <div class="form-group"><label>User ID</label><div class="form-control" style="background:var(--bg)">${escapeHtml(user.id || 'N/A')}</div></div>
+    <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
+    <button class="btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)" onclick="logout()">🚪 Logout</button>
+  `);
+}
 /* =========================================================
    30. GLOBAL SEARCH
    ========================================================= */
