@@ -1810,19 +1810,6 @@ function openProfile() {
     <button class="btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)" onclick="logout()">🚪 Logout</button>
   `);
 }
-
-/* FIX: logout function was missing — added here */
-function logout() {
-  localStorage.removeItem('witcorp-user');
-  localStorage.removeItem('witcorp-bg-theme');
-  localStorage.removeItem('witcorp-sidebar-theme');
-  closeModal();
-  showToast('Logged out successfully');
-  setTimeout(() => {
-    window.location.href = 'login.html';
-  }, 800);
-}
-
 /* =========================================================
    30. GLOBAL SEARCH
    ========================================================= */
