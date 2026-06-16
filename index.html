@@ -19,11 +19,21 @@
 <script src="auth.js"></script>
 <script>
   (async function() {
+
+    // STEP 1: Pehle dekho kya Google ne token bheja hash mein
+    if (handleOAuthCallback()) {
+      window.location.replace('index.html');
+      return;
+    }
+
+    // STEP 2: Agar token nahi toh login pe bhejo
     const token = localStorage.getItem('witcorp-access-token');
     if (!token) {
       window.location.href = 'login.html';
       return;
     }
+
+    // STEP 3: Token valid hai ya nahi check karo
     const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
       headers: {
         'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
@@ -34,6 +44,7 @@
       localStorage.removeItem('witcorp-access-token');
       window.location.href = 'login.html';
     }
+
   })();
 </script>
 </head>
