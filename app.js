@@ -7,8 +7,8 @@
    1. SUPABASE CONFIG
    ========================================================= */
 
-const SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+var SUPABASE_URL = window.SUPABASE_URL || 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
 
 async function supabase(table, options = {}) {
   const { method = 'GET', filters = '', body = null, select = '*', order = 'created_at.desc', limit = null } = options;
