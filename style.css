@@ -184,6 +184,8 @@ body {
   min-height: 100vh;
   margin-right: var(--right-w);
   transition: margin var(--transition);
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 /* ========== TOPBAR ========== */
@@ -288,7 +290,12 @@ body {
 .user-role { font-size: 11px; color: var(--text-muted); }
 
 /* ========== PAGE CONTENT ========== */
-.page-content { flex: 1; padding: 24px; }
+.page-content { 
+  flex: 1; 
+  padding: 24px;
+  min-width: 0;
+  overflow-x: hidden;
+}
 .page { display: none; animation: fadeIn .25s ease; }
 .page.active { display: block; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -524,7 +531,9 @@ body {
   overflow-x: auto; 
   -webkit-overflow-scrolling: touch;
   border-radius: var(--radius); 
-  border: 1.5px solid var(--border); 
+  border: 1.5px solid var(--border);
+  max-width: 100%;
+  display: block;
 }
 .data-table {
   width: 100%;
