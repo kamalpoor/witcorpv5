@@ -1278,7 +1278,7 @@ function renderDocuments() {
     return;
   }
   el.innerHTML = STATE.documents.map(d => `
-    <div class="doc-card" onclick="showToast('Opening ${escapeHtml(d.name)}...')">
+    <div class="doc-card" onclick="showToast(`Opening ${escapeHtml(d.name)}...`)">
       <div class="doc-icon">${d.icon||'📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
       <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
