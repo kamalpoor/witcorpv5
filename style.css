@@ -1106,58 +1106,718 @@ textarea.form-control { resize: vertical; }
   .main-wrapper { margin-right: 0; }
 }
 
+/* =========== COMPLETE MOBILE RESPONSIVE =========== */
+
 @media (max-width: 768px) {
-  :root { --sidebar-w: 260px; }
-  
-  /* ✅ MOBILE में right panel को bottom sheet की tarah show करो */
+  :root {
+    --sidebar-w: 260px;
+    --topbar-h: 56px;
+    --right-w: 0;
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    transform: translateX(-100%);
+    width: 260px;
+    z-index: 300;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-logo {
+    padding: 16px 14px 12px;
+  }
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  .logo-name {
+    font-size: 13px;
+  }
+  .logo-sub {
+    font-size: 10px;
+  }
+  .sidebar-nav {
+    padding: 12px 8px;
+  }
+  .nav-section-label {
+    padding: 10px 8px 5px;
+    font-size: 9px;
+  }
+  .nav-item {
+    padding: 9px 10px;
+    font-size: 12.5px;
+    margin-bottom: 1px;
+  }
+  .nav-icon {
+    font-size: 16px;
+  }
+  .theme-section {
+    padding: 12px 12px 16px;
+  }
+  .theme-label {
+    font-size: 9px;
+    margin-bottom: 8px;
+  }
+  .theme-swatches {
+    gap: 6px;
+  }
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border-width: 1.5px;
+  }
+
+  /* ===== TOPBAR ===== */
+  .topbar {
+    height: var(--topbar-h);
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .hamburger {
+    display: flex;
+    font-size: 20px;
+    padding: 4px;
+  }
+  .search-bar {
+    flex: 1;
+    padding: 7px 12px;
+    gap: 8px;
+    max-width: none;
+    border-radius: 10px;
+  }
+  .search-bar input {
+    font-size: 13px;
+  }
+  .search-icon {
+    font-size: 14px;
+  }
+  .search-shortcut {
+    display: none;
+  }
+  .topbar-actions {
+    gap: 6px;
+  }
+  .topbar-btn {
+    padding: 7px 12px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+  .topbar-btn:not(.icon-btn) {
+    display: none;
+  }
+  .topbar-btn.icon-btn {
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+  .user-avatar {
+    padding: 4px 8px 4px 4px;
+    gap: 6px;
+  }
+  .user-avatar > span:first-child {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .user-info {
+    display: none;
+  }
+
+  /* ===== MAIN WRAPPER ===== */
+  .main-wrapper {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  /* ===== PAGE CONTENT ===== */
+  .page-content {
+    padding: 14px;
+    min-width: 0;
+  }
+  .page-header {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .page-header h1 {
+    font-size: 18px;
+  }
+  .page-header p {
+    font-size: 12px;
+  }
+  .page-header-right {
+    width: 100%;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .date-badge {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn-primary {
+    padding: 9px 16px;
+    font-size: 12.5px;
+    border-radius: 8px;
+  }
+  .btn-outline {
+    padding: 8px 14px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  /* ===== CARDS ===== */
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  /* ===== STATS GRID ===== */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    padding: 14px;
+    gap: 10px;
+  }
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+  .stat-number {
+    font-size: 20px;
+  }
+  .stat-label {
+    font-size: 11px;
+  }
+  .stat-trend {
+    font-size: 10px;
+  }
+
+  /* ===== MODULES GRID ===== */
+  .section-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .modules-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .module-card {
+    padding: 14px;
+    gap: 10px;
+  }
+  .module-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 20px;
+  }
+  .module-name {
+    font-size: 12.5px;
+  }
+  .module-desc {
+    font-size: 11px;
+  }
+  .module-arrow {
+    font-size: 18px;
+  }
+
+  /* ===== AI BANNER ===== */
+  .ai-banner {
+    padding: 18px;
+    gap: 14px;
+    flex-direction: column;
+  }
+  .ai-globe {
+    font-size: 40px;
+  }
+  .ai-title {
+    font-size: 16px;
+  }
+  .ai-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+  .ai-desc {
+    font-size: 12px;
+  }
+  .ai-input-fake {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+  .ai-chips {
+    gap: 6px;
+  }
+  .ai-chips span {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .filter-input {
+    min-width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .filter-select {
+    padding: 8px 12px;
+    font-size: 12.5px;
+    width: 100%;
+  }
+
+  /* ===== TABLE ===== */
+  .table-wrapper {
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  .data-table {
+    min-width: 650px;
+    font-size: 12px;
+  }
+  .data-table th {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  .data-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  /* ===== PAGINATION ===== */
+  .pagination {
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .page-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  .page-info {
+    font-size: 12px;
+  }
+
+  /* ===== FORM ===== */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .form-group {
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .form-group label {
+    font-size: 11.5px;
+  }
+  .form-control {
+    padding: 9px 12px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
+  /* ===== TWO COL ===== */
+  .two-col {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* ===== KANBAN ===== */
+  .kanban-board {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .kanban-col {
+    padding: 12px;
+    border-radius: 10px;
+    min-height: 300px;
+  }
+  .kanban-col-header {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .kanban-count {
+    font-size: 11px;
+    padding: 1px 6px;
+  }
+  .kanban-cards {
+    gap: 8px;
+  }
+  .task-card {
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .task-title {
+    font-size: 12.5px;
+  }
+  .task-meta {
+    font-size: 10.5px;
+  }
+  .kanban-add {
+    padding: 8px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  /* ===== CALENDAR ===== */
+  .calendar-wrapper {
+    padding: 14px;
+    border-radius: 10px;
+  }
+  .cal-title {
+    font-size: 14px;
+  }
+  .cal-nav {
+    padding: 5px 10px;
+    font-size: 14px;
+    border-radius: 6px;
+  }
+  .cal-grid-header {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  .cal-grid {
+    gap: 2px;
+  }
+  .cal-day {
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  /* ===== TEAM CHAT ===== */
+  .chat-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    height: auto;
+  }
+  .chat-sidebar {
+    display: none;
+  }
+  .chat-search {
+    display: none;
+  }
+  .chat-contacts {
+    display: none;
+  }
+  .chat-main {
+    border-radius: 10px;
+    height: calc(100vh - 200px);
+  }
+  .chat-header-bar {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .chat-header-info {
+    gap: 10px;
+  }
+  .chat-avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .chat-contact-name {
+    font-size: 13px;
+  }
+  .chat-online {
+    font-size: 10px;
+  }
+  .chat-messages {
+    padding: 14px;
+    gap: 12px;
+  }
+  .msg-content {
+    max-width: 85%;
+    font-size: 12.5px;
+    padding: 10px 12px;
+    border-radius: 12px 12px 12px 3px;
+  }
+  .chat-msg.user .msg-content {
+    border-radius: 12px 12px 3px 12px;
+  }
+  .chat-input-bar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .chat-input-bar input {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    border-radius: 8px;
+  }
+
+  /* ===== RIGHT PANEL ===== */
   .right-panel {
     position: fixed;
     right: -100%;
     top: auto;
     bottom: 0;
     width: 100%;
+    height: auto;
+    max-height: 60vh;
     border-left: none;
     border-top: 1.5px solid var(--border);
     border-radius: 20px 20px 0 0;
-    max-height: 60vh;
-    display: block !important;
-    overflow-y: auto;
-    padding: 16px;
-    transition: right .3s ease;
+    padding: 14px;
     z-index: 500;
+    transition: right 0.3s ease;
   }
-  
   .right-panel.show-mobile {
     right: 0;
   }
-  
-  .main-wrapper { margin-right: 0; }
-  .hamburger { display: flex; }
-  /* ... rest of media queries ... */
+  .right-panel .card {
+    margin-bottom: 12px;
+  }
+  .due-item {
+    padding: 8px 0;
+  }
+  .due-date-badge {
+    width: 38px;
+  }
+  .due-date-num {
+    font-size: 16px;
+  }
+  .due-date-mon {
+    font-size: 9px;
+  }
+  .due-title {
+    font-size: 12px;
+  }
+  .due-sub {
+    font-size: 10.5px;
+  }
+  .activity-item {
+    padding: 6px 0;
+  }
+  .activity-dot {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  .activity-text {
+    font-size: 11.5px;
+  }
+  .activity-time {
+    font-size: 10px;
+  }
+  .workspace-overview {
+    gap: 8px;
+  }
+  .overview-item {
+    font-size: 12px;
+  }
+
+  /* ===== MODAL ===== */
+  .modal {
+    width: 95%;
+    max-width: 95%;
+    max-height: 90vh;
+    border-radius: 16px;
+  }
+  .modal-header {
+    padding: 16px 18px;
+  }
+  .modal-header h3 {
+    font-size: 15px;
+  }
+  .modal-close {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .modal-body {
+    padding: 18px;
+  }
+
+  /* ===== NOTIFICATIONS ===== */
+  .notif-panel {
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    top: auto;
+    bottom: 0;
+  }
+  .notif-header {
+    padding: 12px 16px;
+  }
+  .notif-header h3 {
+    font-size: 14px;
+  }
+  .notif-item {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .notif-icon {
+    font-size: 18px;
+  }
+  .notif-text {
+    font-size: 12px;
+  }
+  .notif-time {
+    font-size: 10px;
+  }
+
+  /* ===== QUICK ACTION ===== */
+  .quick-action-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .qa-btn {
+    padding: 12px;
+    border-radius: 10px;
+  }
+  .qa-btn-icon {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+  .qa-btn-label {
+    font-size: 12px;
+  }
+
+  /* ===== DOCS GRID ===== */
+  .docs-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .doc-card {
+    padding: 14px;
+  }
+  .doc-icon {
+    font-size: 28px;
+  }
+  .doc-name {
+    font-size: 11.5px;
+  }
+  .doc-meta {
+    font-size: 10px;
+  }
+
+  /* ===== BAR CHART ===== */
+  .bar-chart {
+    height: 140px;
+    padding-top: 8px;
+    gap: 6px;
+  }
+  .bar-label {
+    font-size: 10px;
+  }
+
+  /* ===== DONUT ===== */
+  .donut-wrapper {
+    gap: 16px;
+  }
+  .donut-chart {
+    width: 100px;
+    height: 100px;
+  }
+  .donut-center {
+    font-size: 16px;
+  }
+  .donut-legend {
+    gap: 8px;
+  }
+  .legend-item {
+    font-size: 12px;
+  }
+
+  /* ===== GENERAL ===== */
+  .section-title {
+    font-size: 13px;
+  }
+  .badge {
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+  .notif-dot {
+    width: 15px;
+    height: 15px;
+    font-size: 9px;
+  }
+  .toast {
+    bottom: 16px;
+    font-size: 12px;
+    padding: 10px 18px;
+  }
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border-width: 2px;
+  }
+  .empty-state {
+    padding: 30px 16px;
+  }
+  .empty-state-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+  .empty-state-text {
+    font-size: 13px;
+  }
+  .empty-state-sub {
+    font-size: 11px;
+  }
 }
-@media (max-width: 768px) {
-  :root { --sidebar-w: 260px; }
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
-  .main-wrapper { margin-left: 0; margin-right: 0; }
-  .hamburger { display: flex; }
-  .search-shortcut { display: none; }
-  .user-info { display: none; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .modules-grid { grid-template-columns: repeat(2, 1fr); }
-  .ai-banner { flex-direction: column; }
-  .ai-globe { font-size: 40px; }
-  .page-content { padding: 16px; }
-  .kanban-board { grid-template-columns: 1fr; }
-  .chat-layout { grid-template-columns: 1fr; }
-  .chat-sidebar { display: none; }
-  .topbar { padding: 0 14px; gap: 10px; }
-  .topbar-btn:not(.icon-btn) { display: none; }
-}
+
+/* ===== EXTRA SMALL DEVICES (480px और नीचे) ===== */
 @media (max-width: 480px) {
-  .stats-grid { grid-template-columns: 1fr; }
-  .modules-grid { grid-template-columns: 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .stat-number {
+    font-size: 18px;
+  }
+  .modules-grid {
+    grid-template-columns: 1fr;
+  }
+  .page-header h1 {
+    font-size: 16px;
+  }
+  .topbar {
+    height: 48px;
+    padding: 0 8px;
+  }
+  .hamburger {
+    font-size: 18px;
+  }
+  .docs-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .ai-banner {
+    padding: 14px;
+  }
+  .ai-globe {
+    font-size: 32px;
+  }
+  .ai-title {
+    font-size: 14px;
+  }
+  .quick-action-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal {
+    width: 98%;
+  }
 }
 
 /* ========== SCROLLBAR ========== */
@@ -1189,3 +1849,19 @@ textarea.form-control { resize: vertical; }
 .text-muted { color: var(--text-muted); }
 .text-sm { font-size: 12.5px; }
 .fw-bold { font-weight: 700; }
+/* existing code ... */
+
+/* ========== UTILITY ========== */
+.mt-1 { margin-top: .5rem; }
+/* ... etc ... */
+
+/* ⬇️⬇️⬇️ यहाँ से नीचे add करो ⬇️⬇️⬇️ */
+
+/* =========== COMPLETE MOBILE RESPONSIVE =========== */
+@media (max-width: 768px) {
+  /* ... सब code यहाँ ... */
+}
+
+@media (max-width: 480px) {
+  /* ... sab code yaha ... */
+}
