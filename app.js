@@ -1792,10 +1792,16 @@ function loadUserInfo() {
     ? user.user_metadata.full_name
     : (user.email ? user.email.split('@')[0] : 'User');
   const initial = name.charAt(0).toUpperCase();
+  
+  // ✅ TOPBAR में name
   const initEl = document.getElementById('userInitial');
   const nameEl = document.getElementById('userDisplayName');
   if (initEl) initEl.textContent = initial;
   if (nameEl) nameEl.textContent = name;
+  
+  // ✅ WELCOME MESSAGE में name
+  const welcomeEl = document.getElementById('welcomeUserName');
+  if (welcomeEl) welcomeEl.textContent = name;
 }
 
 function openProfile() {
