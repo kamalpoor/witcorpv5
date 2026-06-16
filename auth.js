@@ -146,14 +146,14 @@ async function logout() {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${token}`
+        'Authorization': 'Bearer ' + token
       }
     }).catch(() => {});
   }
-  clearSession();
-  window.location.href = 'login.html';
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.replace('login.html');
 }
-
 /* ── Guard: call at top of index.html ── */
 
 async function requireAuth() {
