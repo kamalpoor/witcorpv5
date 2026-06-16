@@ -1322,7 +1322,7 @@ function renderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const hasEvent = eventMap[d] ? 'has-event' : '';
     const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) ? 'today' : '';
-    html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d}, ${JSON.stringify(eventMap[d]||[]).replace(/"/g,'&quot;')})">${d}</div>`;
+    html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d})">${d}</div>`;
   }
   const totalCells = firstDay + daysInMonth;
   const remaining = (7 - (totalCells % 7)) % 7;
@@ -1330,12 +1330,24 @@ function renderCalendar() {
   gridEl.innerHTML = html;
 }
 
-function showDayEvents(day, events) {
-  if (!events || !events.length) { showToast(`No events on ${day} ${MONTH_NAMES[STATE.calendar.month]}`); return; }
+function showDayEvents(day) {
+  const events = STATE.calendarEvents.filter(e => {
+    const d = new Date(e.event_date);
+    return d.getFullYear() === STATE.calendar.year &&
+           d.getMonth() === STATE.calendar.month &&
+           d.getDate() === day;
+  });
+  if (!events || !events.length) {
+    showToast(`No events on ${day} ${MONTH_NAMES[STATE.calendar.month]}`);
+    return;
+  }
   openModalWithContent(`📅 Events — ${day} ${MONTH_NAMES[STATE.calendar.month]}`, `
     ${events.map(e => `
       <div class="upcoming-item" style="margin-bottom:10px">
-        <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
+        <div>
+          <div class="gst-item-name">${escapeHtml(e.title)}</div>
+          <div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div>
+        </div>
       </div>
     `).join('')}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
