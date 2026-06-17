@@ -1803,3 +1803,1687 @@ function statusBadge(status) {
 /* =========================================================
    END OF app.js — WITCORP | Vault + Enhanced Chat
    ========================================================= */
+/* =============================================================
+   WITCORP — Enhanced Team Chat (WhatsApp-style)
+   Features: Realtime, Typing, Online/Offline, Reply, Edit,
+             Delete, Reactions/Emoji, Stickers, Mentions
+   Add this AFTER app.js in your index.html
+   ============================================================= */
+
+/* ─── CHAT STATE ─────────────────────────────────────────── */
+const CHAT = {
+  messages: [],
+  replyTo: null,           // { id, text, sender }
+  editingId: null,
+  typingTimer: null,
+  presenceTimer: null,
+  pollTimer: null,
+  emojiPickerOpen: false,
+  stickerPickerOpen: false,
+  myEmail: '',
+  myName: '',
+  contactEmail: '',
+  contactName: '',
+};
+
+const EMOJI_LIST = [
+  '😀','😂','🥰','😍','🤩','😎','🥳','😊','🙏','👍',
+  '👎','❤️','🔥','💯','✅','⚡','🎉','💪','👏','😭',
+  '😤','😂','🤔','😅','🙈','💀','🤣','😬','🫡','🫂',
+  '💸','📊','✍️','🧾','📋','🏛️','💰','📅','🔔','⚠️'
+];
+
+const STICKER_LIST = [
+  { label: 'Done!',       emoji: '✅🎉' },
+  { label: 'On it!',      emoji: '💪🔥' },
+  { label: 'Please check',emoji: '👀📋' },
+  { label: 'Urgent!',     emoji: '🚨⚡' },
+  { label: 'Good work',   emoji: '👏💯' },
+  { label: 'Thanks!',     emoji: '🙏❤️' },
+  { label: 'GST Filed',   emoji: '📊✅' },
+  { label: 'ITR Done',    emoji: '💰✅' },
+  { label: 'Meeting?',    emoji: '📅🤝' },
+  { label: 'Call me',     emoji: '📞👋' },
+  { label: 'Running late',emoji: '⏰😅' },
+  { label: 'Approved!',   emoji: '✅👍' },
+];
+
+/* ─── INIT ───────────────────────────────────────────────── */
+function initEnhancedChat() {
+  const raw = localStorage.getItem('witcorp-user');
+  if (!raw) return;
+  const user = JSON.parse(raw);
+  CHAT.myEmail = user.email || '';
+  const meta = user.user_metadata || {};
+  CHAT.myName = meta.full_name || CHAT.myEmail.split('@')[0];
+  updateMyPresence(true);
+  startPresenceLoop();
+}
+
+/* ─── PRESENCE ───────────────────────────────────────────── */
+async function updateMyPresence(online) {
+  if (!CHAT.myEmail) return;
+  const url = `${SUPABASE_URL}/rest/v1/user_presence`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({ email: CHAT.myEmail, is_online: online, last_seen: new Date().toISOString() })
+  });
+}
+
+async function getPresence(email) {
+  if (!email) return null;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/user_presence?email=eq.${encodeURIComponent(email)}&select=is_online,last_seen`;
+    const res = await fetch(url, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    const data = await res.json();
+    return data[0] || null;
+  } catch { return null; }
+}
+
+function startPresenceLoop() {
+  if (CHAT.presenceTimer) clearInterval(CHAT.presenceTimer);
+  CHAT.presenceTimer = setInterval(() => updateMyPresence(true), 20000);
+  window.addEventListener('beforeunload', () => updateMyPresence(false));
+  document.addEventListener('visibilitychange', () => {
+    updateMyPresence(!document.hidden);
+  });
+}
+
+/* ─── TYPING INDICATOR ───────────────────────────────────── */
+async function sendTypingIndicator() {
+  if (!CHAT.contactEmail || !CHAT.myEmail) return;
+  const url = `${SUPABASE_URL}/rest/v1/typing_indicators`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({
+      sender_email: CHAT.myEmail,
+      receiver_email: CHAT.contactEmail,
+      updated_at: new Date().toISOString()
+    })
+  });
+}
+
+async function checkTyping() {
+  if (!CHAT.contactEmail || !CHAT.myEmail) return false;
+  try {
+    const since = new Date(Date.now() - 3000).toISOString();
+    const url = `${SUPABASE_URL}/rest/v1/typing_indicators?sender_email=eq.${encodeURIComponent(CHAT.contactEmail)}&receiver_email=eq.${encodeURIComponent(CHAT.myEmail)}&updated_at=gte.${since}`;
+    const res = await fetch(url, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    const data = await res.json();
+    return data && data.length > 0;
+  } catch { return false; }
+}
+
+function onChatInput() {
+  if (CHAT.typingTimer) clearTimeout(CHAT.typingTimer);
+  sendTypingIndicator();
+  CHAT.typingTimer = setTimeout(() => {}, 2000);
+}
+
+/* ─── LOAD & RENDER MESSAGES ─────────────────────────────── */
+async function loadChatMessages() {
+  if (!CHAT.contactEmail || !CHAT.myEmail) return;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(CHAT.myEmail)},receiver_email.eq.${encodeURIComponent(CHAT.contactEmail)}),and(sender_email.eq.${encodeURIComponent(CHAT.contactEmail)},receiver_email.eq.${encodeURIComponent(CHAT.myEmail)}))&order=created_at.asc`;
+    const res = await fetch(url, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    CHAT.messages = res.ok ? (await res.json()) : [];
+  } catch { CHAT.messages = []; }
+}
+
+function timeStr(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function dateSeparator(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const today = new Date();
+  const diff = Math.floor((today - d) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function renderMsgContent(msg) {
+  if (msg.is_deleted) {
+    return `<span style="opacity:.55;font-style:italic;font-size:12.5px">🚫 This message was deleted</span>`;
+  }
+  let text = escapeHtml(msg.message || '');
+  // Highlight @mentions
+  text = text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+  return text;
+}
+
+function renderReactions(msg) {
+  if (!msg.reactions || Object.keys(msg.reactions).length === 0) return '';
+  return `<div class="msg-reactions">` +
+    Object.entries(msg.reactions).map(([emoji, users]) =>
+      `<span class="reaction-chip ${users.includes(CHAT.myEmail) ? 'mine' : ''}"
+             onclick="toggleReaction(${msg.id}, '${emoji}')"
+             title="${users.join(', ')}">
+         ${emoji} <span>${users.length}</span>
+       </span>`
+    ).join('') +
+  `</div>`;
+}
+
+function renderReplyPreview(msg) {
+  if (!msg.reply_to || !msg.reply_preview) return '';
+  return `<div class="reply-preview-bubble">
+    <div class="reply-preview-bar"></div>
+    <div class="reply-preview-text">${escapeHtml(msg.reply_preview)}</div>
+  </div>`;
+}
+
+async function renderEnhancedTeamMessages() {
+  const el = document.getElementById('teamMessages');
+  if (!el) return;
+  await loadChatMessages();
+
+  if (!CHAT.contactEmail) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px;font-size:13.5px">👈 Select a contact to start chatting</div>';
+    return;
+  }
+
+  if (!CHAT.messages.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px;font-size:13.5px">No messages yet. Say Namaste! 👋</div>';
+  } else {
+    let lastDate = '';
+    let html = '';
+    CHAT.messages.forEach(msg => {
+      const msgDate = dateSeparator(msg.created_at);
+      if (msgDate !== lastDate) {
+        html += `<div class="chat-date-separator"><span>${msgDate}</span></div>`;
+        lastDate = msgDate;
+      }
+      const isMe = msg.sender_email === CHAT.myEmail;
+      const senderInitial = msg.sender_email.charAt(0).toUpperCase();
+      html += `
+        <div class="chat-msg-wrap ${isMe ? 'me' : 'them'}" id="msg-${msg.id}">
+          ${!isMe ? `<div class="msg-avatar-sm">${senderInitial}</div>` : ''}
+          <div class="msg-bubble-outer">
+            ${renderReplyPreview(msg)}
+            <div class="msg-bubble ${isMe ? 'mine' : 'theirs'} ${msg.is_deleted ? 'deleted' : ''}">
+              <div class="msg-text">${renderMsgContent(msg)}</div>
+              <div class="msg-meta">
+                <span class="msg-time">${timeStr(msg.created_at)}</span>
+                ${msg.is_edited && !msg.is_deleted ? '<span class="msg-edited">edited</span>' : ''}
+                ${isMe ? '<span class="msg-tick">✓✓</span>' : ''}
+              </div>
+            </div>
+            ${renderReactions(msg)}
+            ${!msg.is_deleted ? `
+            <div class="msg-actions" id="actions-${msg.id}">
+              <button onclick="startReply(${msg.id})" title="Reply">↩</button>
+              <button onclick="openEmojiForMsg(${msg.id})" title="React">😊</button>
+              ${isMe ? `<button onclick="startEdit(${msg.id})" title="Edit">✏️</button>` : ''}
+              ${isMe ? `<button onclick="deleteMsg(${msg.id})" title="Delete" style="color:var(--danger)">🗑️</button>` : ''}
+            </div>` : ''}
+          </div>
+          ${isMe ? `<div class="msg-avatar-sm mine">${senderInitial}</div>` : ''}
+        </div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  // Typing indicator
+  const isTyping = await checkTyping();
+  updateTypingIndicator(isTyping);
+
+  // Contact presence
+  const presence = await getPresence(CHAT.contactEmail);
+  updateContactPresence(presence);
+
+  el.scrollTop = el.scrollHeight;
+}
+
+function updateTypingIndicator(isTyping) {
+  const bar = document.getElementById('chatHeaderBar');
+  const onlineEl = document.querySelector('.chat-online');
+  if (!onlineEl) return;
+  if (isTyping) {
+    onlineEl.innerHTML = `<span style="color:var(--primary)">● typing...</span>`;
+  } else {
+    const presence = document.querySelector('.chat-online').__lastPresence;
+    onlineEl.innerHTML = presence?.is_online
+      ? '<span style="color:var(--success)">● Online</span>'
+      : `<span style="color:var(--text-muted)">⊘ ${presence ? 'Last seen ' + timeStr(presence.last_seen) : 'Offline'}</span>`;
+  }
+}
+
+function updateContactPresence(presence) {
+  const onlineEl = document.querySelector('.chat-online');
+  if (!onlineEl) return;
+  onlineEl.__lastPresence = presence;
+  if (presence?.is_online) {
+    onlineEl.innerHTML = '<span style="color:var(--success)">● Online</span>';
+  } else if (presence) {
+    const ago = timeStr(presence.last_seen);
+    onlineEl.innerHTML = `<span style="color:var(--text-muted)">⊘ Last seen ${ago}</span>`;
+  } else {
+    onlineEl.innerHTML = '<span style="color:var(--text-muted)">⊘ Offline</span>';
+  }
+}
+
+/* ─── SEND MESSAGE ───────────────────────────────────────── */
+async function sendEnhancedTeamMessage() {
+  const input = document.getElementById('teamChatInput');
+  const text = input?.value.trim();
+  if (!text && !CHAT.editingId) return;
+  if (!CHAT.contactEmail) { showToast('Select a contact first'); return; }
+
+  // EDIT mode
+  if (CHAT.editingId) {
+    await updateChatMessage(CHAT.editingId, text);
+    cancelEdit();
+    return;
+  }
+
+  // Build payload
+  const payload = {
+    sender_email: CHAT.myEmail,
+    receiver_email: CHAT.contactEmail,
+    message: text,
+    message_type: 'text',
+    is_edited: false,
+    is_deleted: false,
+    reactions: {}
+  };
+  if (CHAT.replyTo) {
+    payload.reply_to = CHAT.replyTo.id;
+    payload.reply_preview = CHAT.replyTo.text.substring(0, 80);
+  }
+
+  input.value = '';
+  cancelReply();
+  await supabaseInsert('team_messages', payload);
+  await renderEnhancedTeamMessages();
+  await renderEnhancedTeamContacts();
+}
+
+/* ─── REPLY ──────────────────────────────────────────────── */
+function startReply(msgId) {
+  const msg = CHAT.messages.find(m => m.id === msgId);
+  if (!msg) return;
+  CHAT.replyTo = { id: msgId, text: msg.message || '' };
+  const bar = document.getElementById('replyBar');
+  if (bar) {
+    bar.style.display = 'flex';
+    bar.querySelector('.reply-bar-text').textContent = msg.message?.substring(0, 80) || '';
+  }
+  document.getElementById('teamChatInput')?.focus();
+}
+
+function cancelReply() {
+  CHAT.replyTo = null;
+  const bar = document.getElementById('replyBar');
+  if (bar) bar.style.display = 'none';
+}
+
+/* ─── EDIT ───────────────────────────────────────────────── */
+function startEdit(msgId) {
+  const msg = CHAT.messages.find(m => m.id === msgId);
+  if (!msg) return;
+  CHAT.editingId = msgId;
+  const input = document.getElementById('teamChatInput');
+  if (input) { input.value = msg.message || ''; input.focus(); }
+  const bar = document.getElementById('editBar');
+  if (bar) {
+    bar.style.display = 'flex';
+    bar.querySelector('.edit-bar-text').textContent = 'Editing: ' + (msg.message?.substring(0, 60) || '');
+  }
+}
+
+function cancelEdit() {
+  CHAT.editingId = null;
+  const input = document.getElementById('teamChatInput');
+  if (input) input.value = '';
+  const bar = document.getElementById('editBar');
+  if (bar) bar.style.display = 'none';
+}
+
+async function updateChatMessage(id, newText) {
+  const url = `${SUPABASE_URL}/rest/v1/team_messages?id=eq.${id}`;
+  await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message: newText, is_edited: true })
+  });
+  await renderEnhancedTeamMessages();
+  showToast('✅ Message edited');
+}
+
+/* ─── DELETE ─────────────────────────────────────────────── */
+async function deleteMsg(id) {
+  const url = `${SUPABASE_URL}/rest/v1/team_messages?id=eq.${id}`;
+  await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ is_deleted: true, message: '' })
+  });
+  await renderEnhancedTeamMessages();
+  showToast('🗑️ Message deleted');
+}
+
+/* ─── REACTIONS ──────────────────────────────────────────── */
+async function toggleReaction(msgId, emoji) {
+  const msg = CHAT.messages.find(m => m.id === msgId);
+  if (!msg) return;
+  const reactions = { ...(msg.reactions || {}) };
+  if (!reactions[emoji]) reactions[emoji] = [];
+  const idx = reactions[emoji].indexOf(CHAT.myEmail);
+  if (idx > -1) reactions[emoji].splice(idx, 1);
+  else reactions[emoji].push(CHAT.myEmail);
+  if (reactions[emoji].length === 0) delete reactions[emoji];
+  const url = `${SUPABASE_URL}/rest/v1/team_messages?id=eq.${msgId}`;
+  await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ reactions })
+  });
+  await renderEnhancedTeamMessages();
+}
+
+/* ─── EMOJI PICKER for message ───────────────────────────── */
+function openEmojiForMsg(msgId) {
+  closeAllPickers();
+  const actions = document.getElementById('actions-' + msgId);
+  if (!actions) return;
+  const picker = document.createElement('div');
+  picker.className = 'emoji-picker-popup';
+  picker.id = 'emoji-popup-' + msgId;
+  picker.innerHTML = EMOJI_LIST.map(e =>
+    `<span onclick="toggleReaction(${msgId},'${e}');closeAllPickers()">${e}</span>`
+  ).join('');
+  actions.parentNode.appendChild(picker);
+}
+
+function openMainEmojiPicker() {
+  closeAllPickers();
+  const bar = document.querySelector('.chat-input-bar');
+  if (!bar) return;
+  const picker = document.createElement('div');
+  picker.className = 'emoji-picker-popup main-emoji-picker';
+  picker.id = 'main-emoji-picker';
+  picker.innerHTML = EMOJI_LIST.map(e =>
+    `<span onclick="insertEmoji('${e}')">${e}</span>`
+  ).join('');
+  bar.parentNode.insertBefore(picker, bar);
+}
+
+function insertEmoji(e) {
+  const input = document.getElementById('teamChatInput');
+  if (input) {
+    const pos = input.selectionStart || input.value.length;
+    input.value = input.value.slice(0, pos) + e + input.value.slice(pos);
+    input.focus();
+    input.setSelectionRange(pos + e.length, pos + e.length);
+  }
+  closeAllPickers();
+}
+
+function openStickerPicker() {
+  closeAllPickers();
+  const bar = document.querySelector('.chat-input-bar');
+  if (!bar) return;
+  const picker = document.createElement('div');
+  picker.className = 'sticker-picker-popup';
+  picker.id = 'sticker-picker';
+  picker.innerHTML = `<div class="sticker-grid">` +
+    STICKER_LIST.map(s =>
+      `<button class="sticker-item" onclick="sendSticker('${s.emoji}','${s.label}')">
+         <span>${s.emoji}</span>
+         <span>${s.label}</span>
+       </button>`
+    ).join('') +
+  `</div>`;
+  bar.parentNode.insertBefore(picker, bar);
+}
+
+async function sendSticker(emoji, label) {
+  closeAllPickers();
+  if (!CHAT.contactEmail) return;
+  await supabaseInsert('team_messages', {
+    sender_email: CHAT.myEmail,
+    receiver_email: CHAT.contactEmail,
+    message: emoji + ' ' + label,
+    message_type: 'sticker',
+    is_edited: false,
+    is_deleted: false,
+    reactions: {}
+  });
+  await renderEnhancedTeamMessages();
+}
+
+function closeAllPickers() {
+  document.querySelectorAll('.emoji-picker-popup, .sticker-picker-popup').forEach(el => el.remove());
+}
+
+/* ─── MENTION AUTOCOMPLETE ───────────────────────────────── */
+function handleMentionInput(val) {
+  const atPos = val.lastIndexOf('@');
+  if (atPos === -1) { closeMentionDropdown(); return; }
+  const query = val.slice(atPos + 1).toLowerCase();
+  if (query.includes(' ')) { closeMentionDropdown(); return; }
+  // Get all known contacts
+  const contacts = Array.from(document.querySelectorAll('.contact-item'))
+    .map(el => {
+      const nameEl = el.querySelector('div > div:first-child');
+      return nameEl ? nameEl.textContent.trim() : '';
+    }).filter(Boolean);
+  const matches = contacts.filter(c => c.toLowerCase().startsWith(query));
+  if (!matches.length) { closeMentionDropdown(); return; }
+  showMentionDropdown(matches, atPos);
+}
+
+function showMentionDropdown(matches, atPos) {
+  closeMentionDropdown();
+  const bar = document.querySelector('.chat-input-bar');
+  if (!bar) return;
+  const dd = document.createElement('div');
+  dd.className = 'mention-dropdown';
+  dd.id = 'mention-dd';
+  dd.innerHTML = matches.map(m =>
+    `<div class="mention-option" onclick="completeMention('${m}', ${atPos})">@${m}</div>`
+  ).join('');
+  bar.parentNode.insertBefore(dd, bar);
+}
+
+function completeMention(name, atPos) {
+  const input = document.getElementById('teamChatInput');
+  if (!input) return;
+  input.value = input.value.slice(0, atPos) + '@' + name + ' ';
+  input.focus();
+  closeMentionDropdown();
+}
+
+function closeMentionDropdown() {
+  document.getElementById('mention-dd')?.remove();
+}
+
+/* ─── REAL-TIME POLLING ──────────────────────────────────── */
+function startChatPolling() {
+  stopChatPolling();
+  CHAT.pollTimer = setInterval(async () => {
+    if (STATE.currentPage !== 'teamchat' || !CHAT.contactEmail) return;
+    const prevCount = CHAT.messages.length;
+    await renderEnhancedTeamMessages();
+    if (CHAT.messages.length > prevCount) {
+      const el = document.getElementById('teamMessages');
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+  }, 3000);
+}
+
+function stopChatPolling() {
+  if (CHAT.pollTimer) clearInterval(CHAT.pollTimer);
+}
+
+/* ─── OVERRIDE: switchChatContact ───────────────────────── */
+async function switchChatContactEnhanced(email, name) {
+  CHAT.contactEmail = email;
+  CHAT.contactName = name || email.split('@')[0];
+  STATE.activeChatContact = email;
+
+  const nameEl = document.getElementById('activeChatName');
+  if (nameEl) nameEl.textContent = CHAT.contactName;
+  const avatarEl = document.querySelector('.chat-avatar-sm:not(.mine)');
+  if (avatarEl) avatarEl.textContent = CHAT.contactName.charAt(0).toUpperCase();
+
+  cancelReply(); cancelEdit(); closeAllPickers();
+  await renderEnhancedTeamMessages();
+  await renderEnhancedTeamContacts();
+  startChatPolling();
+}
+
+/* ─── OVERRIDE: renderTeamContacts with presence ─────────── */
+async function renderEnhancedTeamContacts() {
+  const el = document.getElementById('chatContacts');
+  if (!el) return;
+  const profiles = await supabase('profiles', { order: 'full_name.asc' });
+  const others = (profiles || []).filter(p => p.email !== CHAT.myEmail);
+  if (!others.length) {
+    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet</div>';
+    return;
+  }
+  // Batch presence check
+  const presencePromises = others.map(p => getPresence(p.email));
+  const presences = await Promise.all(presencePromises);
+
+  el.innerHTML = others.map((p, i) => {
+    const name = p.full_name || p.email.split('@')[0];
+    const initial = name.charAt(0).toUpperCase();
+    const isActive = p.email === CHAT.contactEmail;
+    const presence = presences[i];
+    const online = presence?.is_online;
+    return `
+      <div class="contact-item ${isActive ? 'active' : ''}"
+           onclick="switchChatContactEnhanced('${p.email}', '${escapeHtml(name)}')">
+        <div class="contact-avatar-wrap">
+          <div class="contact-avatar">${initial}</div>
+          <div class="presence-dot ${online ? 'online' : 'offline'}"></div>
+        </div>
+        <div style="flex:1;min-width:0;margin-left:10px">
+          <div style="font-weight:600;font-size:13.5px;color:var(--text)">${escapeHtml(name)}</div>
+          <div style="font-size:11px;color:${online ? 'var(--success)' : 'var(--text-muted)'}">
+            ${online ? '● Online' : '⊘ Offline'}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ─── REBUILD CHAT HTML STRUCTURE ────────────────────────── */
+function buildEnhancedChatUI() {
+  const chatPage = document.getElementById('page-teamchat');
+  if (!chatPage) return;
+  chatPage.innerHTML = `
+    <div class="page-header">
+      <div><h1>💬 Team Chat</h1><p>WhatsApp-style team collaboration</p></div>
+    </div>
+    <div class="chat-layout-enhanced">
+      <!-- SIDEBAR -->
+      <div class="chat-sidebar-enhanced" id="chatSidebarEnhanced">
+        <div class="chat-search">
+          <input type="text" id="newChatEmail" placeholder="Enter email for new chat..." />
+          <button class="btn-primary" style="margin-top:6px;width:100%;padding:8px;font-size:12px"
+                  onclick="startNewChatEnhanced()">+ New Chat</button>
+        </div>
+        <div class="chat-contacts" id="chatContacts"></div>
+      </div>
+
+      <!-- MAIN CHAT -->
+      <div class="chat-main-enhanced">
+        <!-- Header -->
+        <div class="chat-header-bar" id="chatHeaderBar">
+          <div class="chat-header-info">
+            <button class="chat-back-btn" onclick="closeChatMobile()">‹</button>
+            <div class="chat-avatar-sm">?</div>
+            <div>
+              <div class="chat-contact-name" id="activeChatName">Select a contact</div>
+              <div class="chat-online">⊘ Offline</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="chat-messages" id="teamMessages" style="flex:1;overflow-y:auto;padding:14px 16px">
+          <div style="text-align:center;color:var(--text-muted);padding:40px 20px;font-size:13.5px">
+            👈 Select a contact to start chatting
+          </div>
+        </div>
+
+        <!-- Reply bar -->
+        <div id="replyBar" style="display:none;align-items:center;gap:10px;padding:8px 16px;background:var(--surface2);border-top:1px solid var(--border)">
+          <div style="width:3px;height:36px;background:var(--primary);border-radius:2px;flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:2px">Replying to</div>
+            <div class="reply-bar-text" style="font-size:12.5px;color:var(--text-muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis"></div>
+          </div>
+          <button onclick="cancelReply()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);line-height:1">✕</button>
+        </div>
+
+        <!-- Edit bar -->
+        <div id="editBar" style="display:none;align-items:center;gap:10px;padding:8px 16px;background:rgba(99,102,241,.08);border-top:1px solid var(--border)">
+          <span style="font-size:15px">✏️</span>
+          <div class="edit-bar-text" style="flex:1;font-size:12.5px;color:var(--primary);font-weight:500"></div>
+          <button onclick="cancelEdit()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);line-height:1">✕</button>
+        </div>
+
+        <!-- Input bar -->
+        <div class="chat-input-bar" style="padding:12px 14px;gap:8px;flex-shrink:0">
+          <button class="chat-tool-btn" onclick="openMainEmojiPicker()" title="Emoji">😊</button>
+          <button class="chat-tool-btn" onclick="openStickerPicker()" title="Stickers">🎭</button>
+          <input type="text" id="teamChatInput"
+                 placeholder="Type a message or @mention..."
+                 oninput="onChatInput();handleMentionInput(this.value)"
+                 onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendEnhancedTeamMessage()}" />
+          <button class="btn-primary" style="padding:10px 18px" onclick="sendEnhancedTeamMessage()">➤</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function startNewChatEnhanced() {
+  const emailInput = document.getElementById('newChatEmail');
+  const email = emailInput?.value.trim().toLowerCase();
+  if (!email || !email.includes('@')) { showToast('Enter a valid email'); return; }
+  if (email === CHAT.myEmail) { showToast('Cannot chat with yourself!'); return; }
+  if (emailInput) emailInput.value = '';
+  switchChatContactEnhanced(email, email.split('@')[0]);
+}
+
+function closeChatMobile() {
+  const main = document.querySelector('.chat-main-enhanced');
+  const sidebar = document.getElementById('chatSidebarEnhanced');
+  if (main) main.style.display = '';
+  if (sidebar) sidebar.style.display = '';
+}
+
+/* ─── INJECT ENHANCED CSS ────────────────────────────────── */
+function injectChatCSS() {
+  const style = document.createElement('style');
+  style.textContent = `
+  /* Enhanced Chat Layout */
+  .chat-layout-enhanced {
+    display: grid;
+    grid-template-columns: 270px 1fr;
+    gap: 0;
+    height: calc(100vh - 160px);
+    min-height: 520px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .chat-sidebar-enhanced {
+    border-right: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface2);
+  }
+  .chat-main-enhanced {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+  }
+
+  /* Contact avatar with presence dot */
+  .contact-avatar-wrap { position: relative; flex-shrink: 0; }
+  .contact-avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff; font-weight: 700; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .presence-dot {
+    position: absolute; bottom: 1px; right: 1px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 2px solid var(--surface2);
+  }
+  .presence-dot.online  { background: var(--success); }
+  .presence-dot.offline { background: var(--border); }
+
+  /* Message layout */
+  .chat-msg-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .chat-msg-wrap.me { flex-direction: row-reverse; }
+  .chat-msg-wrap:hover .msg-actions { opacity: 1; pointer-events: auto; }
+
+  .msg-avatar-sm {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--primary-glow);
+    color: var(--primary);
+    font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    border: 1.5px solid var(--border);
+  }
+  .msg-avatar-sm.mine {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  .msg-bubble-outer { max-width: 68%; display: flex; flex-direction: column; }
+  .chat-msg-wrap.me .msg-bubble-outer { align-items: flex-end; }
+
+  .msg-bubble {
+    padding: 9px 13px;
+    border-radius: 18px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    word-break: break-word;
+    position: relative;
+  }
+  .msg-bubble.theirs {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-bottom-left-radius: 4px;
+    color: var(--text);
+  }
+  .msg-bubble.mine {
+    background: var(--primary);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .msg-bubble.deleted { opacity: .65; }
+
+  .msg-meta {
+    display: flex; align-items: center; gap: 5px;
+    margin-top: 4px; justify-content: flex-end;
+    font-size: 10.5px; opacity: .7;
+  }
+  .msg-edited { font-style: italic; }
+  .msg-tick { color: #4fc3f7; }
+  .msg-bubble.theirs .msg-meta { color: var(--text-muted); }
+  .msg-bubble.mine .msg-meta { color: rgba(255,255,255,.7); }
+
+  /* Reply preview inside bubble */
+  .reply-preview-bubble {
+    display: flex; gap: 8px; align-items: stretch;
+    background: rgba(0,0,0,.08);
+    border-radius: 10px 10px 0 0;
+    padding: 7px 10px;
+    margin-bottom: 2px;
+    max-width: 100%;
+  }
+  .msg-bubble.mine .reply-preview-bubble { background: rgba(255,255,255,.18); }
+  .reply-preview-bar { width: 3px; border-radius: 2px; background: var(--primary); flex-shrink: 0; }
+  .msg-bubble.mine .reply-preview-bar { background: rgba(255,255,255,.7); }
+  .reply-preview-text {
+    font-size: 12px; opacity: .8;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  /* Reactions */
+  .msg-reactions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .reaction-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 99px;
+    padding: 2px 8px;
+    font-size: 13px; cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .reaction-chip:hover { border-color: var(--primary); background: var(--primary-glow); }
+  .reaction-chip.mine { border-color: var(--primary); background: var(--primary-glow); }
+  .reaction-chip span { font-size: 11.5px; font-weight: 700; color: var(--text); }
+
+  /* Message action buttons */
+  .msg-actions {
+    display: flex; align-items: center; gap: 3px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s;
+    position: absolute;
+    top: -28px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 3px 6px;
+    box-shadow: var(--shadow);
+    z-index: 10;
+    right: 0;
+  }
+  .chat-msg-wrap.me .msg-actions { right: 40px; }
+  .chat-msg-wrap.them .msg-actions { left: 40px; right: auto; }
+  .msg-actions button {
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; padding: 3px 5px; border-radius: 6px;
+    transition: background .15s; color: var(--text);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .msg-actions button:hover { background: var(--bg); }
+
+  /* Date separator */
+  .chat-date-separator {
+    text-align: center; margin: 12px 0;
+    position: relative;
+  }
+  .chat-date-separator::before {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; background: var(--border);
+  }
+  .chat-date-separator span {
+    background: var(--surface); position: relative; z-index: 1;
+    padding: 2px 12px; font-size: 11.5px; color: var(--text-muted);
+    font-weight: 600; border-radius: 99px; border: 1px solid var(--border);
+  }
+
+  /* Emoji picker popup */
+  .emoji-picker-popup {
+    position: absolute;
+    bottom: 100%; right: 0;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    min-width: 280px;
+  }
+  .emoji-picker-popup.main-emoji-picker {
+    position: relative; bottom: auto; right: auto;
+    margin-bottom: 8px;
+  }
+  .emoji-picker-popup span {
+    font-size: 20px; cursor: pointer; padding: 5px;
+    border-radius: 8px; text-align: center;
+    transition: background .15s;
+  }
+  .emoji-picker-popup span:hover { background: var(--bg); }
+
+  /* Sticker picker */
+  .sticker-picker-popup {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    margin-bottom: 8px;
+  }
+  .sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sticker-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 10px 6px; cursor: pointer;
+    transition: border-color .2s, background .2s;
+    font-family: var(--font);
+  }
+  .sticker-item:hover { border-color: var(--primary); background: var(--primary-glow); }
+  .sticker-item span:first-child { font-size: 22px; }
+  .sticker-item span:last-child  { font-size: 10.5px; color: var(--text-muted); font-weight: 600; text-align: center; }
+
+  /* Mention dropdown */
+  .mention-dropdown {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 4px;
+    z-index: 200;
+  }
+  .mention-option {
+    padding: 9px 14px; font-size: 13px;
+    cursor: pointer; color: var(--text);
+    transition: background .15s;
+    font-weight: 600;
+  }
+  .mention-option:hover { background: var(--primary-glow); color: var(--primary); }
+
+  /* @mention highlight in messages */
+  .mention { color: var(--primary); font-weight: 700; cursor: pointer; }
+  .mention:hover { text-decoration: underline; }
+
+  /* Toolbar buttons */
+  .chat-tool-btn {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 8px 10px; font-size: 18px;
+    cursor: pointer; transition: border-color .2s, background .2s;
+    -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+  }
+  .chat-tool-btn:hover { border-color: var(--primary); background: var(--primary-glow); }
+
+  /* Back button mobile */
+  .chat-back-btn {
+    display: none; background: none; border: none;
+    font-size: 22px; cursor: pointer; color: var(--text);
+    padding: 4px 8px; line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    .chat-layout-enhanced {
+      grid-template-columns: 1fr;
+      height: calc(100vh - 140px);
+    }
+    .chat-main-enhanced { display: none; }
+    .chat-layout-enhanced.chat-open .chat-sidebar-enhanced { display: none; }
+    .chat-layout-enhanced.chat-open .chat-main-enhanced { display: flex; }
+    .chat-back-btn { display: block; }
+    .emoji-picker-popup { grid-template-columns: repeat(6, 1fr); min-width: 220px; }
+    .sticker-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  `;
+  document.head.appendChild(style);
+}
+
+/* ─── BOOT ───────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  injectChatCSS();
+  buildEnhancedChatUI();
+  initEnhancedChat();
+  renderEnhancedTeamContacts();
+});
+/* =============================================================
+   WITCORP — Vault (Password Manager)
+   Features: Folder-based storage, Add/Edit/Delete credentials,
+             Show/Hide password, Copy username & password,
+             GST / MCA / Income Tax / TDS / NSDL / Tally / Other
+   Add this AFTER app.js in your index.html
+   ============================================================= */
+
+/* ─── VAULT FOLDERS ─────────────────────────────────────── */
+const VAULT_FOLDERS = [
+  { id: 'GST',         label: 'GST Portal',      icon: '📊', color: '#10b981' },
+  { id: 'MCA',         label: 'MCA / ROC',        icon: '🏛️', color: '#3b82f6' },
+  { id: 'IncomeTax',   label: 'Income Tax',        icon: '💰', color: '#f59e0b' },
+  { id: 'TDS',         label: 'TDS / TRACES',      icon: '🧾', color: '#8b5cf6' },
+  { id: 'NSDL',        label: 'NSDL / CDSL',       icon: '📋', color: '#06b6d4' },
+  { id: 'Tally',       label: 'Tally / Zoho',      icon: '🧮', color: '#f43f5e' },
+  { id: 'Bank',        label: 'Bank Portals',      icon: '🏦', color: '#22c55e' },
+  { id: 'Email',       label: 'Email / Google',    icon: '📧', color: '#ea580c' },
+  { id: 'Client',      label: 'Client Portals',    icon: '👥', color: '#a78bfa' },
+  { id: 'Other',       label: 'Other',             icon: '🔑', color: '#64748b' },
+];
+
+const VAULT_STATE = {
+  credentials: [],
+  activeFolder: 'all',
+  searchQuery: '',
+  showPasswords: {},   // id -> bool
+};
+
+/* ─── LOAD VAULT ─────────────────────────────────────────── */
+async function loadVault() {
+  const url = `${SUPABASE_URL}/rest/v1/vault_credentials?order=folder.asc,created_at.desc`;
+  const res = await fetch(url, {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+  });
+  VAULT_STATE.credentials = res.ok ? await res.json() : [];
+}
+
+/* ─── FILTER ─────────────────────────────────────────────── */
+function getVaultFiltered() {
+  const q = VAULT_STATE.searchQuery.toLowerCase();
+  return VAULT_STATE.credentials.filter(c => {
+    const matchFolder = VAULT_STATE.activeFolder === 'all' || c.folder === VAULT_STATE.activeFolder;
+    const matchSearch = !q || (c.label||'').toLowerCase().includes(q) ||
+                              (c.username||'').toLowerCase().includes(q) ||
+                              (c.url||'').toLowerCase().includes(q);
+    return matchFolder && matchSearch;
+  });
+}
+
+/* ─── RENDER VAULT PAGE ──────────────────────────────────── */
+function renderVaultPage() {
+  const page = document.getElementById('page-vault');
+  if (!page) return;
+
+  const filtered = getVaultFiltered();
+
+  // Count per folder
+  const folderCounts = {};
+  VAULT_STATE.credentials.forEach(c => {
+    folderCounts[c.folder] = (folderCounts[c.folder] || 0) + 1;
+  });
+
+  page.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1>🔐 Vault</h1>
+        <p>Secure credential manager — ${VAULT_STATE.credentials.length} saved credentials</p>
+      </div>
+      <button class="btn-primary" onclick="openAddCredential()">+ Add Credential</button>
+    </div>
+
+    <div class="vault-layout">
+      <!-- FOLDER SIDEBAR -->
+      <div class="vault-sidebar">
+        <div class="vault-folder-item ${VAULT_STATE.activeFolder === 'all' ? 'active' : ''}"
+             onclick="setVaultFolder('all')">
+          <span>🔒</span>
+          <span style="flex:1">All Credentials</span>
+          <span class="vault-folder-count">${VAULT_STATE.credentials.length}</span>
+        </div>
+        <div style="height:1px;background:var(--border);margin:8px 0"></div>
+        ${VAULT_FOLDERS.map(f => `
+          <div class="vault-folder-item ${VAULT_STATE.activeFolder === f.id ? 'active' : ''}"
+               onclick="setVaultFolder('${f.id}')">
+            <span>${f.icon}</span>
+            <span style="flex:1">${f.label}</span>
+            ${folderCounts[f.id] ? `<span class="vault-folder-count">${folderCounts[f.id]}</span>` : ''}
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- MAIN AREA -->
+      <div class="vault-main">
+        <!-- Search bar -->
+        <div class="vault-search-bar">
+          <span>🔍</span>
+          <input type="text"
+                 placeholder="Search credentials..."
+                 value="${escapeHtml(VAULT_STATE.searchQuery)}"
+                 oninput="VAULT_STATE.searchQuery=this.value;renderVaultPage()" />
+        </div>
+
+        <!-- Folder title -->
+        <div class="vault-section-title">
+          ${VAULT_STATE.activeFolder === 'all'
+            ? '🔒 All Credentials'
+            : (() => { const f = VAULT_FOLDERS.find(x=>x.id===VAULT_STATE.activeFolder); return f ? f.icon+' '+f.label : ''; })()
+          }
+          <span style="color:var(--text-muted);font-weight:500;font-size:13px;margin-left:8px">(${filtered.length})</span>
+        </div>
+
+        <!-- Credentials grid -->
+        ${filtered.length ? `
+          <div class="vault-grid">
+            ${filtered.map(c => renderCredentialCard(c)).join('')}
+          </div>
+        ` : `
+          <div class="empty-state" style="padding:60px 20px">
+            <div class="empty-state-icon">🔑</div>
+            <div class="empty-state-text">No credentials here</div>
+            <div class="empty-state-sub">Click "+ Add Credential" to add one</div>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function renderCredentialCard(c) {
+  const folder = VAULT_FOLDERS.find(f => f.id === c.folder) || { icon: '🔑', color: '#64748b', label: c.folder };
+  const showPass = VAULT_STATE.showPasswords[c.id];
+  const maskedPass = c.password ? '••••••••••' : '—';
+  const visiblePass = c.password || '—';
+
+  return `
+    <div class="vault-card" id="vault-card-${c.id}">
+      <!-- Card header -->
+      <div class="vault-card-header">
+        <div class="vault-card-icon" style="background:${folder.color}22;color:${folder.color}">${folder.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div class="vault-card-label">${escapeHtml(c.label)}</div>
+          <div class="vault-card-folder">${folder.label}</div>
+        </div>
+        <div class="vault-card-actions">
+          <button onclick="openEditCredential(${c.id})" title="Edit" class="vault-icon-btn">✏️</button>
+          <button onclick="confirmDeleteCredential(${c.id})" title="Delete" class="vault-icon-btn danger">🗑️</button>
+        </div>
+      </div>
+
+      <!-- URL -->
+      ${c.url ? `
+        <div class="vault-field">
+          <span class="vault-field-label">🌐 URL</span>
+          <a href="${escapeHtml(c.url)}" target="_blank" class="vault-url">${escapeHtml(c.url)}</a>
+        </div>` : ''}
+
+      <!-- Username -->
+      <div class="vault-field">
+        <span class="vault-field-label">👤 Username</span>
+        <div class="vault-field-row">
+          <span class="vault-field-val" id="uname-${c.id}">${escapeHtml(c.username || '—')}</span>
+          ${c.username ? `
+            <button class="vault-copy-btn" onclick="copyVaultField('${escapeHtml(c.username)}', 'Username')" title="Copy username">
+              📋
+            </button>` : ''}
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div class="vault-field">
+        <span class="vault-field-label">🔑 Password</span>
+        <div class="vault-field-row">
+          <span class="vault-field-val mono" id="pass-${c.id}">
+            ${showPass ? escapeHtml(visiblePass) : maskedPass}
+          </span>
+          <div style="display:flex;gap:4px">
+            ${c.password ? `
+              <button class="vault-copy-btn" onclick="copyVaultField('${escapeHtml(c.password)}', 'Password')" title="Copy password">
+                📋
+              </button>
+              <button class="vault-copy-btn" onclick="toggleVaultPassword(${c.id})" title="${showPass ? 'Hide' : 'Show'} password">
+                ${showPass ? '🙈' : '👁️'}
+              </button>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      ${c.notes ? `
+        <div class="vault-notes">${escapeHtml(c.notes)}</div>` : ''}
+    </div>
+  `;
+}
+
+/* ─── TOGGLE PASSWORD VISIBILITY ────────────────────────── */
+function toggleVaultPassword(id) {
+  VAULT_STATE.showPasswords[id] = !VAULT_STATE.showPasswords[id];
+  const c = VAULT_STATE.credentials.find(x => x.id === id);
+  if (!c) return;
+  const el = document.getElementById('pass-' + id);
+  if (el) el.textContent = VAULT_STATE.showPasswords[id] ? (c.password || '—') : '••••••••••';
+  // Update button
+  const card = document.getElementById('vault-card-' + id);
+  if (card) {
+    const btns = card.querySelectorAll('.vault-copy-btn');
+    btns.forEach(btn => {
+      if (btn.title.includes('Show') || btn.title.includes('Hide')) {
+        btn.textContent = VAULT_STATE.showPasswords[id] ? '🙈' : '👁️';
+        btn.title = VAULT_STATE.showPasswords[id] ? 'Hide password' : 'Show password';
+      }
+    });
+  }
+}
+
+/* ─── COPY FIELD ─────────────────────────────────────────── */
+function copyVaultField(value, label) {
+  if (!value || value === '—') return;
+  navigator.clipboard.writeText(value).then(() => {
+    showToast(`✅ ${label} copied to clipboard!`);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = value; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(`✅ ${label} copied!`);
+  });
+}
+
+/* ─── SET FOLDER ─────────────────────────────────────────── */
+function setVaultFolder(folderId) {
+  VAULT_STATE.activeFolder = folderId;
+  VAULT_STATE.searchQuery = '';
+  renderVaultPage();
+}
+
+/* ─── ADD CREDENTIAL MODAL ───────────────────────────────── */
+function openAddCredential(prefillFolder) {
+  const folderOptions = VAULT_FOLDERS.map(f =>
+    `<option value="${f.id}" ${prefillFolder === f.id ? 'selected' : ''}>${f.icon} ${f.label}</option>`
+  ).join('');
+
+  openModalWithContent('🔐 Add Credential', `
+    <div class="form-group">
+      <label>Label / Name *</label>
+      <input type="text" class="form-control" id="vaultLabel" placeholder="e.g. GST Portal - Ramesh Enterprises" />
+    </div>
+    <div class="form-group">
+      <label>Folder *</label>
+      <select class="form-control" id="vaultFolder">${folderOptions}</select>
+    </div>
+    <div class="form-group">
+      <label>Username / User ID</label>
+      <input type="text" class="form-control" id="vaultUsername" placeholder="Enter username or user ID" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <div style="position:relative">
+        <input type="password" class="form-control" id="vaultPassword"
+               placeholder="Enter password" autocomplete="new-password"
+               style="padding-right:44px" />
+        <button type="button"
+                onclick="toggleAddPassVisibility()"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px"
+                id="addPassToggleBtn">👁️</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Portal URL (optional)</label>
+      <input type="url" class="form-control" id="vaultUrl" placeholder="https://..." />
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea class="form-control" id="vaultNotes" rows="2" placeholder="Any extra info..."></textarea>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:4px" onclick="submitAddCredential()">
+      🔐 Save Credential
+    </button>
+  `);
+}
+
+function toggleAddPassVisibility() {
+  const inp = document.getElementById('vaultPassword');
+  const btn = document.getElementById('addPassToggleBtn');
+  if (!inp) return;
+  if (inp.type === 'password') { inp.type = 'text'; if (btn) btn.textContent = '🙈'; }
+  else { inp.type = 'password'; if (btn) btn.textContent = '👁️'; }
+}
+
+async function submitAddCredential() {
+  const label = document.getElementById('vaultLabel')?.value.trim();
+  if (!label) { showToast('Label is required'); return; }
+  const raw = localStorage.getItem('witcorp-user');
+  const email = raw ? JSON.parse(raw).email : '';
+  const body = {
+    label,
+    folder: document.getElementById('vaultFolder')?.value || 'Other',
+    username: document.getElementById('vaultUsername')?.value.trim() || '',
+    password: document.getElementById('vaultPassword')?.value || '',
+    url: document.getElementById('vaultUrl')?.value.trim() || '',
+    notes: document.getElementById('vaultNotes')?.value.trim() || '',
+    created_by: email
+  };
+  const result = await supabaseInsert('vault_credentials', body);
+  if (result && result[0]) {
+    VAULT_STATE.credentials.unshift(result[0]);
+    closeModal();
+    renderVaultPage();
+    showToast('✅ Credential saved securely!');
+  } else {
+    showToast('❌ Failed to save. Check Supabase.');
+  }
+}
+
+/* ─── EDIT CREDENTIAL ────────────────────────────────────── */
+function openEditCredential(id) {
+  const c = VAULT_STATE.credentials.find(x => x.id === id);
+  if (!c) return;
+  const folderOptions = VAULT_FOLDERS.map(f =>
+    `<option value="${f.id}" ${c.folder === f.id ? 'selected' : ''}>${f.icon} ${f.label}</option>`
+  ).join('');
+  openModalWithContent('✏️ Edit — ' + escapeHtml(c.label), `
+    <div class="form-group">
+      <label>Label / Name *</label>
+      <input type="text" class="form-control" id="editVaultLabel" value="${escapeHtml(c.label)}" />
+    </div>
+    <div class="form-group">
+      <label>Folder *</label>
+      <select class="form-control" id="editVaultFolder">${folderOptions}</select>
+    </div>
+    <div class="form-group">
+      <label>Username / User ID</label>
+      <input type="text" class="form-control" id="editVaultUsername" value="${escapeHtml(c.username||'')}" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <div style="position:relative">
+        <input type="password" class="form-control" id="editVaultPassword"
+               value="${escapeHtml(c.password||'')}" autocomplete="new-password"
+               style="padding-right:44px" />
+        <button type="button"
+                onclick="toggleEditPassVisibility()"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px"
+                id="editPassToggleBtn">👁️</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Portal URL</label>
+      <input type="url" class="form-control" id="editVaultUrl" value="${escapeHtml(c.url||'')}" />
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea class="form-control" id="editVaultNotes" rows="2">${escapeHtml(c.notes||'')}</textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn-primary" style="flex:1" onclick="submitEditCredential(${id})">💾 Save Changes</button>
+      <button class="btn-outline" style="flex:0 0 auto;border-color:var(--danger);color:var(--danger)" onclick="confirmDeleteCredential(${id})">🗑️</button>
+    </div>
+  `);
+}
+
+function toggleEditPassVisibility() {
+  const inp = document.getElementById('editVaultPassword');
+  const btn = document.getElementById('editPassToggleBtn');
+  if (!inp) return;
+  if (inp.type === 'password') { inp.type = 'text'; if (btn) btn.textContent = '🙈'; }
+  else { inp.type = 'password'; if (btn) btn.textContent = '👁️'; }
+}
+
+async function submitEditCredential(id) {
+  const label = document.getElementById('editVaultLabel')?.value.trim();
+  if (!label) { showToast('Label is required'); return; }
+  const body = {
+    label,
+    folder: document.getElementById('editVaultFolder')?.value || 'Other',
+    username: document.getElementById('editVaultUsername')?.value.trim() || '',
+    password: document.getElementById('editVaultPassword')?.value || '',
+    url: document.getElementById('editVaultUrl')?.value.trim() || '',
+    notes: document.getElementById('editVaultNotes')?.value.trim() || ''
+  };
+  const url = `${SUPABASE_URL}/rest/v1/vault_credentials?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) {
+    const idx = VAULT_STATE.credentials.findIndex(c => c.id === id);
+    if (idx !== -1) VAULT_STATE.credentials[idx] = { ...VAULT_STATE.credentials[idx], ...body };
+    closeModal();
+    renderVaultPage();
+    showToast('✅ Credential updated!');
+  } else { showToast('❌ Update failed'); }
+}
+
+/* ─── DELETE ─────────────────────────────────────────────── */
+function confirmDeleteCredential(id) {
+  const c = VAULT_STATE.credentials.find(x => x.id === id);
+  if (!c) return;
+  openModalWithContent('🗑️ Delete Credential', `
+    <div style="text-align:center;padding:14px 0">
+      <div style="font-size:44px;margin-bottom:12px">⚠️</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">Delete "${escapeHtml(c.label)}"?</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-bottom:22px">
+        This credential will be permanently deleted.
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" style="flex:1;background:var(--danger)" onclick="doDeleteCredential(${id})">
+          Yes, Delete
+        </button>
+      </div>
+    </div>
+  `);
+}
+
+async function doDeleteCredential(id) {
+  const url = `${SUPABASE_URL}/rest/v1/vault_credentials?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+  });
+  if (res.ok) {
+    VAULT_STATE.credentials = VAULT_STATE.credentials.filter(c => c.id !== id);
+    closeModal();
+    renderVaultPage();
+    showToast('🗑️ Credential deleted');
+  } else { showToast('❌ Delete failed'); }
+}
+
+/* ─── ADD VAULT TO SIDEBAR & NAV ─────────────────────────── */
+function addVaultToSidebar() {
+  // Add nav item after DSC in sidebar
+  const dscItem = document.querySelector('[data-page="dsc"]');
+  if (dscItem) {
+    const vaultItem = document.createElement('a');
+    vaultItem.className = 'nav-item';
+    vaultItem.setAttribute('data-page', 'vault');
+    vaultItem.setAttribute('onclick', "navigate('vault')");
+    vaultItem.innerHTML = `<span class="nav-icon">🔐</span><span class="nav-label">Vault</span>`;
+    dscItem.insertAdjacentElement('afterend', vaultItem);
+  }
+
+  // Add page section
+  const pageContent = document.getElementById('pageContent');
+  if (pageContent && !document.getElementById('page-vault')) {
+    const section = document.createElement('section');
+    section.className = 'page';
+    section.id = 'page-vault';
+    pageContent.appendChild(section);
+  }
+}
+
+/* ─── OVERRIDE navigate() to handle vault ────────────────── */
+const _origNavigate = typeof navigate === 'function' ? navigate : null;
+function navigate(page) {
+  if (page === 'vault') {
+    STATE.currentPage = 'vault';
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('page-vault');
+    if (target) target.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-page') === 'vault');
+    });
+    if (window.innerWidth <= 768) {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (sidebar) sidebar.classList.remove('open');
+      if (overlay) overlay.classList.remove('show');
+      STATE.sidebarOpen = false;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    loadVault().then(renderVaultPage);
+    return;
+  }
+  if (_origNavigate) _origNavigate(page);
+}
+
+/* ─── INJECT VAULT CSS ───────────────────────────────────── */
+function injectVaultCSS() {
+  const style = document.createElement('style');
+  style.textContent = `
+  /* Vault Layout */
+  .vault-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  /* Vault Sidebar */
+  .vault-sidebar {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    position: sticky;
+    top: calc(var(--topbar-h) + 16px);
+    box-shadow: var(--shadow);
+  }
+  .vault-folder-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    transition: background .15s, color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .vault-folder-item:hover { background: var(--bg); }
+  .vault-folder-item.active {
+    background: var(--primary-glow);
+    color: var(--primary);
+    font-weight: 700;
+  }
+  .vault-folder-count {
+    background: var(--border);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 99px;
+    flex-shrink: 0;
+  }
+  .vault-folder-item.active .vault-folder-count {
+    background: var(--primary-glow);
+    color: var(--primary);
+  }
+
+  /* Vault Main */
+  .vault-main { min-width: 0; }
+  .vault-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .vault-search-bar:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+  }
+  .vault-search-bar input {
+    flex: 1; border: none; background: none;
+    font-size: 13.5px; color: var(--text);
+    outline: none; font-family: var(--font);
+  }
+  .vault-search-bar input::placeholder { color: var(--text-muted); }
+
+  .vault-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  /* Vault Grid */
+  .vault-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  /* Vault Card */
+  .vault-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .vault-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+  .vault-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .vault-card-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .vault-card-label { font-weight: 700; font-size: 13.5px; color: var(--text); }
+  .vault-card-folder { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .vault-card-actions {
+    display: flex; gap: 4px; margin-left: auto; flex-shrink: 0;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .vault-card:hover .vault-card-actions { opacity: 1; }
+
+  /* Vault field */
+  .vault-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .vault-field:last-of-type { border-bottom: none; }
+  .vault-field-label { font-size: 10.5px; font-weight: 700; color: var(--text-muted); letter-spacing: .5px; text-transform: uppercase; }
+  .vault-field-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .vault-field-val {
+    font-size: 13.5px;
+    color: var(--text);
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .vault-field-val.mono { font-family: 'Courier New', monospace; letter-spacing: .5px; }
+  .vault-url {
+    font-size: 12.5px;
+    color: var(--primary);
+    text-decoration: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    display: block;
+  }
+  .vault-url:hover { text-decoration: underline; }
+  .vault-notes {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-radius: 8px;
+    line-height: 1.5;
+  }
+
+  /* Vault icon buttons */
+  .vault-icon-btn {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background .2s, border-color .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .vault-icon-btn:hover { background: var(--bg); border-color: var(--primary); }
+  .vault-icon-btn.danger:hover { border-color: var(--danger); background: rgba(239,68,68,.08); }
+
+  /* Copy button */
+  .vault-copy-btn {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    padding: 3px 7px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .2s, border-color .2s;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+  .vault-copy-btn:hover { background: var(--primary-glow); border-color: var(--primary); }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .vault-layout { grid-template-columns: 1fr; }
+    .vault-sidebar { position: static; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; }
+    .vault-folder-item { padding: 7px 10px; font-size: 12.5px; }
+    .vault-grid { grid-template-columns: 1fr; }
+    .vault-card-actions { opacity: 1; }
+  }
+  `;
+  document.head.appendChild(style);
+}
+
+/* ─── BOOT ───────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  injectVaultCSS();
+  addVaultToSidebar();
+  // Preload vault data silently
+  loadVault();
+});
