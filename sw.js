@@ -1,116 +1,182 @@
 /* =============================================================
    WITCORP SW.JS — Service Worker
-   PWA Support | Offline Cache | Background Sync
+   PWA Support | Offline Cache | Network First Strategy
+   Version: v3 — Matches full codebase (index, login, splash, app, auth, style)
    ============================================================= */
 
-const CACHE_NAME = 'witcorp-v2';
+const CACHE_NAME = 'witcorp-v3';
+
 const STATIC_ASSETS = [
   './',
-   './splash.html',
+  './splash.html',
   './login.html',
-   './index.html',
+  './index.html',
   './app.js',
   './auth.js',
   './style.css',
   './logo.png',
-  './manifest.json',
+  './manifest.json'
+];
+
+const EXTERNAL_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap'
 ];
 
 /* ── Install: cache static files ── */
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing WITCORP Service Worker...');
+  console.log('[SW] Installing WITCORP v3...');
+
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS.map(url => new Request(url, { cache: 'reload' })));
-      })
-      .catch((err) => {
-        console.warn('[SW] Cache addAll failed (some assets may not exist yet):', err);
-      })
+    caches.open(CACHE_NAME).then(async (cache) => {
+      /* Cache local assets first — ignore individual failures */
+      await Promise.allSettled(
+        STATIC_ASSETS.map((url) =>
+          cache.add(new Request(url, { cache: 'reload' })).catch((err) => {
+            console.warn('[SW] Could not cache:', url, err.message);
+          })
+        )
+      );
+
+      /* Cache external fonts — best effort */
+      await Promise.allSettled(
+        EXTERNAL_ASSETS.map((url) =>
+          cache.add(new Request(url)).catch((err) => {
+            console.warn('[SW] Could not cache external:', url, err.message);
+          })
+        )
+      );
+
+      console.log('[SW] Cache complete.');
+    })
   );
+
   self.skipWaiting();
 });
 
 /* ── Activate: remove old caches ── */
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating WITCORP Service Worker...');
+  console.log('[SW] Activating WITCORP v3...');
+
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
+    caches.keys().then((cacheNames) =>
+      Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME)
           .map((name) => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
           })
-      );
-    })
+      )
+    )
   );
+
   self.clients.claim();
 });
 
 /* ── Fetch: Network first, fallback to cache ── */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
 
-  /* Skip non-GET requests */
+  /* Only handle GET */
   if (request.method !== 'GET') return;
 
-  /* Skip Supabase API calls — always fresh from network */
-  if (url.hostname.includes('supabase.co')) return;
-
-  /* Skip chrome-extension and other non-http requests */
+  /* Skip non-http(s) schemes (chrome-extension etc.) */
   if (!request.url.startsWith('http')) return;
 
+  const url = new URL(request.url);
+
+  /* ── Never intercept Supabase API calls — always network ── */
+  if (url.hostname.includes('supabase.co')) return;
+
+  /* ── Never intercept Google Fonts CSS (let browser handle) ── */
+  if (url.hostname === 'fonts.googleapis.com') return;
+
   event.respondWith(
-    /* Network first strategy */
     fetch(request)
       .then((networkResponse) => {
-        /* Clone and cache successful responses */
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
-          });
+        /* Cache valid responses */
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          networkResponse.type !== 'opaque'
+        ) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return networkResponse;
       })
-      .catch(() => {
-        /* Network failed — serve from cache */
-        return caches.match(request)
-          .then((cachedResponse) => {
-            if (cachedResponse) {
-              console.log('[SW] Serving from cache:', request.url);
-              return cachedResponse;
-            }
-            /* Last resort: offline page for HTML requests */
-            if (request.headers.get('accept')?.includes('text/html')) {
-              return caches.match('./index.html');
-            }
-          });
+      .catch(async () => {
+        /* Network failed — try cache */
+        const cached = await caches.match(request);
+        if (cached) {
+          console.log('[SW] Serving from cache:', request.url);
+          return cached;
+        }
+
+        /* HTML fallback — serve index or login */
+        const accept = request.headers.get('accept') || '';
+        if (accept.includes('text/html')) {
+          const fallback =
+            (await caches.match('./index.html')) ||
+            (await caches.match('./login.html'));
+          if (fallback) return fallback;
+        }
+
+        /* Nothing available */
+        return new Response('Offline — resource not cached.', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      })
+  );
+});
+
+/* ── Push notifications ── */
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: 'WITCORP', body: event.data.text() };
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'WITCORP', {
+      body: data.body || 'You have a new notification.',
+      icon: './logo.png',
+      badge: './logo.png',
+      tag: 'witcorp-push',
+      renotify: true,
+      data: data.url || './'
+    })
+  );
+});
+
+/* ── Notification click — open app ── */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification.data || './';
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) return clients.openWindow(target);
       })
   );
 });
 
 /* ── Background sync (future use) ── */
 self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
+  console.log('[SW] Background sync tag:', event.tag);
 });
 
-/* ── Push notifications (future use) ── */
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  const data = event.data.json();
-  self.registration.showNotification(data.title || 'WITCORP', {
-    body: data.body || 'New notification',
-    icon: './logo.png',
-    badge: './logo.png',
-    tag: 'witcorp-notification',
-    renotify: true
-  });
-});
-
-console.log('[SW] WITCORP Service Worker loaded ✅');
+console.log('[SW] WITCORP Service Worker v3 loaded ✅');
