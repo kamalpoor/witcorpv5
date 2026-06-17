@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Witcorp Login</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>W</text></svg>" />
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="description" content="WITCORP India Advisors LLP — Secure Login" />
+  <title>Login — Witcorp India Advisors LLP</title>
+  <link rel="icon" href="logo.png" onerror="this.href='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>W</text></svg>'" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -13,120 +15,108 @@
     :root {
       --primary: #6366f1;
       --primary-dark: #4f46e5;
-      --primary-glow: #6366f122;
+      --primary-glow: rgba(99,102,241,0.18);
       --bg: #0f172a;
       --surface: #1e293b;
-      --surface2: #334155;
+      --surface2: #0f172a;
       --text: #f1f5f9;
       --text-muted: #94a3b8;
       --border: #334155;
       --danger: #ef4444;
       --success: #22c55e;
       --radius: 14px;
+      --transition: 0.2s ease;
     }
 
-   body {
-  font-family: 'Inter', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  height: 100vh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-image: radial-gradient(ellipse at 20% 50%, #6366f115 0%, transparent 60%),
-                    radial-gradient(ellipse at 80% 20%, #818cf815 0%, transparent 60%);
-  overflow-x: hidden;
-}
-
-    .auth-wrapper {
-  width: 100%;
-  max-width: 440px;
-  padding: 24px 20px;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-    .auth-logo {
-      text-align: center;
-      margin-bottom: 32px;
+    html, body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
     }
 
-    .auth-logo-icon {
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, #6366f1, #4f46e5);
-      border-radius: 16px;
+    body {
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
-      font-weight: 800;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(129,140,248,0.08) 0%, transparent 60%);
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* ── WRAPPER ── */
+    .auth-wrapper {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    /* ── LOGO ── */
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .auth-logo-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      overflow: hidden;
+      margin: 0 auto 14px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-logo-icon img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 18px;
+    }
+
+    .auth-logo-icon .logo-fallback-text {
+      font-size: 32px;
+      font-weight: 900;
       color: #fff;
-      margin: 0 auto 12px;
-      box-shadow: 0 8px 24px #6366f140;
+      display: none;
     }
 
     .auth-logo-name {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 800;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.3px;
+      color: var(--text);
     }
 
     .auth-logo-sub {
       font-size: 12px;
       color: var(--text-muted);
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
+    /* ── CARD ── */
     .auth-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 20px;
       padding: 32px 28px;
-      box-shadow: 0 24px 64px #00000040;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
     }
 
-    /* ── Tabs ── */
-    .auth-tabs {
-      display: flex;
-      gap: 4px;
-      background: var(--bg);
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 24px;
-    }
-
-    .auth-tab {
-      flex: 1;
-      padding: 8px;
-      border: none;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 13.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .auth-tab.active {
-      background: var(--surface);
-      color: var(--text);
-      box-shadow: 0 2px 8px #00000030;
-    }
-
-    /* ── Forms ── */
+    /* ── SECTIONS ── */
     .auth-section { display: none; }
     .auth-section.active { display: block; }
 
+    /* ── SECTION HEADER ── */
     .auth-title {
       font-size: 20px;
       font-weight: 700;
       margin-bottom: 4px;
+      color: var(--text);
     }
 
     .auth-subtitle {
@@ -135,29 +125,33 @@
       margin-bottom: 24px;
     }
 
-    .form-group { margin-bottom: 16px; }
+    /* ── FORM ELEMENTS ── */
+    .form-group {
+      margin-bottom: 16px;
+    }
 
     .form-group label {
       display: block;
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 600;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 7px;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.5px;
     }
 
     .form-control {
       width: 100%;
       padding: 11px 14px;
-      background: var(--bg);
+      background: var(--surface2);
       border: 1.5px solid var(--border);
       border-radius: 10px;
       color: var(--text);
       font-size: 14px;
-      font-family: inherit;
+      font-family: 'Inter', sans-serif;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      -webkit-appearance: none;
     }
 
     .form-control:focus {
@@ -165,10 +159,17 @@
       box-shadow: 0 0 0 3px var(--primary-glow);
     }
 
-    .form-control::placeholder { color: var(--text-muted); }
+    .form-control::placeholder {
+      color: #4a5568;
+    }
 
+    /* Password wrapper */
     .password-wrapper {
       position: relative;
+    }
+
+    .password-wrapper .form-control {
+      padding-right: 46px;
     }
 
     .password-toggle {
@@ -181,23 +182,39 @@
       color: var(--text-muted);
       cursor: pointer;
       font-size: 16px;
-      padding: 4px;
+      padding: 4px 6px;
+      line-height: 1;
+      border-radius: 6px;
+      transition: color var(--transition);
     }
 
+    .password-toggle:hover {
+      color: var(--text);
+    }
+
+    /* ── FORGOT LINK ── */
     .forgot-link {
       display: block;
       text-align: right;
       font-size: 12.5px;
       color: var(--primary);
       cursor: pointer;
-      margin-top: -10px;
-      margin-bottom: 16px;
+      margin-top: -8px;
+      margin-bottom: 20px;
       text-decoration: none;
       font-weight: 500;
+      background: none;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      padding: 0;
     }
-    .forgot-link:hover { text-decoration: underline; }
 
-    /* ── Buttons ── */
+    .forgot-link:hover {
+      text-decoration: underline;
+      color: var(--primary-dark);
+    }
+
+    /* ── BUTTONS ── */
     .btn-primary {
       width: 100%;
       padding: 12px;
@@ -208,22 +225,34 @@
       font-size: 14.5px;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
+      transition: opacity var(--transition), transform 0.1s;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       letter-spacing: 0.2px;
+      font-family: 'Inter', sans-serif;
     }
 
-    .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
-    .btn-primary:active { transform: translateY(0); }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-primary:hover:not(:disabled) {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     .btn-google {
       width: 100%;
       padding: 11px;
-      background: var(--bg);
+      background: var(--surface2);
       border: 1.5px solid var(--border);
       border-radius: 10px;
       color: var(--text);
@@ -234,8 +263,8 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      transition: border-color 0.2s, background 0.2s;
-      font-family: inherit;
+      transition: border-color var(--transition), background var(--transition);
+      font-family: 'Inter', sans-serif;
     }
 
     .btn-google:hover {
@@ -249,7 +278,7 @@
       flex-shrink: 0;
     }
 
-    /* ── Divider ── */
+    /* ── DIVIDER ── */
     .auth-divider {
       display: flex;
       align-items: center;
@@ -257,6 +286,7 @@
       margin: 20px 0;
       color: var(--text-muted);
       font-size: 12px;
+      font-weight: 500;
     }
 
     .auth-divider::before,
@@ -267,43 +297,47 @@
       background: var(--border);
     }
 
-    /* ── Alerts ── */
+    /* ── ALERTS ── */
     .auth-error {
       display: none;
-      background: #ef444415;
-      border: 1px solid #ef444430;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 10px 14px;
       font-size: 13px;
-      color: #ef4444;
+      color: #fca5a5;
       margin-bottom: 16px;
+      line-height: 1.4;
     }
 
     .auth-success {
       display: none;
-      background: #22c55e15;
-      border: 1px solid #22c55e30;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.25);
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 10px 14px;
       font-size: 13px;
-      color: #22c55e;
+      color: #86efac;
       margin-bottom: 16px;
     }
 
-    /* ── Spinner ── */
+    /* ── SPINNER ── */
     .auth-spinner {
-      width: 16px;
-      height: 16px;
-      border: 2.5px solid rgba(255,255,255,0.3);
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255,255,255,0.3);
       border-top-color: #fff;
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      animation: spin 0.65s linear infinite;
       display: inline-block;
+      flex-shrink: 0;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
-    /* ── Back link ── */
+    /* ── BACK LINK ── */
     .back-link {
       display: inline-flex;
       align-items: center;
@@ -315,47 +349,92 @@
       background: none;
       border: none;
       padding: 0;
-      font-family: inherit;
+      font-family: 'Inter', sans-serif;
+      transition: color var(--transition);
     }
 
-    .back-link:hover { color: var(--text); }
-
-    /* ── Footer ── */
-    .auth-footer {
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 20px;
+    .back-link:hover {
+      color: var(--text);
     }
 
-    /* ── Password strength ── */
+    /* ── RECOVERY NOTICE ── */
+    .recovery-notice {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 13px;
+      color: #c7d2fe;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      line-height: 1.4;
+    }
+
+    /* ── PASSWORD STRENGTH ── */
     .strength-bar {
       height: 3px;
-      border-radius: 4px;
+      border-radius: 99px;
       background: var(--border);
-      margin-top: 6px;
+      margin-top: 7px;
       overflow: hidden;
     }
 
     .strength-fill {
       height: 100%;
-      border-radius: 4px;
-      transition: width 0.3s, background 0.3s;
+      border-radius: 99px;
+      transition: width 0.3s ease, background 0.3s ease;
       width: 0%;
     }
 
-    /* ── Recovery notice ── */
-    .recovery-notice {
-      background: #6366f115;
-      border: 1px solid #6366f130;
-      border-radius: 10px;
-      padding: 14px;
-      font-size: 13px;
+    .strength-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      min-height: 14px;
+    }
+
+    /* ── FOOTER ── */
+    .auth-footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 24px;
+      line-height: 1.5;
+    }
+
+    /* ── TOAST (in case needed on login page) ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e293b;
+      border: 1px solid var(--border);
       color: var(--text);
-      margin-bottom: 20px;
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      z-index: 9999;
+      transition: transform 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 480px) {
+      body { padding: 12px; align-items: flex-start; padding-top: 40px; }
+      .auth-card { padding: 24px 18px; border-radius: 16px; }
+      .auth-logo-name { font-size: 17px; }
+      .auth-title { font-size: 18px; }
+      .btn-primary, .btn-google { font-size: 13.5px; padding: 11px; }
     }
   </style>
 </head>
@@ -363,27 +442,29 @@
 
 <div class="auth-wrapper">
 
-  <!-- Logo -->
+  <!-- LOGO -->
   <div class="auth-logo">
-    <div class="auth-logo-icon" style="background:none;padding:0;box-shadow:none;">
-  <img src="logo.png" alt="WITCORP" style="width:56px;height:56px;border-radius:16px;object-fit:cover;" />
-</div>
+    <div class="auth-logo-icon" id="logoIconWrap">
+      <img src="logo.png" alt="WITCORP" id="loginLogoImg" />
+      <span class="logo-fallback-text" id="logoFallback">W</span>
+    </div>
     <div class="auth-logo-name">Witcorp India Advisors LLP</div>
+    <div class="auth-logo-sub">Chartered Accountants &amp; Tax Consultants</div>
   </div>
 
-  <!-- ===== LOGIN / FORGOT / RESET CARD ===== -->
+  <!-- AUTH CARD -->
   <div class="auth-card" id="authCard">
 
-    <!-- ── Section: Login ── -->
+    <!-- ══ SECTION: LOGIN ══ -->
     <div class="auth-section active" id="sectionLogin">
       <div class="auth-title">Welcome Back 👋</div>
       <div class="auth-subtitle">Sign in to your Witcorp workspace</div>
 
       <div class="auth-error" id="authError"></div>
 
-      <!-- Google -->
-      <button class="btn-google" onclick="loginWithGoogle()">
-        <svg class="google-icon" viewBox="0 0 24 24">
+      <!-- Google OAuth -->
+      <button class="btn-google" onclick="loginWithGoogle()" type="button">
+        <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -394,158 +475,314 @@
 
       <div class="auth-divider">or sign in with email</div>
 
-      <!-- Email form -->
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" class="form-control" id="loginEmail" placeholder="you@company.com"
-               onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()" />
+        <label for="loginEmail">Email Address</label>
+        <input
+          type="email"
+          class="form-control"
+          id="loginEmail"
+          placeholder="you@company.com"
+          autocomplete="email"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()"
+        />
       </div>
 
       <div class="form-group">
-        <label>Password</label>
+        <label for="loginPassword">Password</label>
         <div class="password-wrapper">
-          <input type="password" class="form-control" id="loginPassword" placeholder="Enter your password"
-                 onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:42px" />
-          <button class="password-toggle" onclick="togglePassword('loginPassword', this)" type="button">👁️</button>
+          <input
+            type="password"
+            class="form-control"
+            id="loginPassword"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')doLogin()"
+          />
+          <button class="password-toggle" type="button" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">👁️</button>
         </div>
       </div>
 
-      <a class="forgot-link" onclick="showSection('sectionForgot')">Forgot password?</a>
+      <button class="forgot-link" type="button" onclick="showSection('sectionForgot')">Forgot password?</button>
 
-      <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
+      <button class="btn-primary" id="loginBtn" type="button" onclick="doLogin()">Sign In →</button>
     </div>
 
-    <!-- ── Section: Forgot Password ── -->
+    <!-- ══ SECTION: FORGOT PASSWORD ══ -->
     <div class="auth-section" id="sectionForgot">
-      <button class="back-link" onclick="showSection('sectionLogin')">← Back to Sign In</button>
+      <button class="back-link" type="button" onclick="showSection('sectionLogin')">← Back to Sign In</button>
       <div class="auth-title">Reset Password 🔑</div>
-      <div class="auth-subtitle">Enter your email and we'll send a reset link</div>
+      <div class="auth-subtitle">We'll send a reset link to your email</div>
 
       <div class="auth-error" id="forgotError"></div>
-      <div class="auth-success" id="forgotSuccess">✅ Reset email sent! Check your inbox (and spam).</div>
+      <div class="auth-success" id="forgotSuccess">✓ Reset email sent! Check your inbox (and spam folder).</div>
 
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" class="form-control" id="forgotEmail" placeholder="you@company.com"
-               onkeydown="if(event.key==='Enter')doForgot()" />
+        <label for="forgotEmail">Email Address</label>
+        <input
+          type="email"
+          class="form-control"
+          id="forgotEmail"
+          placeholder="you@company.com"
+          autocomplete="email"
+          onkeydown="if(event.key==='Enter')doForgot()"
+        />
       </div>
 
-      <button class="btn-primary" id="forgotBtn" onclick="doForgot()">Send Reset Email</button>
+      <button class="btn-primary" id="forgotBtn" type="button" onclick="doForgot()">Send Reset Email</button>
     </div>
 
-    <!-- ── Section: Reset Password (after clicking email link) ── -->
+    <!-- ══ SECTION: RESET PASSWORD ══ -->
     <div class="auth-section" id="sectionReset">
       <div class="recovery-notice">
         🔐 <span>You clicked the password reset link. Enter your new password below.</span>
       </div>
       <div class="auth-title">New Password</div>
+      <div class="auth-subtitle">Choose a strong password for your account</div>
 
       <div class="auth-error" id="resetError"></div>
-      <div class="auth-success" id="resetSuccess">✅ Password updated! Redirecting...</div>
+      <div class="auth-success" id="resetSuccess">✓ Password updated! Redirecting to dashboard...</div>
 
       <div class="form-group">
-        <label>New Password</label>
+        <label for="newPassword">New Password</label>
         <div class="password-wrapper">
-          <input type="password" class="form-control" id="newPassword" placeholder="Min 8 characters"
-                 oninput="checkStrength(this.value)" style="padding-right:42px" />
-          <button class="password-toggle" onclick="togglePassword('newPassword', this)" type="button">👁️</button>
+          <input
+            type="password"
+            class="form-control"
+            id="newPassword"
+            placeholder="Min 8 characters"
+            autocomplete="new-password"
+            oninput="checkStrength(this.value)"
+            onkeydown="if(event.key==='Enter')document.getElementById('confirmPassword').focus()"
+          />
+          <button class="password-toggle" type="button" onclick="togglePassword('newPassword', this)" aria-label="Toggle password visibility">👁️</button>
         </div>
         <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+        <div class="strength-label" id="strengthLabel"></div>
       </div>
 
       <div class="form-group">
-        <label>Confirm Password</label>
-        <input type="password" class="form-control" id="confirmPassword" placeholder="Repeat new password"
-               onkeydown="if(event.key==='Enter')doReset()" />
+        <label for="confirmPassword">Confirm Password</label>
+        <div class="password-wrapper">
+          <input
+            type="password"
+            class="form-control"
+            id="confirmPassword"
+            placeholder="Repeat new password"
+            autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')doReset()"
+          />
+          <button class="password-toggle" type="button" onclick="togglePassword('confirmPassword', this)" aria-label="Toggle password visibility">👁️</button>
+        </div>
       </div>
 
-      <button class="btn-primary" onclick="doReset()">Update Password</button>
+      <button class="btn-primary" type="button" onclick="doReset()">Update Password</button>
     </div>
 
-  </div>
+  </div><!-- /auth-card -->
 
   <div class="auth-footer">
-    © 2026 WITCORP India Advisors LLP &nbsp;·&nbsp; Secure &amp; Encrypted
+    © 2026 WITCORP India Advisors LLP &nbsp;·&nbsp; 🔒 Secure &amp; Encrypted
   </div>
-</div>
 
+</div><!-- /auth-wrapper -->
+
+<div class="toast" id="toast"></div>
+
+<!-- AUTH SCRIPT -->
 <script src="auth.js"></script>
-<script>
-  /* ── On load: check if recovery redirect ── */
-  window.addEventListener('DOMContentLoaded', () => {
-    // OAuth token in hash? Save and go to dashboard
-    if (handleOAuthCallback()) { redirectToDashboard(); return; }
 
-    // Password recovery type in URL?
-    const params = new URLSearchParams(window.location.search);
+<script>
+  /* ── Logo fallback ── */
+  (function () {
+    var img = document.getElementById('loginLogoImg');
+    var fallback = document.getElementById('logoFallback');
+    if (img) {
+      img.onerror = function () {
+        img.style.display = 'none';
+        if (fallback) fallback.style.display = 'block';
+      };
+    }
+  })();
+
+  /* ── On DOMContentLoaded ── */
+  document.addEventListener('DOMContentLoaded', function () {
+    /* OAuth token in hash? Save and go to dashboard */
+    if (handleOAuthCallback()) {
+      redirectToDashboard();
+      return;
+    }
+
+    /* Password recovery type in URL? */
+    var params = new URLSearchParams(window.location.search);
     if (params.get('type') === 'recovery') {
-      // Also check hash for access_token from recovery email
-      const hash = window.location.hash;
+      /* Also check hash for access_token from recovery email */
+      var hash = window.location.hash;
       if (hash) {
-        const hp = new URLSearchParams(hash.replace('#', ''));
-        const token = hp.get('access_token');
+        var hp = new URLSearchParams(hash.replace('#', ''));
+        var token = hp.get('access_token');
         if (token) {
-          localStorage.setItem('witcorp-access-token', token);
-          window.history.replaceState({}, '', window.location.pathname + '?type=recovery');
+          try {
+            localStorage.setItem('witcorp-access-token', token);
+          } catch (e) {}
+          try {
+            window.history.replaceState({}, '', window.location.pathname + '?type=recovery');
+          } catch (e) {}
         }
       }
       showSection('sectionReset');
       return;
     }
 
-    // Already logged in? Go to dashboard
-    const token = localStorage.getItem('witcorp-access-token');
-    if (token) { redirectToDashboard(); }
+    /* Already logged in? Go to dashboard */
+    try {
+      var token = localStorage.getItem('witcorp-access-token');
+      if (token) { redirectToDashboard(); }
+    } catch (e) {}
+
+    /* Auto-focus email field */
+    var emailEl = document.getElementById('loginEmail');
+    if (emailEl) setTimeout(function () { emailEl.focus(); }, 100);
   });
 
+  /* ── Section switcher ── */
   function showSection(id) {
-    document.querySelectorAll('.auth-section').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    // Clear errors
-    ['authError','forgotError','forgotSuccess','resetError','resetSuccess'].forEach(e => {
-      const el = document.getElementById(e);
+    document.querySelectorAll('.auth-section').forEach(function (s) {
+      s.classList.remove('active');
+    });
+    var target = document.getElementById(id);
+    if (target) target.classList.add('active');
+
+    /* Clear all error/success messages */
+    ['authError', 'forgotError', 'forgotSuccess', 'resetError', 'resetSuccess'].forEach(function (elId) {
+      var el = document.getElementById(elId);
       if (el) el.style.display = 'none';
     });
+
+    /* Reset forgot button */
+    if (id === 'sectionForgot') {
+      var btn = document.getElementById('forgotBtn');
+      if (btn) { btn.textContent = 'Send Reset Email'; btn.disabled = false; }
+      var fe = document.getElementById('forgotEmail');
+      if (fe) setTimeout(function () { fe.focus(); }, 50);
+    }
+
+    /* Focus email on login section */
+    if (id === 'sectionLogin') {
+      var le = document.getElementById('loginEmail');
+      if (le) setTimeout(function () { le.focus(); }, 50);
+    }
   }
 
+  /* ── Login handler ── */
   function doLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    if (!email || !password) { showAuthError('Please enter email and password.'); return; }
+    var email = (document.getElementById('loginEmail').value || '').trim();
+    var password = document.getElementById('loginPassword').value || '';
+
+    /* Hide previous error */
+    var errEl = document.getElementById('authError');
+    if (errEl) errEl.style.display = 'none';
+
+    if (!email) {
+      showAuthError('Please enter your email address.');
+      document.getElementById('loginEmail').focus();
+      return;
+    }
+    if (!email.includes('@')) {
+      showAuthError('Please enter a valid email address.');
+      document.getElementById('loginEmail').focus();
+      return;
+    }
+    if (!password) {
+      showAuthError('Please enter your password.');
+      document.getElementById('loginPassword').focus();
+      return;
+    }
     loginWithEmail(email, password);
   }
 
+  /* ── Forgot handler ── */
   function doForgot() {
-    const email = document.getElementById('forgotEmail').value.trim();
+    var email = (document.getElementById('forgotEmail').value || '').trim();
+    if (!email) {
+      showForgotError('Please enter your email address.');
+      return;
+    }
     sendPasswordReset(email);
   }
 
+  /* ── Reset handler ── */
   function doReset() {
-    const pass = document.getElementById('newPassword').value;
-    const confirm = document.getElementById('confirmPassword').value;
-    if (pass.length < 8) { showResetError('Password must be at least 8 characters.'); return; }
-    if (pass !== confirm) { showResetError('Passwords do not match.'); return; }
+    var pass = document.getElementById('newPassword').value || '';
+    var confirm = document.getElementById('confirmPassword').value || '';
+
+    var re = document.getElementById('resetError');
+    if (re) re.style.display = 'none';
+
+    if (pass.length < 8) {
+      showResetError('Password must be at least 8 characters.');
+      document.getElementById('newPassword').focus();
+      return;
+    }
+    if (pass !== confirm) {
+      showResetError('Passwords do not match. Please try again.');
+      document.getElementById('confirmPassword').focus();
+      return;
+    }
     updatePassword(pass);
   }
 
+  /* ── Password visibility toggle ── */
   function togglePassword(inputId, btn) {
-    const el = document.getElementById(inputId);
-    if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
-    else { el.type = 'password'; btn.textContent = '👁️'; }
+    var el = document.getElementById(inputId);
+    if (!el) return;
+    if (el.type === 'password') {
+      el.type = 'text';
+      btn.textContent = '🙈';
+    } else {
+      el.type = 'password';
+      btn.textContent = '👁️';
+    }
   }
 
+  /* ── Password strength checker ── */
   function checkStrength(val) {
-    const fill = document.getElementById('strengthFill');
+    var fill = document.getElementById('strengthFill');
+    var label = document.getElementById('strengthLabel');
     if (!fill) return;
-    let score = 0;
+
+    var score = 0;
     if (val.length >= 8) score++;
+    if (val.length >= 12) score++;
     if (/[A-Z]/.test(val)) score++;
     if (/[0-9]/.test(val)) score++;
     if (/[^A-Za-z0-9]/.test(val)) score++;
-    const colors = ['', '#ef4444', '#f97316', '#eab308', '#22c55e'];
-    fill.style.width = (score * 25) + '%';
-    fill.style.background = colors[score] || '';
+
+    var pct = Math.min(score * 20, 100);
+    fill.style.width = pct + '%';
+
+    if (score <= 1) {
+      fill.style.background = '#ef4444';
+      if (label) { label.textContent = 'Weak'; label.style.color = '#ef4444'; }
+    } else if (score === 2) {
+      fill.style.background = '#f97316';
+      if (label) { label.textContent = 'Fair'; label.style.color = '#f97316'; }
+    } else if (score === 3) {
+      fill.style.background = '#eab308';
+      if (label) { label.textContent = 'Good'; label.style.color = '#eab308'; }
+    } else if (score === 4) {
+      fill.style.background = '#10b981';
+      if (label) { label.textContent = 'Strong'; label.style.color = '#10b981'; }
+    } else {
+      fill.style.background = '#22c55e';
+      if (label) { label.textContent = 'Very strong'; label.style.color = '#22c55e'; }
+    }
+
+    if (!val) {
+      fill.style.width = '0%';
+      if (label) { label.textContent = ''; }
+    }
   }
 </script>
+
 </body>
 </html>
