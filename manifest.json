@@ -1,8 +1,8 @@
 {
-  "name": "WITCORP India Advisors LLP",
+  "name": "Witcorp India Advisors LLP",
   "short_name": "WITCORP",
   "description": "Professional CA & Compliance Management Dashboard",
-  "start_url": "./hub.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f172a",
