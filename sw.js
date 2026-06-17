@@ -3,7 +3,7 @@
    PWA Support | Offline Cache | Background Sync
    ============================================================= */
 
-const CACHE_NAME = 'witcorp-v1';
+const CACHE_NAME = 'witcorp-v2';
 const STATIC_ASSETS = [
   './',
    './splash.html',
