@@ -3,10 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f0a500" />
+  <meta name="description" content="WITCORP India Advisors LLP" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="WITCORP" />
   <title>Witcorp Hub</title>
   <link rel="icon" href="logo.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
 
     body {
       background: #0a0e1a;
@@ -14,8 +25,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'Segoe UI', sans-serif;
-      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
     }
 
     /* ── Floating dots background ── */
@@ -24,18 +34,20 @@
       inset: 0;
       pointer-events: none;
       z-index: 0;
+      overflow: hidden;
     }
+
     .dot {
       position: absolute;
       border-radius: 50%;
-      animation: float linear infinite;
-      opacity: 0.6;
+      animation: floatUp linear infinite;
     }
-    @keyframes float {
-      0%   { transform: translateY(0) scale(1);   opacity: 0; }
-      10%  { opacity: 0.6; }
-      90%  { opacity: 0.4; }
-      100% { transform: translateY(-100vh) scale(0.8); opacity: 0; }
+
+    @keyframes floatUp {
+      0%   { transform: translateY(0) scale(1); opacity: 0; }
+      10%  { opacity: 0.5; }
+      85%  { opacity: 0.3; }
+      100% { transform: translateY(-110vh) scale(0.7); opacity: 0; }
     }
 
     /* ── Center container ── */
@@ -45,7 +57,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0;
+      text-align: center;
+      padding: 20px;
     }
 
     /* ── Logo glow ring ── */
@@ -53,23 +66,24 @@
       width: 160px;
       height: 160px;
       border-radius: 50%;
-      background: conic-gradient(#f0a500, #f5d060, #f0a500, #c47f00, #f0a500);
+      background: conic-gradient(#f0a500, #f5d060, #ffe082, #f0a500, #c47f00, #f0a500);
       display: flex;
       align-items: center;
       justify-content: center;
-      animation: ringPulse 2.5s ease-in-out infinite, fadeInScale 0.8s ease forwards;
+      animation: ringPulse 2.4s ease-in-out infinite, fadeInScale 0.7s ease forwards;
       box-shadow:
-        0 0 40px #f0a50060,
-        0 0 80px #f0a50030,
-        0 0 120px #f0a50015;
+        0 0 40px rgba(240,165,0,0.4),
+        0 0 80px rgba(240,165,0,0.2);
       margin-bottom: 32px;
     }
+
     @keyframes ringPulse {
-      0%, 100% { box-shadow: 0 0 40px #f0a50060, 0 0 80px #f0a50030; }
-      50%       { box-shadow: 0 0 60px #f0a500a0, 0 0 120px #f0a50060; }
+      0%, 100% { box-shadow: 0 0 40px rgba(240,165,0,0.4), 0 0 80px rgba(240,165,0,0.2); }
+      50%       { box-shadow: 0 0 60px rgba(240,165,0,0.7), 0 0 120px rgba(240,165,0,0.4); }
     }
+
     @keyframes fadeInScale {
-      from { opacity: 0; transform: scale(0.6); }
+      from { opacity: 0; transform: scale(0.55); }
       to   { opacity: 1; transform: scale(1); }
     }
 
@@ -81,6 +95,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
     }
 
     .logo-img {
@@ -94,8 +109,8 @@
       font-size: 64px;
       font-weight: 900;
       color: #f0a500;
-      font-family: serif;
       line-height: 1;
+      font-family: serif;
     }
 
     /* ── Text ── */
@@ -103,24 +118,24 @@
       font-size: 28px;
       font-weight: 800;
       color: #f0a500;
-      letter-spacing: 4px;
+      letter-spacing: 5px;
       text-transform: uppercase;
-      animation: fadeInUp 0.6s ease 0.4s both;
+      animation: fadeInUp 0.55s ease 0.35s both;
       margin-bottom: 8px;
     }
 
     .splash-sub {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 500;
       color: #22c55e;
       letter-spacing: 3px;
       text-transform: uppercase;
-      animation: fadeInUp 0.6s ease 0.6s both;
-      margin-bottom: 40px;
+      animation: fadeInUp 0.55s ease 0.55s both;
+      margin-bottom: 44px;
     }
 
     @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(16px); }
+      from { opacity: 0; transform: translateY(18px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
@@ -128,18 +143,44 @@
     .progress-wrapper {
       width: 240px;
       height: 4px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.08);
       border-radius: 99px;
       overflow: hidden;
-      animation: fadeInUp 0.6s ease 0.8s both;
+      animation: fadeInUp 0.55s ease 0.7s both;
+      margin-bottom: 16px;
     }
 
     .progress-fill {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #f0a500, #f5d060);
+      background: linear-gradient(90deg, #f0a500, #f5d060, #f0a500);
+      background-size: 200% 100%;
       border-radius: 99px;
-      transition: width 0.1s linear;
+      transition: width 0.08s linear;
+      animation: shimmer 1.5s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
+    .progress-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.5px;
+      animation: fadeInUp 0.55s ease 0.8s both;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .logo-ring { width: 130px; height: 130px; }
+      .logo-inner { width: 114px; height: 114px; }
+      .logo-img { width: 90px; height: 90px; }
+      .logo-fallback { font-size: 52px; }
+      .splash-title { font-size: 22px; letter-spacing: 4px; }
+      .splash-sub { font-size: 11px; letter-spacing: 2px; }
+      .progress-wrapper { width: 180px; }
     }
   </style>
 </head>
@@ -150,13 +191,14 @@
 
 <!-- Center content -->
 <div class="splash-center">
+
   <div class="logo-ring">
     <div class="logo-inner" id="logoInner">
       <img
         class="logo-img"
         src="logo.png"
         alt="WITCORP"
-        id="logoImg"
+        id="splashLogoImg"
       />
     </div>
   </div>
@@ -167,67 +209,90 @@
   <div class="progress-wrapper">
     <div class="progress-fill" id="progressFill"></div>
   </div>
+  <div class="progress-label" id="progressLabel">Loading...</div>
+
 </div>
 
 <script>
-  /* ── Logo fallback (agar logo.png nahi mila) ── */
+  /* ── Logo fallback ── */
   (function () {
-    var img = document.getElementById('logoImg');
+    var img = document.getElementById('splashLogoImg');
+    if (!img) return;
     img.onerror = function () {
       var inner = document.getElementById('logoInner');
-      inner.innerHTML = '<span class="logo-fallback">W</span>';
+      if (inner) inner.innerHTML = '<span class="logo-fallback">W</span>';
     };
   })();
 
   /* ── Generate floating dots ── */
   (function () {
     var dotsEl = document.getElementById('dots');
-    var colors = ['#f0a500', '#22c55e', '#6366f1', '#3b82f6', '#ec4899', '#f0a50066'];
-    for (var i = 0; i < 18; i++) {
+    if (!dotsEl) return;
+    var colors = [
+      'rgba(240,165,0,0.7)',
+      'rgba(34,197,94,0.5)',
+      'rgba(99,102,241,0.5)',
+      'rgba(59,130,246,0.4)',
+      'rgba(236,72,153,0.4)',
+      'rgba(240,165,0,0.3)'
+    ];
+    for (var i = 0; i < 22; i++) {
       var dot = document.createElement('div');
       dot.className = 'dot';
-      var size = Math.random() * 6 + 3;
-      dot.style.cssText =
-        'width:' + size + 'px;' +
-        'height:' + size + 'px;' +
-        'left:' + (Math.random() * 100) + '%;' +
-        'top:' + (Math.random() * 100 + 100) + '%;' +
-        'background:' + colors[Math.floor(Math.random() * colors.length)] + ';' +
-        'animation-duration:' + (Math.random() * 6 + 5) + 's;' +
-        'animation-delay:' + (Math.random() * 4) + 's;';
+      var size = Math.random() * 7 + 2;
+      dot.style.cssText = [
+        'width:' + size + 'px',
+        'height:' + size + 'px',
+        'left:' + (Math.random() * 100) + '%',
+        'top:' + (Math.random() * 100 + 100) + '%',
+        'background:' + colors[Math.floor(Math.random() * colors.length)],
+        'animation-duration:' + (Math.random() * 7 + 5) + 's',
+        'animation-delay:' + (Math.random() * 5) + 's'
+      ].join(';');
       dotsEl.appendChild(dot);
     }
   })();
 
-  /* ── Progress bar animation → then redirect ── */
+  /* ── Progress bar + redirect ── */
   (function () {
     var fill = document.getElementById('progressFill');
+    var label = document.getElementById('progressLabel');
     var pct = 0;
 
-    /* Safe localStorage read — try/catch for private browsing */
+    /* Safely read localStorage */
     var token = null;
-    try {
-      token = localStorage.getItem('witcorp-access-token');
-    } catch (e) {
-      token = null;
-    }
+    try { token = localStorage.getItem('witcorp-access-token'); } catch (e) {}
 
     /* Determine redirect target */
     var target = token ? 'index.html' : 'login.html';
 
+    var labels = ['Loading...', 'Authenticating...', 'Almost ready...', 'Welcome!'];
+    var labelIdx = 0;
+    var labelInterval = setInterval(function () {
+      labelIdx++;
+      if (label && labelIdx < labels.length) {
+        label.textContent = labels[labelIdx];
+      }
+    }, 600);
+
     var interval = setInterval(function () {
-      pct += Math.random() * 3 + 1.5;
+      /* Non-linear progress for realistic feel */
+      var increment = pct < 60 ? (Math.random() * 4 + 2) : (Math.random() * 2 + 0.8);
+      pct += increment;
+
       if (pct >= 100) {
         pct = 100;
-        fill.style.width = '100%';
+        if (fill) fill.style.width = '100%';
+        if (label) label.textContent = 'Welcome!';
         clearInterval(interval);
+        clearInterval(labelInterval);
         setTimeout(function () {
           window.location.replace(target);
-        }, 300);
+        }, 350);
       } else {
-        fill.style.width = pct + '%';
+        if (fill) fill.style.width = pct + '%';
       }
-    }, 50);
+    }, 55);
   })();
 </script>
 
