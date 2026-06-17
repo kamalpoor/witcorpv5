@@ -25,30 +25,31 @@
       --radius: 14px;
     }
 
-   body {
-  font-family: 'Inter', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  height: 100vh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-image: radial-gradient(ellipse at 20% 50%, #6366f115 0%, transparent 60%),
-                    radial-gradient(ellipse at 80% 20%, #818cf815 0%, transparent 60%);
-  overflow-x: hidden;
-}
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      height: 100vh;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, #6366f115 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, #818cf815 0%, transparent 60%);
+      overflow-x: hidden;
+    }
 
     .auth-wrapper {
-  width: 100%;
-  max-width: 440px;
-  padding: 24px 20px;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
+      width: 100%;
+      max-width: 440px;
+      padding: 24px 20px;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
 
     .auth-logo {
       text-align: center;
@@ -68,6 +69,15 @@
       color: #fff;
       margin: 0 auto 12px;
       box-shadow: 0 8px 24px #6366f140;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .auth-logo-icon img {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      object-fit: cover;
     }
 
     .auth-logo-name {
@@ -88,35 +98,6 @@
       border-radius: 20px;
       padding: 32px 28px;
       box-shadow: 0 24px 64px #00000040;
-    }
-
-    /* ── Tabs ── */
-    .auth-tabs {
-      display: flex;
-      gap: 4px;
-      background: var(--bg);
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 24px;
-    }
-
-    .auth-tab {
-      flex: 1;
-      padding: 8px;
-      border: none;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 13.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .auth-tab.active {
-      background: var(--surface);
-      color: var(--text);
-      box-shadow: 0 2px 8px #00000030;
     }
 
     /* ── Forms ── */
@@ -214,6 +195,7 @@
       justify-content: center;
       gap: 8px;
       letter-spacing: 0.2px;
+      font-family: inherit;
     }
 
     .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
@@ -357,17 +339,44 @@
       gap: 10px;
       align-items: flex-start;
     }
+
+    /* ── Loading overlay ── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.8);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    .loading-overlay.show { display: flex; }
   </style>
 </head>
 <body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="auth-spinner" style="width:28px;height:28px;border-width:3px"></div>
+  <span id="loadingMsg">Signing in...</span>
+</div>
 
 <div class="auth-wrapper">
 
   <!-- Logo -->
   <div class="auth-logo">
-    <div class="auth-logo-icon" style="background:none;padding:0;box-shadow:none;">
-  <img src="logo.png" alt="WITCORP" style="width:56px;height:56px;border-radius:16px;object-fit:cover;" />
-</div>
+    <div class="auth-logo-icon" id="logoIconWrap">
+      <img
+        src="logo.png"
+        alt="WITCORP"
+        id="logoImg"
+        style="width:56px;height:56px;border-radius:16px;object-fit:cover;"
+      />
+    </div>
     <div class="auth-logo-name">Witcorp India</div>
     <div class="auth-logo-sub">Advisors LLP</div>
   </div>
@@ -398,16 +407,27 @@
       <!-- Email form -->
       <div class="form-group">
         <label>Email Address</label>
-        <input type="email" class="form-control" id="loginEmail" placeholder="you@company.com"
-               onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()" />
+        <input
+          type="email"
+          class="form-control"
+          id="loginEmail"
+          placeholder="you@company.com"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()"
+        />
       </div>
 
       <div class="form-group">
         <label>Password</label>
         <div class="password-wrapper">
-          <input type="password" class="form-control" id="loginPassword" placeholder="Enter your password"
-                 onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:42px" />
-          <button class="password-toggle" onclick="togglePassword('loginPassword', this)" type="button">👁️</button>
+          <input
+            type="password"
+            class="form-control"
+            id="loginPassword"
+            placeholder="Enter your password"
+            onkeydown="if(event.key==='Enter')doLogin()"
+            style="padding-right:42px"
+          />
+          <button class="password-toggle" onclick="togglePassword('loginPassword',this)" type="button">👁️</button>
         </div>
       </div>
 
@@ -427,14 +447,19 @@
 
       <div class="form-group">
         <label>Email Address</label>
-        <input type="email" class="form-control" id="forgotEmail" placeholder="you@company.com"
-               onkeydown="if(event.key==='Enter')doForgot()" />
+        <input
+          type="email"
+          class="form-control"
+          id="forgotEmail"
+          placeholder="you@company.com"
+          onkeydown="if(event.key==='Enter')doForgot()"
+        />
       </div>
 
       <button class="btn-primary" id="forgotBtn" onclick="doForgot()">Send Reset Email</button>
     </div>
 
-    <!-- ── Section: Reset Password (after clicking email link) ── -->
+    <!-- ── Section: Reset Password ── -->
     <div class="auth-section" id="sectionReset">
       <div class="recovery-notice">
         🔐 <span>You clicked the password reset link. Enter your new password below.</span>
@@ -447,17 +472,28 @@
       <div class="form-group">
         <label>New Password</label>
         <div class="password-wrapper">
-          <input type="password" class="form-control" id="newPassword" placeholder="Min 8 characters"
-                 oninput="checkStrength(this.value)" style="padding-right:42px" />
-          <button class="password-toggle" onclick="togglePassword('newPassword', this)" type="button">👁️</button>
+          <input
+            type="password"
+            class="form-control"
+            id="newPassword"
+            placeholder="Min 8 characters"
+            oninput="checkStrength(this.value)"
+            style="padding-right:42px"
+          />
+          <button class="password-toggle" onclick="togglePassword('newPassword',this)" type="button">👁️</button>
         </div>
         <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
       </div>
 
       <div class="form-group">
         <label>Confirm Password</label>
-        <input type="password" class="form-control" id="confirmPassword" placeholder="Repeat new password"
-               onkeydown="if(event.key==='Enter')doReset()" />
+        <input
+          type="password"
+          class="form-control"
+          id="confirmPassword"
+          placeholder="Repeat new password"
+          onkeydown="if(event.key==='Enter')doReset()"
+        />
       </div>
 
       <button class="btn-primary" onclick="doReset()">Update Password</button>
@@ -470,83 +506,338 @@
   </div>
 </div>
 
-<script src="auth.js"></script>
 <script>
-  /* ── On load: check if recovery redirect ── */
-  window.addEventListener('DOMContentLoaded', () => {
-    // OAuth token in hash? Save and go to dashboard
-    if (handleOAuthCallback()) { redirectToDashboard(); return; }
+  /* =====================================================
+     WITCORP LOGIN — FULL SELF-CONTAINED SCRIPT
+     Supabase Auth + OAuth + Password Reset
+  ===================================================== */
 
-    // Password recovery type in URL?
-    const params = new URLSearchParams(window.location.search);
+  var SUPABASE_URL  = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+  var SUPABASE_KEY  = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+
+  /* ── Logo fallback ── */
+  (function () {
+    var img = document.getElementById('logoImg');
+    if (img) {
+      img.onerror = function () {
+        var wrap = document.getElementById('logoIconWrap');
+        if (wrap) wrap.innerHTML = '<span style="font-size:28px;font-weight:900;color:#fff;font-family:serif;">W</span>';
+      };
+    }
+  })();
+
+  /* ── Safe localStorage helpers ── */
+  function lsGet(key) {
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+  }
+  function lsSet(key, val) {
+    try { localStorage.setItem(key, val); } catch(e) {}
+  }
+  function lsClear() {
+    try { localStorage.clear(); } catch(e) {}
+  }
+
+  /* ── Loading overlay ── */
+  function showLoading(msg) {
+    var el = document.getElementById('loadingOverlay');
+    var msgEl = document.getElementById('loadingMsg');
+    if (msgEl) msgEl.textContent = msg || 'Please wait...';
+    if (el) el.classList.add('show');
+  }
+  function hideLoading() {
+    var el = document.getElementById('loadingOverlay');
+    if (el) el.classList.remove('show');
+  }
+
+  /* ── Redirect to dashboard ── */
+  function redirectToDashboard() {
+    window.location.replace('index.html');
+  }
+
+  /* ── Section switcher ── */
+  function showSection(id) {
+    document.querySelectorAll('.auth-section').forEach(function(s) {
+      s.classList.remove('active');
+    });
+    var target = document.getElementById(id);
+    if (target) target.classList.add('active');
+    /* Clear all error/success banners */
+    ['authError','forgotError','forgotSuccess','resetError','resetSuccess'].forEach(function(eid) {
+      var el = document.getElementById(eid);
+      if (el) el.style.display = 'none';
+    });
+  }
+
+  /* ── Show error helpers ── */
+  function showAuthError(msg) {
+    var el = document.getElementById('authError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+  }
+  function showForgotError(msg) {
+    var el = document.getElementById('forgotError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+  }
+  function showForgotSuccess() {
+    var el = document.getElementById('forgotSuccess');
+    if (el) el.style.display = 'block';
+  }
+  function showResetError(msg) {
+    var el = document.getElementById('resetError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+  }
+  function showResetSuccess() {
+    var el = document.getElementById('resetSuccess');
+    if (el) el.style.display = 'block';
+  }
+
+  /* ── Toggle password visibility ── */
+  function togglePassword(inputId, btn) {
+    var el = document.getElementById(inputId);
+    if (!el) return;
+    if (el.type === 'password') {
+      el.type = 'text';
+      if (btn) btn.textContent = '🙈';
+    } else {
+      el.type = 'password';
+      if (btn) btn.textContent = '👁️';
+    }
+  }
+
+  /* ── Password strength meter ── */
+  function checkStrength(val) {
+    var fill = document.getElementById('strengthFill');
+    if (!fill) return;
+    var score = 0;
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+    var colors = ['', '#ef4444', '#f97316', '#eab308', '#22c55e'];
+    fill.style.width = (score * 25) + '%';
+    fill.style.background = colors[score] || '#ef4444';
+  }
+
+  /* ── Parse hash parameters (for OAuth / recovery) ── */
+  function parseHashParams() {
+    var hash = window.location.hash.replace(/^#/, '');
+    var params = {};
+    hash.split('&').forEach(function(pair) {
+      var parts = pair.split('=');
+      if (parts.length === 2) {
+        params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+      }
+    });
+    return params;
+  }
+
+  /* ── Handle OAuth callback (Google redirect) ── */
+  function handleOAuthCallback() {
+    var hash = parseHashParams();
+    if (hash.access_token) {
+      lsSet('witcorp-access-token', hash.access_token);
+      if (hash.refresh_token) lsSet('witcorp-refresh-token', hash.refresh_token);
+      /* Fetch and store user info */
+      fetchUserInfo(hash.access_token, function() {
+        /* Clean URL and redirect */
+        window.history.replaceState({}, document.title, window.location.pathname);
+        redirectToDashboard();
+      });
+      return true;
+    }
+    return false;
+  }
+
+  /* ── Fetch user info from Supabase ── */
+  function fetchUserInfo(token, cb) {
+    fetch(SUPABASE_URL + '/auth/v1/user', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + token
+      }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(user) {
+      if (user && user.id) {
+        lsSet('witcorp-user', JSON.stringify(user));
+      }
+      if (cb) cb(user);
+    })
+    .catch(function() {
+      if (cb) cb(null);
+    });
+  }
+
+  /* ── Email / Password login ── */
+  function loginWithEmail(email, password) {
+    showLoading('Signing in...');
+    var btn = document.getElementById('loginBtn');
+    if (btn) btn.disabled = true;
+
+    fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ email: email, password: password })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      hideLoading();
+      if (btn) btn.disabled = false;
+      if (data.access_token) {
+        lsSet('witcorp-access-token', data.access_token);
+        if (data.refresh_token) lsSet('witcorp-refresh-token', data.refresh_token);
+        if (data.user) lsSet('witcorp-user', JSON.stringify(data.user));
+        redirectToDashboard();
+      } else {
+        var msg = (data.error_description || data.msg || data.error || 'Login failed. Please check your credentials.');
+        showAuthError(msg);
+      }
+    })
+    .catch(function(err) {
+      hideLoading();
+      if (btn) btn.disabled = false;
+      showAuthError('Network error. Please check your connection and try again.');
+      console.error('Login error:', err);
+    });
+  }
+
+  /* ── Google OAuth login ── */
+  function loginWithGoogle() {
+    var redirectUrl = window.location.origin + window.location.pathname;
+    /* If on file://, use a reasonable fallback */
+    if (window.location.protocol === 'file:') {
+      redirectUrl = 'http://localhost/login.html';
+    }
+    var url = SUPABASE_URL + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl);
+    window.location.href = url;
+  }
+
+  /* ── Send password reset email ── */
+  function sendPasswordReset(email) {
+    if (!email) { showForgotError('Please enter your email address.'); return; }
+    if (!/\S+@\S+\.\S+/.test(email)) { showForgotError('Please enter a valid email address.'); return; }
+
+    showLoading('Sending reset email...');
+    var btn = document.getElementById('forgotBtn');
+    if (btn) btn.disabled = true;
+
+    var redirectUrl = window.location.origin + window.location.pathname + '?type=recovery';
+
+    fetch(SUPABASE_URL + '/auth/v1/recover', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ email: email, redirect_to: redirectUrl })
+    })
+    .then(function() {
+      hideLoading();
+      if (btn) btn.disabled = false;
+      showForgotSuccess();
+    })
+    .catch(function(err) {
+      hideLoading();
+      if (btn) btn.disabled = false;
+      showForgotError('Failed to send reset email. Please try again.');
+      console.error('Reset error:', err);
+    });
+  }
+
+  /* ── Update password (after recovery link) ── */
+  function updatePassword(newPass) {
+    var token = lsGet('witcorp-access-token');
+    if (!token) {
+      showResetError('Session expired. Please request a new reset link.');
+      return;
+    }
+
+    showLoading('Updating password...');
+
+    fetch(SUPABASE_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ password: newPass })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      hideLoading();
+      if (data.id || data.email) {
+        showResetSuccess();
+        setTimeout(function() { redirectToDashboard(); }, 2000);
+      } else {
+        showResetError(data.msg || data.error_description || 'Failed to update password.');
+      }
+    })
+    .catch(function(err) {
+      hideLoading();
+      showResetError('Network error. Please try again.');
+      console.error('Update password error:', err);
+    });
+  }
+
+  /* ── Form action handlers ── */
+  function doLogin() {
+    var email    = (document.getElementById('loginEmail') || {}).value;
+    var password = (document.getElementById('loginPassword') || {}).value;
+    email    = email    ? email.trim()    : '';
+    password = password ? password        : '';
+    if (!email)    { showAuthError('Please enter your email address.'); return; }
+    if (!password) { showAuthError('Please enter your password.');      return; }
+    if (!/\S+@\S+\.\S+/.test(email)) { showAuthError('Please enter a valid email address.'); return; }
+    loginWithEmail(email, password);
+  }
+
+  function doForgot() {
+    var email = (document.getElementById('forgotEmail') || {}).value;
+    sendPasswordReset(email ? email.trim() : '');
+  }
+
+  function doReset() {
+    var pass    = (document.getElementById('newPassword')    || {}).value || '';
+    var confirm = (document.getElementById('confirmPassword') || {}).value || '';
+    /* Hide old errors */
+    var re = document.getElementById('resetError');
+    if (re) re.style.display = 'none';
+    if (pass.length < 8)    { showResetError('Password must be at least 8 characters.'); return; }
+    if (pass !== confirm)   { showResetError('Passwords do not match.'); return; }
+    updatePassword(pass);
+  }
+
+  /* ── On page load ── */
+  window.addEventListener('DOMContentLoaded', function () {
+    /* 1. Check OAuth callback hash (Google login redirect) */
+    if (handleOAuthCallback()) return;
+
+    /* 2. Check if recovery email redirect (?type=recovery) */
+    var params = new URLSearchParams(window.location.search);
     if (params.get('type') === 'recovery') {
-      // Also check hash for access_token from recovery email
-      const hash = window.location.hash;
-      if (hash) {
-        const hp = new URLSearchParams(hash.replace('#', ''));
-        const token = hp.get('access_token');
-        if (token) {
-          localStorage.setItem('witcorp-access-token', token);
-          window.history.replaceState({}, '', window.location.pathname + '?type=recovery');
-        }
+      /* Check hash for token from recovery email */
+      var hash = parseHashParams();
+      if (hash.access_token) {
+        lsSet('witcorp-access-token', hash.access_token);
+        window.history.replaceState({}, '', window.location.pathname + '?type=recovery');
       }
       showSection('sectionReset');
       return;
     }
 
-    // Already logged in? Go to dashboard
-    const token = localStorage.getItem('witcorp-access-token');
-    if (token) { redirectToDashboard(); }
+    /* 3. Already logged in? Redirect to dashboard */
+    var token = lsGet('witcorp-access-token');
+    if (token) {
+      redirectToDashboard();
+      return;
+    }
+
+    /* 4. Otherwise show login section (default) */
+    showSection('sectionLogin');
   });
-
-  function showSection(id) {
-    document.querySelectorAll('.auth-section').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    // Clear errors
-    ['authError','forgotError','forgotSuccess','resetError','resetSuccess'].forEach(e => {
-      const el = document.getElementById(e);
-      if (el) el.style.display = 'none';
-    });
-  }
-
-  function doLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    if (!email || !password) { showAuthError('Please enter email and password.'); return; }
-    loginWithEmail(email, password);
-  }
-
-  function doForgot() {
-    const email = document.getElementById('forgotEmail').value.trim();
-    sendPasswordReset(email);
-  }
-
-  function doReset() {
-    const pass = document.getElementById('newPassword').value;
-    const confirm = document.getElementById('confirmPassword').value;
-    if (pass.length < 8) { showResetError('Password must be at least 8 characters.'); return; }
-    if (pass !== confirm) { showResetError('Passwords do not match.'); return; }
-    updatePassword(pass);
-  }
-
-  function togglePassword(inputId, btn) {
-    const el = document.getElementById(inputId);
-    if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
-    else { el.type = 'password'; btn.textContent = '👁️'; }
-  }
-
-  function checkStrength(val) {
-    const fill = document.getElementById('strengthFill');
-    if (!fill) return;
-    let score = 0;
-    if (val.length >= 8) score++;
-    if (/[A-Z]/.test(val)) score++;
-    if (/[0-9]/.test(val)) score++;
-    if (/[^A-Za-z0-9]/.test(val)) score++;
-    const colors = ['', '#ef4444', '#f97316', '#eab308', '#22c55e'];
-    fill.style.width = (score * 25) + '%';
-    fill.style.background = colors[score] || '';
-  }
 </script>
 </body>
 </html>
