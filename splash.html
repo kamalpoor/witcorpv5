@@ -90,6 +90,14 @@
       object-fit: cover;
     }
 
+    .logo-fallback {
+      font-size: 64px;
+      font-weight: 900;
+      color: #f0a500;
+      font-family: serif;
+      line-height: 1;
+    }
+
     /* ── Text ── */
     .splash-title {
       font-size: 28px;
@@ -143,10 +151,13 @@
 <!-- Center content -->
 <div class="splash-center">
   <div class="logo-ring">
-    <div class="logo-inner">
-      <!-- ⬇️ Logo image — apna logo.png yahan use hoga -->
-      <img class="logo-img" src="logo.png" alt="WITCORP" 
-           onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'font-size:48px;font-weight:900;color:#f0a500;font-family:serif;\'>W</div>'" />
+    <div class="logo-inner" id="logoInner">
+      <img
+        class="logo-img"
+        src="logo.png"
+        alt="WITCORP"
+        id="logoImg"
+      />
     </div>
   </div>
 
@@ -159,46 +170,65 @@
 </div>
 
 <script>
+  /* ── Logo fallback (agar logo.png nahi mila) ── */
+  (function () {
+    var img = document.getElementById('logoImg');
+    img.onerror = function () {
+      var inner = document.getElementById('logoInner');
+      inner.innerHTML = '<span class="logo-fallback">W</span>';
+    };
+  })();
+
   /* ── Generate floating dots ── */
-  const dotsEl = document.getElementById('dots');
-  const colors = ['#f0a500','#22c55e','#6366f1','#3b82f6','#ec4899','#f0a50066'];
-  for (let i = 0; i < 18; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'dot';
-    const size = Math.random() * 6 + 3;
-    dot.style.cssText = `
-      width: ${size}px;
-      height: ${size}px;
-      left: ${Math.random() * 100}%;
-      top: ${Math.random() * 100 + 100}%;
-      background: ${colors[Math.floor(Math.random() * colors.length)]};
-      animation-duration: ${Math.random() * 6 + 5}s;
-      animation-delay: ${Math.random() * 4}s;
-    `;
-    dotsEl.appendChild(dot);
-  }
+  (function () {
+    var dotsEl = document.getElementById('dots');
+    var colors = ['#f0a500', '#22c55e', '#6366f1', '#3b82f6', '#ec4899', '#f0a50066'];
+    for (var i = 0; i < 18; i++) {
+      var dot = document.createElement('div');
+      dot.className = 'dot';
+      var size = Math.random() * 6 + 3;
+      dot.style.cssText =
+        'width:' + size + 'px;' +
+        'height:' + size + 'px;' +
+        'left:' + (Math.random() * 100) + '%;' +
+        'top:' + (Math.random() * 100 + 100) + '%;' +
+        'background:' + colors[Math.floor(Math.random() * colors.length)] + ';' +
+        'animation-duration:' + (Math.random() * 6 + 5) + 's;' +
+        'animation-delay:' + (Math.random() * 4) + 's;';
+      dotsEl.appendChild(dot);
+    }
+  })();
 
   /* ── Progress bar animation → then redirect ── */
-  const fill = document.getElementById('progressFill');
-  let pct = 0;
+  (function () {
+    var fill = document.getElementById('progressFill');
+    var pct = 0;
 
-  /* Check if already logged in */
-  const token = localStorage.getItem('witcorp-access-token');
-  const target = token ? 'index.html' : 'login.html';
-
-  const interval = setInterval(() => {
-    pct += Math.random() * 3 + 1.5;
-    if (pct >= 100) {
-      pct = 100;
-      fill.style.width = '100%';
-      clearInterval(interval);
-      setTimeout(() => {
-        window.location.replace(target);
-      }, 300);
-    } else {
-      fill.style.width = pct + '%';
+    /* Safe localStorage read — try/catch for private browsing */
+    var token = null;
+    try {
+      token = localStorage.getItem('witcorp-access-token');
+    } catch (e) {
+      token = null;
     }
-  }, 50);
+
+    /* Determine redirect target */
+    var target = token ? 'index.html' : 'login.html';
+
+    var interval = setInterval(function () {
+      pct += Math.random() * 3 + 1.5;
+      if (pct >= 100) {
+        pct = 100;
+        fill.style.width = '100%';
+        clearInterval(interval);
+        setTimeout(function () {
+          window.location.replace(target);
+        }, 300);
+      } else {
+        fill.style.width = pct + '%';
+      }
+    }, 50);
+  })();
 </script>
 
 </body>
