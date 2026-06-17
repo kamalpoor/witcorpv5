@@ -9,8 +9,8 @@
   "theme_color": "#6366f1",
   "categories": ["finance", "business", "productivity"],
   "icons": [
-    { "src": "logo.png", "sizes": "72x72", "type": "image/png", "purpose": "any" },
-    { "src": "logo.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "logo.png", "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "logo.png", "sizes": "96x96",   "type": "image/png", "purpose": "any" },
     { "src": "logo.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
     { "src": "logo.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
     { "src": "logo.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
@@ -31,6 +31,20 @@
       "short_name": "GST",
       "description": "File GST Returns",
       "url": "./index.html#gst",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Task Manager",
+      "short_name": "Tasks",
+      "description": "Manage your tasks",
+      "url": "./index.html#tasks",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Client Management",
+      "short_name": "Clients",
+      "description": "Manage clients",
+      "url": "./index.html#clients",
       "icons": [{ "src": "logo.png", "sizes": "192x192" }]
     }
   ],
