@@ -1,7 +1,6 @@
 /* =============================================================
    WITCORP DASHBOARD - app.js
-   Supabase Connected | Vault Module | Enhanced Team Chat
-   Realtime + Polling | Typing | Online/Offline | Emoji | Reply
+   Supabase Connected | No Dummy Data | 30 Themes | FIXED
    ============================================================= */
 
 /* =========================================================
@@ -51,16 +50,6 @@ async function supabaseUpdate(table, id, body) {
   return true;
 }
 
-async function supabaseUpdateFilter(table, filter, body) {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?${filter}`;
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(body)
-  });
-  return res.ok;
-}
-
 async function supabaseDelete(table, id) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
   const res = await fetch(url, { method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } });
@@ -80,41 +69,13 @@ const STATE = {
   pagination: { clients: { page: 1, perPage: 10 } },
   filters: { clients: { search: '', status: '', type: '' } },
   activeChatContact: null,
-  activeChatContactName: '',
-  replyingTo: null,
-  editingMessageId: null,
   clients: [], gstReturns: [], rocFilings: [], itrFilings: [],
   tdsReturns: [], audits: [], dscRecords: [], accountingEntries: [],
-  tasks: [], documents: [], calendarEvents: [],
-  vault: [],
-  activeVaultFolder: 'All',
-  chatMessages: [],
-  typingTimeout: null,
-  pollInterval: null,
-  realtimeChannel: null,
-  myEmail: '',
-  myName: ''
+  tasks: [], documents: [], calendarEvents: []
 };
 
 /* =========================================================
-   3. VAULT FOLDERS CONFIG
-   ========================================================= */
-
-const VAULT_FOLDERS = [
-  { id: 'All',         label: 'All',          icon: '🗂️',  color: '#6366f1' },
-  { id: 'GST',         label: 'GST',           icon: '📊',  color: '#10b981' },
-  { id: 'MCA',         label: 'MCA / ROC',     icon: '🏛️',  color: '#3b82f6' },
-  { id: 'Income Tax',  label: 'Income Tax',    icon: '💰',  color: '#f59e0b' },
-  { id: 'TDS',         label: 'TDS',           icon: '🧾',  color: '#8b5cf6' },
-  { id: 'Traces',      label: 'TRACES',        icon: '🔍',  color: '#ec4899' },
-  { id: 'EPFO',        label: 'EPFO / PF',     icon: '👷',  color: '#14b8a6' },
-  { id: 'Bank',        label: 'Bank / Finance', icon: '🏦', color: '#f97316' },
-  { id: 'Email',       label: 'Email / Portal', icon: '📧', color: '#06b6d4' },
-  { id: 'Other',       label: 'Other',          icon: '📁', color: '#64748b' },
-];
-
-/* =========================================================
-   4. THEME SYSTEM
+   3. THEME SYSTEM — 30 Themes
    ========================================================= */
 
 const BG_THEMES = [
@@ -124,8 +85,30 @@ const BG_THEMES = [
   { id: 'ocean-blue',    name: 'Ocean Blue',       gradient: 'linear-gradient(135deg,#0ea5e9,#2563eb)',    bg: '#eff6ff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#3b82f6', border: '#bfdbfe' },
   { id: 'purple-dream',  name: 'Purple Dream',     gradient: 'linear-gradient(135deg,#a855f7,#7c3aed)',    bg: '#faf5ff',  surface: '#ffffff', text: '#3b0764',  textMuted: '#7c3aed', border: '#e9d5ff' },
   { id: 'green-nature',  name: 'Green Nature',     gradient: 'linear-gradient(135deg,#10b981,#047857)',    bg: '#f0fdf4',  surface: '#ffffff', text: '#052e16',  textMuted: '#059669', border: '#bbf7d0' },
+  { id: 'raspberry',     name: 'Raspberry Beret',  gradient: 'linear-gradient(135deg,#f472b6,#ec4899)',    bg: '#fdf2f8',  surface: '#ffffff', text: '#500724',  textMuted: '#db2777', border: '#fbcfe8' },
+  { id: 'chill-vibes',   name: 'Chill Vibes',      gradient: 'linear-gradient(135deg,#0d9488,#0f766e)',    bg: '#f0fdfa',  surface: '#ffffff', text: '#042f2e',  textMuted: '#0d9488', border: '#99f6e4' },
+  { id: 'damini',        name: 'Damini',           gradient: 'linear-gradient(135deg,#e879f9,#93c5fd)',    bg: '#fdf4ff',  surface: '#ffffff', text: '#3b0764',  textMuted: '#a855f7', border: '#e9d5ff' },
+  { id: 'forest-floor',  name: 'Forest Floor',     gradient: 'linear-gradient(135deg,#365314,#78350f)',    bg: '#fefce8',  surface: '#ffffff', text: '#1a2e05',  textMuted: '#65a30d', border: '#d9f99d' },
+  { id: 'mint-chip',     name: 'Mint Chip',        gradient: 'linear-gradient(135deg,#4ade80,#38bdf8)',    bg: '#f0fdf4',  surface: '#ffffff', text: '#052e16',  textMuted: '#16a34a', border: '#bbf7d0' },
+  { id: 'sea-glass',     name: 'Sea Glass',        gradient: 'linear-gradient(135deg,#bae6fd,#e9d5ff)',    bg: '#f8faff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#7c3aed', border: '#e0e7ff' },
+  { id: 'lemon-lime',    name: 'Lemon Lime',       gradient: 'linear-gradient(135deg,#facc15,#4ade80)',    bg: '#fefce8',  surface: '#ffffff', text: '#422006',  textMuted: '#ca8a04', border: '#fef08a' },
+  { id: 'navy-pro',      name: 'Navy Pro',         gradient: 'linear-gradient(135deg,#1e3a5f,#1e40af)',    bg: '#eff6ff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#2563eb', border: '#bfdbfe' },
+  { id: 'original-blue', name: 'Original Blue',    gradient: 'linear-gradient(135deg,#1e3a8a,#312e81)',    bg: '#eef2ff',  surface: '#ffffff', text: '#1e1b4b',  textMuted: '#4f46e5', border: '#c7d2fe' },
   { id: 'sunset',        name: 'Sunset',           gradient: 'linear-gradient(135deg,#f97316,#ef4444)',    bg: '#fff7ed',  surface: '#ffffff', text: '#431407',  textMuted: '#ea580c', border: '#fed7aa' },
+  { id: 'aurora',        name: 'Aurora',           gradient: 'linear-gradient(135deg,#06b6d4,#a855f7)',    bg: '#f0fdff',  surface: '#ffffff', text: '#083344',  textMuted: '#0891b2', border: '#a5f3fc' },
+  { id: 'rose-gold',     name: 'Rose Gold',        gradient: 'linear-gradient(135deg,#fda4af,#f9a8d4)',    bg: '#fff1f2',  surface: '#ffffff', text: '#4c0519',  textMuted: '#e11d48', border: '#fecdd3' },
+  { id: 'slate-pro',     name: 'Slate Pro',        gradient: 'linear-gradient(135deg,#475569,#334155)',    bg: '#f8fafc',  surface: '#ffffff', text: '#0f172a',  textMuted: '#475569', border: '#cbd5e1' },
+  { id: 'deep-space',    name: 'Deep Space',       gradient: 'linear-gradient(135deg,#0c0a09,#1c1917)',    bg: '#0c0a09',  surface: '#1c1917', text: '#fafaf9',  textMuted: '#a8a29e', border: '#292524' },
+  { id: 'amber-glow',    name: 'Amber Glow',       gradient: 'linear-gradient(135deg,#f59e0b,#d97706)',    bg: '#fffbeb',  surface: '#ffffff', text: '#451a03',  textMuted: '#b45309', border: '#fde68a' },
+  { id: 'crimson',       name: 'Crimson',          gradient: 'linear-gradient(135deg,#dc2626,#b91c1c)',    bg: '#fef2f2',  surface: '#ffffff', text: '#450a0a',  textMuted: '#dc2626', border: '#fecaca' },
+  { id: 'teal-depths',   name: 'Teal Depths',      gradient: 'linear-gradient(135deg,#115e59,#134e4a)',    bg: '#f0fdfa',  surface: '#ffffff', text: '#042f2e',  textMuted: '#0d9488', border: '#99f6e4' },
+  { id: 'lavender',      name: 'Lavender Fields',  gradient: 'linear-gradient(135deg,#c084fc,#a78bfa)',    bg: '#faf5ff',  surface: '#ffffff', text: '#3b0764',  textMuted: '#9333ea', border: '#ddd6fe' },
+  { id: 'carbon',        name: 'Carbon',           gradient: 'linear-gradient(135deg,#18181b,#27272a)',    bg: '#18181b',  surface: '#27272a', text: '#fafafa',  textMuted: '#a1a1aa', border: '#3f3f46' },
+  { id: 'nordic',        name: 'Nordic Frost',     gradient: 'linear-gradient(135deg,#dbeafe,#ede9fe)',    bg: '#f8faff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#4f46e5', border: '#c7d2fe' },
+  { id: 'earth',         name: 'Earth Tones',      gradient: 'linear-gradient(135deg,#92400e,#78350f)',    bg: '#fef3c7',  surface: '#fffbeb', text: '#422006',  textMuted: '#92400e', border: '#fde68a' },
+  { id: 'neon-night',    name: 'Neon Night',       gradient: 'linear-gradient(135deg,#0f0f23,#1a0533)',    bg: '#0f0f23',  surface: '#1a1a3e', text: '#e0e0ff',  textMuted: '#818cf8', border: '#2d2b69' },
   { id: 'sakura',        name: 'Sakura',           gradient: 'linear-gradient(135deg,#fbcfe8,#fda4af)',    bg: '#fdf2f8',  surface: '#ffffff', text: '#500724',  textMuted: '#db2777', border: '#fbcfe8' },
+  { id: 'cyber-teal',    name: 'Cyber Teal',       gradient: 'linear-gradient(135deg,#14b8a6,#06b6d4)',    bg: '#f0fdfa',  surface: '#ffffff', text: '#042f2e',  textMuted: '#0d9488', border: '#99f6e4' },
 ];
 
 const SIDEBAR_THEMES = [
@@ -135,6 +118,12 @@ const SIDEBAR_THEMES = [
   { id: 'violet-sidebar', name: 'Violet',          gradient: 'linear-gradient(135deg,#4c1d95,#5b21b6)', bg: '#4c1d95' },
   { id: 'blue-sidebar',   name: 'Ocean',           gradient: 'linear-gradient(135deg,#1e3a5f,#1e40af)', bg: '#1e3a5f' },
   { id: 'emerald-sidebar',name: 'Emerald',         gradient: 'linear-gradient(135deg,#052e16,#064e3b)', bg: '#052e16' },
+  { id: 'rose-sidebar',   name: 'Rose',            gradient: 'linear-gradient(135deg,#4c0519,#881337)', bg: '#4c0519' },
+  { id: 'amber-sidebar',  name: 'Amber',           gradient: 'linear-gradient(135deg,#451a03,#78350f)', bg: '#451a03' },
+  { id: 'teal-sidebar',   name: 'Teal',            gradient: 'linear-gradient(135deg,#042f2e,#134e4a)', bg: '#042f2e' },
+  { id: 'carbon-sidebar', name: 'Carbon',          gradient: 'linear-gradient(135deg,#18181b,#27272a)', bg: '#18181b' },
+  { id: 'neon-sidebar',   name: 'Neon Night',      gradient: 'linear-gradient(135deg,#0f0f23,#1a0533)', bg: '#0f0f23' },
+  { id: 'sakura-sidebar', name: 'Sakura',          gradient: 'linear-gradient(135deg,#500724,#881337)', bg: '#500724' },
 ];
 
 function applyBgTheme(themeId) {
@@ -148,6 +137,7 @@ function applyBgTheme(themeId) {
   root.style.setProperty('--border', theme.border);
   STATE.activeTheme.bg = themeId;
   localStorage.setItem('witcorp-bg-theme', themeId);
+  document.querySelectorAll('.theme-bg-card').forEach(c => c.classList.toggle('active', c.dataset.id === themeId));
 }
 
 function applySidebarTheme(themeId) {
@@ -155,6 +145,7 @@ function applySidebarTheme(themeId) {
   document.documentElement.style.setProperty('--sidebar-bg', theme.bg);
   STATE.activeTheme.sidebar = themeId;
   localStorage.setItem('witcorp-sidebar-theme', themeId);
+  document.querySelectorAll('.theme-sidebar-card').forEach(c => c.classList.toggle('active', c.dataset.id === themeId));
 }
 
 function initTheme() {
@@ -162,37 +153,145 @@ function initTheme() {
   const savedSidebar = localStorage.getItem('witcorp-sidebar-theme') || 'dark-sidebar';
   applyBgTheme(savedBg);
   applySidebarTheme(savedSidebar);
+  const primaryMap = {
+    'default': '#6366f1', 'dark-mode': '#818cf8', 'midnight': '#a78bfa',
+    'ocean-blue': '#3b82f6', 'purple-dream': '#a855f7', 'green-nature': '#10b981',
+    'raspberry': '#ec4899', 'chill-vibes': '#0d9488', 'damini': '#e879f9',
+    'forest-floor': '#65a30d', 'mint-chip': '#10b981', 'sea-glass': '#7c3aed',
+    'lemon-lime': '#ca8a04', 'navy-pro': '#3b82f6', 'original-blue': '#6366f1',
+    'sunset': '#f97316', 'aurora': '#06b6d4', 'rose-gold': '#f43f5e',
+    'slate-pro': '#475569', 'deep-space': '#8b5cf6', 'amber-glow': '#f59e0b',
+    'crimson': '#dc2626', 'teal-depths': '#0d9488', 'lavender': '#9333ea',
+    'carbon': '#6366f1', 'nordic': '#4f46e5', 'earth': '#92400e',
+    'neon-night': '#818cf8', 'sakura': '#ec4899', 'cyber-teal': '#14b8a6'
+  };
+  const primary = primaryMap[savedBg] || '#6366f1';
+  document.documentElement.style.setProperty('--primary', primary);
+  document.documentElement.style.setProperty('--primary-dark', primary);
+  document.documentElement.style.setProperty('--primary-glow', primary + '22');
 }
 
-function setTheme(themeName) {
-  const themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
-  themes.forEach(t => document.body.classList.remove(t));
-  document.body.classList.add(themeName);
-  localStorage.setItem('witcorp-body-theme', themeName);
-  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.theme === themeName));
+function openThemePicker() {
+  const bgActive = STATE.activeTheme.bg;
+  const sbActive = STATE.activeTheme.sidebar;
+  const bgHtml = BG_THEMES.map(t => `
+    <div class="theme-bg-card ${t.id === bgActive ? 'active' : ''}" data-id="${t.id}" onclick="applyBgTheme('${t.id}');updateThemePickerActive()">
+      <div class="theme-preview" style="background:${t.gradient}"></div>
+      <div class="theme-card-name">${t.name}</div>
+    </div>
+  `).join('');
+  const sbHtml = SIDEBAR_THEMES.map(t => `
+    <div class="theme-sidebar-card ${t.id === sbActive ? 'active' : ''}" data-id="${t.id}" onclick="applySidebarTheme('${t.id}');updateThemePickerActive()">
+      <div class="theme-preview" style="background:${t.gradient}"></div>
+      <div class="theme-card-name">${t.name}</div>
+    </div>
+  `).join('');
+  openModalWithContent('🎨 Background Themes', `
+    <div class="theme-picker-section">
+      <div class="theme-picker-label">Background Themes</div>
+      <div class="theme-picker-grid">${bgHtml}</div>
+      <div class="theme-picker-label" style="margin-top:24px">Sidebar Themes</div>
+      <div class="theme-picker-grid sidebar-theme-grid">${sbHtml}</div>
+    </div>
+  `);
 }
 
-function toggleDarkMode() {
-  const isDark = document.body.classList.toggle('force-dark');
-  localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
-  const btn = document.querySelector('[onclick="toggleDarkMode()"]');
-  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+function updateThemePickerActive() {
+  document.querySelectorAll('.theme-bg-card').forEach(c => c.classList.toggle('active', c.dataset.id === STATE.activeTheme.bg));
+  document.querySelectorAll('.theme-sidebar-card').forEach(c => c.classList.toggle('active', c.dataset.id === STATE.activeTheme.sidebar));
 }
 
 /* =========================================================
-   5. INITIALIZATION
+   4. TEAM CHAT
+   ========================================================= */
+
+function startNewChat() {
+  const emailInput = document.getElementById('newChatEmail');
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+  if (!email || !email.includes('@')) {
+    showToast('Enter a valid email address');
+    return;
+  }
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  if (email === myEmail) {
+    showToast('Cannot message yourself!');
+    return;
+  }
+  emailInput.value = '';
+  switchChatContact(email, email.split('@')[0]);
+  showToast('Starting chat with ' + email);
+}
+
+const TEAM_CONTACTS = [];
+
+/* =========================================================
+   5. AI RESPONSES
+   ========================================================= */
+
+function getAIResponse(query) {
+  const q = query.toLowerCase().trim();
+  const { clients, gstReturns, tasks, tdsReturns } = STATE;
+
+  if (q.includes('gst') && (q.includes('pending') || q.includes('show'))) {
+    const pending = gstReturns.filter(g => g.status === 'Pending' || g.status === 'Overdue');
+    if (!pending.length) return 'No pending GST returns right now! 🎉';
+    let txt = `${pending.length} GST returns need attention:<br><br>`;
+    pending.forEach(g => {
+      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'var(--danger)':'var(--warning)'}">${g.status}</span><br>`;
+    });
+    return txt;
+  }
+  if (q.includes('task') || q.includes('pending')) {
+    const p = tasks.filter(t => t.column_name !== 'done');
+    if (!p.length) return 'No pending tasks! Everything is done. 🎉';
+    let txt = `${p.length} tasks pending:<br><br>`;
+    p.slice(0, 6).forEach(t => {
+      txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name === 'todo' ? 'To Do' : 'In Progress'}, due ${t.due_date || 'TBD'}<br>`;
+    });
+    return txt;
+  }
+  if (q.includes('tds')) {
+    const filed = tdsReturns.filter(t => t.status === 'Filed').length;
+    const pend = tdsReturns.filter(t => t.status === 'Pending').length;
+    return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`;
+  }
+  if (q.includes('client')) {
+    const active = clients.filter(c => c.status === 'Active').length;
+    return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c=>c.status==='Pending').length}</strong>`;
+  }
+  if (q.includes('upcoming') || q.includes('due') || q.includes('compliance')) {
+    return `Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!`;
+  }
+  const defaults = [
+    'I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!',
+    'Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.',
+    'Namaste! Try: "pending tasks", "GST due this week", "TDS filing status"'
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
+}
+
+/* =========================================================
+   6. INITIALIZATION - MOBILE RIGHT PANEL FIX
    ========================================================= */
 
 function toggleRightPanel() {
   const panel = document.getElementById('rightPanel');
-  if (panel) panel.classList.toggle('show-mobile');
+  if (panel) {
+    panel.classList.toggle('show-mobile');
+  }
 }
 
 function initRightPanelMobile() {
   const btn = document.getElementById('toggleRightPanel');
   const handleResize = () => {
-    if (window.innerWidth <= 1200) { if (btn) btn.style.display = 'flex'; }
-    else { if (btn) btn.style.display = 'none'; const panel = document.getElementById('rightPanel'); if (panel) panel.classList.remove('show-mobile'); }
+    if (window.innerWidth <= 1200) {
+      if (btn) btn.style.display = 'flex';
+    } else {
+      if (btn) btn.style.display = 'none';
+      const panel = document.getElementById('rightPanel');
+      if (panel) panel.classList.remove('show-mobile');
+    }
   };
   handleResize();
   window.addEventListener('resize', handleResize);
@@ -201,27 +300,8 @@ function initRightPanelMobile() {
 document.addEventListener('DOMContentLoaded', initRightPanelMobile);
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Load user info
-  const userRaw = localStorage.getItem('witcorp-user');
-  if (userRaw) {
-    const user = JSON.parse(userRaw);
-    STATE.myEmail = user.email || '';
-    STATE.myName = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email ? user.email.split('@')[0] : 'User');
-  }
-
   loadUserInfo();
   initTheme();
-
-  // Restore saved theme
-  const savedTheme = localStorage.getItem('witcorp-body-theme');
-  if (savedTheme) setTheme(savedTheme);
-  const savedDark = localStorage.getItem('witcorp-dark-mode');
-  if (savedDark === '1') {
-    document.body.classList.add('force-dark');
-    const btn = document.querySelector('[onclick="toggleDarkMode()"]');
-    if (btn) btn.textContent = '☀️';
-  }
-
   setCurrentDate();
   attachGlobalListeners();
   renderTeamContacts();
@@ -247,21 +327,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderDueDates();
   renderActivity();
   renderBarChart();
-  renderVaultPage();
+  
+  // Populate GST client dropdown
   populateGSTClientDropdown();
-
-  // Mark user online
-  await updatePresence(true);
-  setInterval(() => updatePresence(true), 30000);
-
-  // Start polling for chat
-  startChatPolling();
-
-  // Setup Supabase Realtime for chat
-  setupRealtimeChat();
-
-  // On page unload, mark offline
-  window.addEventListener('beforeunload', () => updatePresence(false));
 });
 
 function showPageLoader(show) {
@@ -278,7 +346,7 @@ function showPageLoader(show) {
 
 async function loadAllData() {
   try {
-    const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events, vault] = await Promise.all([
+    const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events] = await Promise.all([
       supabase('clients', { order: 'created_at.desc' }),
       supabase('gst_returns', { order: 'created_at.desc' }),
       supabase('roc_filings', { order: 'created_at.desc' }),
@@ -290,7 +358,6 @@ async function loadAllData() {
       supabase('tasks', { order: 'created_at.desc' }),
       supabase('documents', { order: 'created_at.desc' }),
       supabase('calendar_events', { order: 'event_date.asc' }),
-      supabase('vault_credentials', { order: 'created_at.desc' }),
     ]);
     STATE.clients = Array.isArray(clients) ? clients : [];
     STATE.gstReturns = Array.isArray(gst) ? gst : [];
@@ -303,15 +370,14 @@ async function loadAllData() {
     STATE.tasks = Array.isArray(tasks) ? tasks : [];
     STATE.documents = Array.isArray(docs) ? docs : [];
     STATE.calendarEvents = Array.isArray(events) ? events : [];
-    STATE.vault = Array.isArray(vault) ? vault : [];
   } catch (e) {
     console.error('loadAllData error:', e);
-    showToast('Database connection failed.');
+    showToast('Database connection failed. Check console.');
   }
 }
 
 /* =========================================================
-   6. NAVIGATION
+   7. NAVIGATION
    ========================================================= */
 
 function navigate(page) {
@@ -319,14 +385,18 @@ function navigate(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.getAttribute('data-page') === page));
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.toggle('active', item.getAttribute('data-page') === page);
+  });
   if (window.innerWidth <= 768) closeSidebar();
   closeNotifications();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (page === 'reports') setTimeout(renderBarChart, 100);
-  if (page === 'vault') renderVaultPage();
-  if (page === 'teamchat') { renderTeamContacts(); renderTeamMessages(); }
 }
+
+/* =========================================================
+   8. SIDEBAR TOGGLE
+   ========================================================= */
 
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
@@ -345,7 +415,7 @@ function closeSidebar() {
 }
 
 /* =========================================================
-   7. DATE
+   9. DATE
    ========================================================= */
 
 function setCurrentDate() {
@@ -358,7 +428,7 @@ function setCurrentDate() {
 }
 
 /* =========================================================
-   8. DASHBOARD STATS
+   10. DASHBOARD STATS
    ========================================================= */
 
 function updateDashboardStats() {
@@ -367,23 +437,21 @@ function updateDashboardStats() {
   const pendingTasks = STATE.tasks.filter(t => t.column_name !== 'done').length;
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
-  const upcomingDue = STATE.calendarEvents.filter(e => { const d = new Date(e.event_date); const diff = (d - today) / (1000 * 60 * 60 * 24); return diff >= 0 && diff <= 7; }).length;
+
+  const upcomingDue = STATE.calendarEvents.filter(e => {
+    const d = new Date(e.event_date);
+    const diff = (d - today) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  }).length;
+
   const todayFilings = STATE.calendarEvents.filter(e => e.event_date === todayStr).length;
+
   const dashStats = document.querySelectorAll('#page-dashboard .stat-number');
   if (dashStats[0]) dashStats[0].textContent = totalClients;
   if (dashStats[1]) dashStats[1].textContent = gstFiled;
   if (dashStats[2]) dashStats[2].textContent = pendingTasks;
   if (dashStats[3]) dashStats[3].textContent = upcomingDue;
   if (dashStats[4]) dashStats[4].textContent = String(todayFilings).padStart(2, '0');
-
-  const done = STATE.tasks.filter(t=>t.column_name==='done').length;
-  const inprog = STATE.tasks.filter(t=>t.column_name==='inprogress').length;
-  const todo = STATE.tasks.filter(t=>t.column_name==='todo').length;
-  const totalRev = STATE.accountingEntries.filter(t=>t.entry_type==='credit').reduce((s,t)=>s+(t.amount||0),0);
-  const totalExp = STATE.accountingEntries.filter(t=>t.entry_type==='debit').reduce((s,t)=>s+(t.amount||0),0);
-  const netProfit = totalRev - totalExp;
-  const margin = totalRev ? Math.round((netProfit/totalRev)*100) : 0;
-  const pct = STATE.tasks.length ? Math.round((done/STATE.tasks.length)*100) : 0;
 
   const gstStats = document.querySelectorAll('#page-gst .stat-number');
   if (gstStats[0]) gstStats[0].textContent = STATE.gstReturns.filter(g=>g.status==='Filed').length;
@@ -413,7 +481,11 @@ function updateDashboardStats() {
   if (auditStats[0]) auditStats[0].textContent = STATE.audits.filter(a=>a.status==='In Progress').length;
   if (auditStats[1]) auditStats[1].textContent = STATE.audits.filter(a=>a.status==='Completed').length;
   if (auditStats[2]) auditStats[2].textContent = STATE.audits.filter(a=>a.status==='In Review').length;
-  const dueThisMonth = STATE.audits.filter(a => { if (!a.end_date) return false; const d = new Date(a.end_date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear(); }).length;
+  const dueThisMonth = STATE.audits.filter(a => {
+    if (!a.end_date) return false;
+    const d = new Date(a.end_date);
+    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  }).length;
   if (auditStats[3]) auditStats[3].textContent = dueThisMonth;
 
   const dscStats = document.querySelectorAll('#page-dsc .stat-number');
@@ -422,12 +494,19 @@ function updateDashboardStats() {
   if (dscStats[2]) dscStats[2].textContent = STATE.dscRecords.length;
   if (dscStats[3]) dscStats[3].textContent = STATE.dscRecords.filter(d=>(d.days_left||999)<=30).length;
 
+  const totalRev = STATE.accountingEntries.filter(t=>t.entry_type==='credit').reduce((s,t)=>s+(t.amount||0),0);
+  const totalExp = STATE.accountingEntries.filter(t=>t.entry_type==='debit').reduce((s,t)=>s+(t.amount||0),0);
+  const netProfit = totalRev - totalExp;
+  const margin = totalRev ? Math.round((netProfit/totalRev)*100) : 0;
   const accStats = document.querySelectorAll('#page-accounting .stat-number');
   if (accStats[0]) accStats[0].textContent = '₹ ' + formatAmount(totalRev);
   if (accStats[1]) accStats[1].textContent = '₹ ' + formatAmount(totalExp);
   if (accStats[2]) accStats[2].textContent = '₹ ' + formatAmount(netProfit);
   if (accStats[3]) accStats[3].textContent = margin + '%';
 
+  const done = STATE.tasks.filter(t=>t.column_name==='done').length;
+  const inprog = STATE.tasks.filter(t=>t.column_name==='inprogress').length;
+  const todo = STATE.tasks.filter(t=>t.column_name==='todo').length;
   const taskStats = document.querySelectorAll('#page-tasks .stat-number');
   if (taskStats[0]) taskStats[0].textContent = done;
   if (taskStats[1]) taskStats[1].textContent = inprog;
@@ -436,6 +515,7 @@ function updateDashboardStats() {
 
   const rptStats = document.querySelectorAll('#page-reports .stat-number');
   const totalFilings = STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length;
+  const pct = STATE.tasks.length ? Math.round((done/STATE.tasks.length)*100) : 0;
   if (rptStats[0]) rptStats[0].textContent = STATE.clients.length;
   if (rptStats[1]) rptStats[1].textContent = totalFilings;
   if (rptStats[2]) rptStats[2].textContent = '₹ ' + formatAmount(totalRev);
@@ -445,13 +525,14 @@ function updateDashboardStats() {
   if (donutCenter) donutCenter.textContent = pct + '%';
   const donutChart = document.querySelector('#page-reports .donut-chart');
   if (donutChart && STATE.tasks.length) {
-    const doneP = done/STATE.tasks.length*100, ipP = inprog/STATE.tasks.length*100;
+    const doneP = done/STATE.tasks.length*100;
+    const ipP = inprog/STATE.tasks.length*100;
     donutChart.style.background = `conic-gradient(var(--success) 0% ${doneP}%, var(--info) ${doneP}% ${doneP+ipP}%, var(--warning) ${doneP+ipP}% 100%)`;
   }
 }
 
 /* =========================================================
-   9. CLIENT MANAGEMENT
+   11. CLIENT MANAGEMENT
    ========================================================= */
 
 function getFilteredClients() {
@@ -459,7 +540,9 @@ function getFilteredClients() {
   return STATE.clients.filter(c => {
     const s = search.toLowerCase();
     const matchSearch = !search || (c.name||'').toLowerCase().includes(s) || (c.pan||'').toLowerCase().includes(s) || (c.email||'').toLowerCase().includes(s);
-    return matchSearch && (!status || c.status === status) && (!type || c.type === type);
+    const matchStatus = !status || c.status === status;
+    const matchType = !type || c.type === type;
+    return matchSearch && matchStatus && matchType;
   });
 }
 
@@ -473,8 +556,9 @@ function renderClientTable() {
   STATE.pagination.clients.page = safePage;
   const start = (safePage - 1) * perPage;
   const pageItems = filtered.slice(start, start + perPage);
+
   if (!pageItems.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No clients found</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No clients found</div><div class="empty-state-sub">Try adjusting filters or add a new client</div></div></td></tr>`;
   } else {
     tbody.innerHTML = pageItems.map(c => `
       <tr>
@@ -493,21 +577,43 @@ function renderClientTable() {
       </tr>
     `).join('');
   }
+
   const pageInfo = document.getElementById('clientPageInfo');
   if (pageInfo) pageInfo.textContent = `Page ${safePage} of ${totalPages} (${filtered.length} clients)`;
 }
 
-function filterClients(value) { STATE.filters.clients.search = value; STATE.pagination.clients.page = 1; renderClientTable(); }
-function filterClientStatus(value) { STATE.filters.clients.status = value; STATE.pagination.clients.page = 1; renderClientTable(); }
-function filterClientType(value) { STATE.filters.clients.type = value; STATE.pagination.clients.page = 1; renderClientTable(); }
+function filterClients(value) {
+  STATE.filters.clients.search = value;
+  STATE.pagination.clients.page = 1;
+  renderClientTable();
+}
+
+function filterClientStatus(value) {
+  STATE.filters.clients.status = value;
+  STATE.pagination.clients.page = 1;
+  renderClientTable();
+}
+
+function filterClientType(value) {
+  STATE.filters.clients.type = value;
+  STATE.pagination.clients.page = 1;
+  renderClientTable();
+}
 
 function prevPage(section) {
-  if (section === 'clients' && STATE.pagination.clients.page > 1) { STATE.pagination.clients.page--; renderClientTable(); }
+  if (section === 'clients' && STATE.pagination.clients.page > 1) {
+    STATE.pagination.clients.page--;
+    renderClientTable();
+  }
 }
+
 function nextPage(section) {
   if (section === 'clients') {
     const total = Math.ceil(getFilteredClients().length / STATE.pagination.clients.perPage);
-    if (STATE.pagination.clients.page < total) { STATE.pagination.clients.page++; renderClientTable(); }
+    if (STATE.pagination.clients.page < total) {
+      STATE.pagination.clients.page++;
+      renderClientTable();
+    }
   }
 }
 
@@ -548,10 +654,19 @@ function editClient(id) {
 async function saveClientEdit(id) {
   const name = document.getElementById('editClientName').value.trim();
   if (!name) { showToast('Client name required'); return; }
-  const updated = { name, email: document.getElementById('editClientEmail').value.trim(), phone: document.getElementById('editClientPhone').value.trim(), gst: document.getElementById('editClientGST').value.trim(), status: document.getElementById('editClientStatus').value };
+  const updated = {
+    name,
+    email: document.getElementById('editClientEmail').value.trim(),
+    phone: document.getElementById('editClientPhone').value.trim(),
+    gst: document.getElementById('editClientGST').value.trim(),
+    status: document.getElementById('editClientStatus').value
+  };
   const ok = await supabaseUpdate('clients', id, updated);
-  if (ok) { const idx = STATE.clients.findIndex(c => c.id === id); if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated }; closeModal(); renderClientTable(); updateDashboardStats(); showToast('✅ Client updated!'); }
-  else { showToast('❌ Update failed.'); }
+  if (ok) {
+    const idx = STATE.clients.findIndex(c => c.id === id);
+    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated };
+    closeModal(); renderClientTable(); updateDashboardStats(); showToast('✅ Client updated!');
+  } else { showToast('❌ Update failed.'); }
 }
 
 function deleteClientConfirm(id) {
@@ -572,12 +687,14 @@ function deleteClientConfirm(id) {
 
 async function deleteClientConfirmed(id) {
   const ok = await supabaseDelete('clients', id);
-  if (ok) { STATE.clients = STATE.clients.filter(c => c.id !== id); closeModal(); renderClientTable(); updateDashboardStats(); showToast('🗑️ Client deleted'); }
-  else { showToast('❌ Delete failed'); }
+  if (ok) {
+    STATE.clients = STATE.clients.filter(c => c.id !== id);
+    closeModal(); renderClientTable(); updateDashboardStats(); showToast('🗑️ Client deleted');
+  } else { showToast('❌ Delete failed'); }
 }
 
 /* =========================================================
-   10. GST DASHBOARD
+   12. GST DASHBOARD
    ========================================================= */
 
 function populateGSTClientDropdown() {
@@ -589,14 +706,36 @@ function populateGSTClientDropdown() {
 function renderGSTPage() {
   const listEl = document.getElementById('gstReturnList');
   const upcomingEl = document.getElementById('gstUpcoming');
+
   if (listEl) {
-    if (!STATE.gstReturns.length) { listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">No GST returns yet</div></div>'; }
-    else { listEl.innerHTML = STATE.gstReturns.map(g => `<div class="gst-item"><div><div class="gst-item-name">${escapeHtml(g.client_name)}</div><div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)}</div></div><div style="display:flex;align-items:center;gap:8px">${statusBadge(g.status)}<button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteGSTReturn(${g.id})">✕</button></div></div>`).join(''); }
+    if (!STATE.gstReturns.length) {
+      listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">No GST returns yet</div><div class="empty-state-sub">File your first GST return below</div></div>';
+    } else {
+      listEl.innerHTML = STATE.gstReturns.map(g => `
+        <div class="gst-item">
+          <div>
+            <div class="gst-item-name">${escapeHtml(g.client_name)}</div>
+            <div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${statusBadge(g.status)}
+            <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteGSTReturn(${g.id})">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
   }
+
   if (upcomingEl) {
     const upcoming = STATE.calendarEvents.slice(0, 5);
-    upcomingEl.innerHTML = upcoming.length ? upcoming.map(e => `<div class="upcoming-item"><div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type)}</div></div><div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div></div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming filings</div></div>';
+    upcomingEl.innerHTML = upcoming.length ? upcoming.map(e => `
+      <div class="upcoming-item">
+        <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type)}</div></div>
+        <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
+      </div>
+    `).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming filings</div></div>';
   }
+
   updateDashboardStats();
 }
 
@@ -607,9 +746,18 @@ async function submitGSTReturn() {
   const inputs = document.querySelectorAll('#page-gst input[type="text"], #page-gst input[type="number"]');
   const clientName = gstSelEl ? gstSelEl.value : '';
   if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
-  const body = { client_name: clientName, return_type: typeEl ? typeEl.value : 'GSTR-1', period: periodEl ? periodEl.value : '', gstin: inputs[0] ? inputs[0].value : '', total_turnover: inputs[1] ? parseFloat(inputs[1].value) || 0 : 0, tax_liability: inputs[2] ? parseFloat(inputs[2].value) || 0 : 0, status: 'Filed', filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) };
+  const body = {
+    client_name: clientName,
+    return_type: typeEl ? typeEl.value : 'GSTR-1',
+    period: periodEl ? periodEl.value : '',
+    gstin: inputs[0] ? inputs[0].value : '',
+    total_turnover: inputs[1] ? parseFloat(inputs[1].value) || 0 : 0,
+    tax_liability: inputs[2] ? parseFloat(inputs[2].value) || 0 : 0,
+    status: 'Filed',
+    filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  };
   const result = await supabaseInsert('gst_returns', body);
-  if (result && result[0]) { STATE.gstReturns.unshift(result[0]); renderGSTPage(); showToast('✅ GST Return filed!'); }
+  if (result && result[0]) { STATE.gstReturns.unshift(result[0]); renderGSTPage(); showToast('✅ GST Return filed successfully!'); }
   else { showToast('❌ Failed to file GST return'); }
 }
 
@@ -619,120 +767,337 @@ async function deleteGSTReturn(id) {
 }
 
 /* =========================================================
-   11. ROC, ITR, TDS, AUDIT, DSC, ACCOUNTING — (Same as before)
+   13. ROC FILINGS
    ========================================================= */
 
 function renderROCTable() {
   const tbody = document.getElementById('rocTableBody');
   if (!tbody) return;
-  if (!STATE.rocFilings.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🏛️</div><div class="empty-state-text">No ROC filings yet</div></div></td></tr>`; updateDashboardStats(); return; }
-  tbody.innerHTML = STATE.rocFilings.map(r => `<tr><td><strong>${escapeHtml(r.company)}</strong></td><td>${escapeHtml(r.cin||'-')}</td><td>${escapeHtml(r.form||'-')}</td><td>${escapeHtml(r.due_date||'-')}</td><td>${statusBadge(r.status)}</td><td><button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button><button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteROC(${r.id})">Delete</button></td></tr>`).join('');
+  if (!STATE.rocFilings.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🏛️</div><div class="empty-state-text">No ROC filings yet</div></div></td></tr>`;
+    updateDashboardStats(); return;
+  }
+  tbody.innerHTML = STATE.rocFilings.map(r => `
+    <tr>
+      <td><strong>${escapeHtml(r.company)}</strong></td>
+      <td>${escapeHtml(r.cin||'-')}</td>
+      <td>${escapeHtml(r.form||'-')}</td>
+      <td>${escapeHtml(r.due_date||'-')}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteROC(${r.id})">Delete</button>
+      </td>
+    </tr>
+  `).join('');
   updateDashboardStats();
 }
 
 function editROCStatus(id) {
-  const r = STATE.rocFilings.find(x => x.id === id); if (!r) return;
-  openModalWithContent(`Update ROC Filing`, `<div class="form-group"><label>Status</label><select class="form-control" id="rocStatusSel"><option ${r.status==='In Progress'?'selected':''}>In Progress</option><option ${r.status==='Filed'?'selected':''}>Filed</option><option ${r.status==='Overdue'?'selected':''}>Overdue</option></select></div><button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>`);
+  const r = STATE.rocFilings.find(x => x.id === id);
+  if (!r) return;
+  openModalWithContent(`Update ROC Filing — ${escapeHtml(r.company)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="rocStatusSel">
+        <option ${r.status==='In Progress'?'selected':''}>In Progress</option>
+        <option ${r.status==='Filed'?'selected':''}>Filed</option>
+        <option ${r.status==='Overdue'?'selected':''}>Overdue</option>
+      </select>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>
+  `);
 }
+
 async function saveROCStatus(id) {
   const status = document.getElementById('rocStatusSel').value;
   const ok = await supabaseUpdate('roc_filings', id, { status });
-  if (ok) { const idx = STATE.rocFilings.findIndex(r => r.id === id); if (idx !== -1) STATE.rocFilings[idx].status = status; closeModal(); renderROCTable(); showToast('✅ ROC status updated'); }
+  if (ok) {
+    const idx = STATE.rocFilings.findIndex(r => r.id === id);
+    if (idx !== -1) STATE.rocFilings[idx].status = status;
+    closeModal(); renderROCTable(); showToast('✅ ROC status updated');
+  }
 }
-async function deleteROC(id) { const ok = await supabaseDelete('roc_filings', id); if (ok) { STATE.rocFilings = STATE.rocFilings.filter(r => r.id !== id); renderROCTable(); showToast('🗑️ ROC filing deleted'); } }
+
+async function deleteROC(id) {
+  const ok = await supabaseDelete('roc_filings', id);
+  if (ok) { STATE.rocFilings = STATE.rocFilings.filter(r => r.id !== id); renderROCTable(); showToast('🗑️ ROC filing deleted'); }
+}
+
+/* =========================================================
+   14. INCOME TAX
+   ========================================================= */
 
 function renderITRList() {
-  const el = document.getElementById('itrList'); if (!el) return;
-  if (!STATE.itrFilings.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">No ITR filings yet</div></div>'; updateDashboardStats(); return; }
-  el.innerHTML = STATE.itrFilings.map(itr => `<div class="itr-item"><div><div class="gst-item-name">${escapeHtml(itr.client_name)}</div><div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)}</div></div><div style="display:flex;align-items:center;gap:8px">${statusBadge(itr.status)}<button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteITR(${itr.id})">✕</button></div></div>`).join('');
+  const el = document.getElementById('itrList');
+  if (!el) return;
+  if (!STATE.itrFilings.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">No ITR filings yet</div></div>';
+    updateDashboardStats(); return;
+  }
+  el.innerHTML = STATE.itrFilings.map(itr => `
+    <div class="itr-item">
+      <div>
+        <div class="gst-item-name">${escapeHtml(itr.client_name)}</div>
+        <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date||'-')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${statusBadge(itr.status)}
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteITR(${itr.id})">✕</button>
+      </div>
+    </div>
+  `).join('');
   updateDashboardStats();
 }
+
 async function submitITR() {
   const selects = document.querySelectorAll('#page-incometax select');
   const inputs = document.querySelectorAll('#page-incometax input[type="number"]');
   const clientName = selects[0]?.value;
   if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
-  const body = { client_name: clientName, assessment_year: selects[1]?.value || '2025-26', form: selects[2]?.value || 'ITR-1', gross_income: parseFloat(inputs[0]?.value)||0, tax_deducted: parseFloat(inputs[1]?.value)||0, deductions: parseFloat(inputs[2]?.value)||0, status: 'Filed', filed_date: new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) };
+  const body = {
+    client_name: clientName,
+    assessment_year: selects[1]?.value || '2025-26',
+    form: selects[2]?.value || 'ITR-1',
+    gross_income: parseFloat(inputs[0]?.value) || 0,
+    tax_deducted: parseFloat(inputs[1]?.value) || 0,
+    deductions: parseFloat(inputs[2]?.value) || 0,
+    status: 'Filed',
+    filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  };
   const result = await supabaseInsert('itr_filings', body);
-  if (result && result[0]) { STATE.itrFilings.unshift(result[0]); renderITRList(); showToast('✅ ITR filed!'); }
+  if (result && result[0]) { STATE.itrFilings.unshift(result[0]); renderITRList(); showToast('✅ ITR filed successfully!'); }
+  else { showToast('❌ ITR filing failed'); }
 }
-async function deleteITR(id) { const ok = await supabaseDelete('itr_filings', id); if (ok) { STATE.itrFilings = STATE.itrFilings.filter(i => i.id !== id); renderITRList(); showToast('🗑️ ITR deleted'); } }
+
+async function deleteITR(id) {
+  const ok = await supabaseDelete('itr_filings', id);
+  if (ok) { STATE.itrFilings = STATE.itrFilings.filter(i => i.id !== id); renderITRList(); showToast('🗑️ ITR filing deleted'); }
+}
+
+/* =========================================================
+   15. TDS RETURNS
+   ========================================================= */
 
 function renderTDSTable() {
-  const tbody = document.getElementById('tdsTableBody'); if (!tbody) return;
-  if (!STATE.tdsReturns.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">No TDS returns yet</div></div></td></tr>`; updateDashboardStats(); return; }
-  tbody.innerHTML = STATE.tdsReturns.map(t => `<tr><td><strong>${escapeHtml(t.deductor)}</strong></td><td>${escapeHtml(t.tan||'-')}</td><td>${escapeHtml(t.quarter||'-')}</td><td>${escapeHtml(t.form_type||'-')}</td><td>₹ ${formatAmount(t.amount||0)}</td><td>${statusBadge(t.status)}<button class="btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px;border-color:var(--danger);color:var(--danger)" onclick="deleteTDS(${t.id})">✕</button></td></tr>`).join('');
+  const tbody = document.getElementById('tdsTableBody');
+  if (!tbody) return;
+  if (!STATE.tdsReturns.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">No TDS returns yet</div></div></td></tr>`;
+    updateDashboardStats(); return;
+  }
+  tbody.innerHTML = STATE.tdsReturns.map(t => `
+    <tr>
+      <td><strong>${escapeHtml(t.deductor)}</strong></td>
+      <td>${escapeHtml(t.tan||'-')}</td>
+      <td>${escapeHtml(t.quarter||'-')}</td>
+      <td>${escapeHtml(t.form_type||'-')}</td>
+      <td>₹ ${formatAmount(t.amount||0)}</td>
+      <td>
+        ${statusBadge(t.status)}
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px;border-color:var(--danger);color:var(--danger)" onclick="deleteTDS(${t.id})">✕</button>
+      </td>
+    </tr>
+  `).join('');
   updateDashboardStats();
 }
+
 async function submitTDS() {
   const inputs = document.querySelectorAll('#page-tds input[type="text"], #page-tds input[type="number"]');
   const selects = document.querySelectorAll('#page-tds select');
   const deductor = inputs[0]?.value.trim();
   if (!deductor) { showToast('Please enter deductor name'); return; }
-  const body = { deductor, tan: inputs[1]?.value.trim(), quarter: selects[0]?.value, form_type: selects[1]?.value, amount: parseFloat(inputs[2]?.value)||0, challan_no: inputs[3]?.value.trim(), status: 'Filed' };
+  const body = {
+    deductor,
+    tan: inputs[1]?.value.trim(),
+    quarter: selects[0]?.value,
+    form_type: selects[1]?.value,
+    amount: parseFloat(inputs[2]?.value) || 0,
+    challan_no: inputs[3]?.value.trim(),
+    status: 'Filed'
+  };
   const result = await supabaseInsert('tds_returns', body);
-  if (result && result[0]) { STATE.tdsReturns.unshift(result[0]); renderTDSTable(); showToast('✅ TDS submitted!'); }
+  if (result && result[0]) { STATE.tdsReturns.unshift(result[0]); renderTDSTable(); showToast('✅ TDS return submitted!'); }
+  else { showToast('❌ TDS submission failed'); }
 }
-async function deleteTDS(id) { const ok = await supabaseDelete('tds_returns', id); if (ok) { STATE.tdsReturns = STATE.tdsReturns.filter(t => t.id !== id); renderTDSTable(); showToast('🗑️ TDS deleted'); } }
+
+async function deleteTDS(id) {
+  const ok = await supabaseDelete('tds_returns', id);
+  if (ok) { STATE.tdsReturns = STATE.tdsReturns.filter(t => t.id !== id); renderTDSTable(); showToast('🗑️ TDS return deleted'); }
+}
+
+/* =========================================================
+   16. AUDIT & ASSURANCE
+   ========================================================= */
 
 function renderAuditTable() {
-  const tbody = document.getElementById('auditTableBody'); if (!tbody) return;
-  if (!STATE.audits.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">No audits scheduled</div></div></td></tr>`; updateDashboardStats(); return; }
-  tbody.innerHTML = STATE.audits.map(a => `<tr><td><strong>${escapeHtml(a.client)}</strong></td><td>${escapeHtml(a.audit_type||'-')}</td><td>${escapeHtml(a.auditor||'-')}</td><td>${escapeHtml(a.start_date||'-')}</td><td>${escapeHtml(a.end_date||'-')}</td><td>${statusBadge(a.status)}</td><td><button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button><button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteAudit(${a.id})">Delete</button></td></tr>`).join('');
+  const tbody = document.getElementById('auditTableBody');
+  if (!tbody) return;
+  if (!STATE.audits.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">No audits scheduled yet</div></div></td></tr>`;
+    updateDashboardStats(); return;
+  }
+  tbody.innerHTML = STATE.audits.map(a => `
+    <tr>
+      <td><strong>${escapeHtml(a.client)}</strong></td>
+      <td>${escapeHtml(a.audit_type||'-')}</td>
+      <td>${escapeHtml(a.auditor||'-')}</td>
+      <td>${escapeHtml(a.start_date||'-')}</td>
+      <td>${escapeHtml(a.end_date||'-')}</td>
+      <td>${statusBadge(a.status)}</td>
+      <td>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteAudit(${a.id})">Delete</button>
+      </td>
+    </tr>
+  `).join('');
   updateDashboardStats();
 }
+
 function editAuditStatus(id) {
-  const a = STATE.audits.find(x => x.id === id); if (!a) return;
-  openModalWithContent(`Update Audit`, `<div class="form-group"><label>Status</label><select class="form-control" id="auditStatusSel"><option ${a.status==='In Progress'?'selected':''}>In Progress</option><option ${a.status==='In Review'?'selected':''}>In Review</option><option ${a.status==='Completed'?'selected':''}>Completed</option></select></div><button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAuditStatus(${id})">Save</button>`);
+  const a = STATE.audits.find(x => x.id === id);
+  if (!a) return;
+  openModalWithContent(`Update Audit — ${escapeHtml(a.client)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="auditStatusSel">
+        <option ${a.status==='In Progress'?'selected':''}>In Progress</option>
+        <option ${a.status==='In Review'?'selected':''}>In Review</option>
+        <option ${a.status==='Completed'?'selected':''}>Completed</option>
+      </select>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAuditStatus(${id})">Save</button>
+  `);
 }
+
 async function saveAuditStatus(id) {
   const status = document.getElementById('auditStatusSel').value;
   const ok = await supabaseUpdate('audits', id, { status });
-  if (ok) { const idx = STATE.audits.findIndex(a => a.id === id); if (idx !== -1) STATE.audits[idx].status = status; closeModal(); renderAuditTable(); showToast('✅ Audit updated'); }
+  if (ok) {
+    const idx = STATE.audits.findIndex(a => a.id === id);
+    if (idx !== -1) STATE.audits[idx].status = status;
+    closeModal(); renderAuditTable(); showToast('✅ Audit status updated');
+  }
 }
-async function deleteAudit(id) { const ok = await supabaseDelete('audits', id); if (ok) { STATE.audits = STATE.audits.filter(a => a.id !== id); renderAuditTable(); showToast('🗑️ Audit deleted'); } }
+
+async function deleteAudit(id) {
+  const ok = await supabaseDelete('audits', id);
+  if (ok) { STATE.audits = STATE.audits.filter(a => a.id !== id); renderAuditTable(); showToast('🗑️ Audit deleted'); }
+}
+
+/* =========================================================
+   17. DSC & ESIGN
+   ========================================================= */
 
 function renderDSCAlerts() {
-  const el = document.getElementById('dscAlertList'); if (!el) return;
-  if (!STATE.dscRecords.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✍️</div><div class="empty-state-text">No DSC records</div></div>'; updateDashboardStats(); return; }
-  el.innerHTML = STATE.dscRecords.map(d => { const daysLeft = d.days_left || 999; return `<div class="dsc-alert-item"><div class="activity-dot ${daysLeft<=7?'orange':'blue'}">⚠️</div><div style="flex:1"><div class="gst-item-name">${escapeHtml(d.client_name)}</div><div class="gst-item-sub">${escapeHtml(d.purpose||'-')} • Expires ${escapeHtml(d.expiry_date||'-')}</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${daysLeft<=7?'badge-danger':'badge-warning'}">${daysLeft}d left</span><button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteDSC(${d.id})">✕</button></div></div>`; }).join('');
+  const el = document.getElementById('dscAlertList');
+  if (!el) return;
+  if (!STATE.dscRecords.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✍️</div><div class="empty-state-text">No DSC records</div></div>';
+    updateDashboardStats(); return;
+  }
+  el.innerHTML = STATE.dscRecords.map(d => {
+    const daysLeft = d.days_left || 999;
+    return `
+    <div class="dsc-alert-item">
+      <div class="activity-dot ${daysLeft <= 7 ? 'orange' : 'blue'}">⚠️</div>
+      <div style="flex:1">
+        <div class="gst-item-name">${escapeHtml(d.client_name)}</div>
+        <div class="gst-item-sub">${escapeHtml(d.purpose||'-')} • Expires ${escapeHtml(d.expiry_date||'-')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="badge ${daysLeft <= 7 ? 'badge-danger' : 'badge-warning'}">${daysLeft}d left</span>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteDSC(${d.id})">✕</button>
+      </div>
+    </div>
+  `}).join('');
   updateDashboardStats();
 }
+
 async function submitDSC() {
   const inputs = document.querySelectorAll('#page-dsc input[type="text"]');
   const selects = document.querySelectorAll('#page-dsc select');
   const clientName = inputs[0]?.value.trim();
   if (!clientName) { showToast('Please enter client name'); return; }
-  const expiryDate = new Date(); const validity = selects[1]?.value || '2 Years'; const years = parseInt(validity)||2; expiryDate.setFullYear(expiryDate.getFullYear()+years);
-  const body = { client_name: clientName, pan: inputs[1]?.value.trim(), dsc_type: selects[0]?.value, validity, purpose: selects[2]?.value, expiry_date: expiryDate.toISOString().split('T')[0], days_left: Math.ceil((expiryDate-new Date())/(1000*60*60*24)), status: 'Active' };
+  const expiryDate = new Date();
+  const validity = selects[1]?.value || '2 Years';
+  const years = parseInt(validity) || 2;
+  expiryDate.setFullYear(expiryDate.getFullYear() + years);
+  const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+  const body = {
+    client_name: clientName,
+    pan: inputs[1]?.value.trim(),
+    dsc_type: selects[0]?.value,
+    validity,
+    purpose: selects[2]?.value,
+    expiry_date: expiryDate.toISOString().split('T')[0],
+    days_left: daysLeft,
+    status: 'Active'
+  };
   const result = await supabaseInsert('dsc_records', body);
-  if (result && result[0]) { STATE.dscRecords.unshift(result[0]); renderDSCAlerts(); showToast('✅ DSC submitted!'); }
+  if (result && result[0]) { STATE.dscRecords.unshift(result[0]); renderDSCAlerts(); showToast('✅ DSC request submitted!'); }
+  else { showToast('❌ DSC submission failed'); }
 }
-async function deleteDSC(id) { const ok = await supabaseDelete('dsc_records', id); if (ok) { STATE.dscRecords = STATE.dscRecords.filter(d => d.id !== id); renderDSCAlerts(); showToast('🗑️ DSC deleted'); } }
+
+async function deleteDSC(id) {
+  const ok = await supabaseDelete('dsc_records', id);
+  if (ok) { STATE.dscRecords = STATE.dscRecords.filter(d => d.id !== id); renderDSCAlerts(); showToast('🗑️ DSC record deleted'); }
+}
+
+/* =========================================================
+   18. ACCOUNTING HUB
+   ========================================================= */
 
 function renderAccountingList() {
-  const el = document.getElementById('accountingList'); if (!el) return;
-  if (!STATE.accountingEntries.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧮</div><div class="empty-state-text">No entries yet</div></div>'; updateDashboardStats(); return; }
-  el.innerHTML = STATE.accountingEntries.map(t => `<div class="acc-item"><div><div class="gst-item-name">${escapeHtml(t.narration)}</div><div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div></div><div style="display:flex;align-items:center;gap:8px"><div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div><button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteAccEntry(${t.id})">✕</button></div></div>`).join('');
+  const el = document.getElementById('accountingList');
+  if (!el) return;
+  if (!STATE.accountingEntries.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧮</div><div class="empty-state-text">No entries yet</div></div>';
+    updateDashboardStats(); return;
+  }
+  el.innerHTML = STATE.accountingEntries.map(t => `
+    <div class="acc-item">
+      <div>
+        <div class="gst-item-name">${escapeHtml(t.narration)}</div>
+        <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteAccEntry(${t.id})">✕</button>
+      </div>
+    </div>
+  `).join('');
   updateDashboardStats();
 }
+
 async function submitJournalEntry() {
   const dateEl = document.querySelector('#page-accounting input[type="date"]');
   const voucherSel = document.querySelector('#page-accounting select');
   const inputs = document.querySelectorAll('#page-accounting input[type="text"], #page-accounting input[type="number"]');
   const textarea = document.querySelector('#page-accounting textarea');
-  const narration = textarea?.value.trim(); const amount = parseFloat(inputs[inputs.length-1]?.value)||0;
+  const narration = textarea?.value.trim();
+  const amount = parseFloat(inputs[inputs.length-1]?.value) || 0;
   if (!narration) { showToast('Please enter narration'); return; }
   if (!amount) { showToast('Please enter amount'); return; }
-  const voucherType = voucherSel?.value||'Journal'; const entryType = ['Receipt','Sales','Invoice'].includes(voucherType)?'credit':'debit';
-  const body = { narration, voucher_type: voucherType, debit_account: inputs[0]?.value.trim(), credit_account: inputs[1]?.value.trim(), amount, entry_type: entryType, entry_date: dateEl?.value||new Date().toISOString().split('T')[0] };
+  const voucherType = voucherSel?.value || 'Journal';
+  const entryType = ['Receipt','Sales','Invoice'].includes(voucherType) ? 'credit' : 'debit';
+  const body = {
+    narration, voucher_type: voucherType,
+    debit_account: inputs[0]?.value.trim(),
+    credit_account: inputs[1]?.value.trim(),
+    amount, entry_type: entryType,
+    entry_date: dateEl?.value || new Date().toISOString().split('T')[0]
+  };
   const result = await supabaseInsert('accounting_entries', body);
-  if (result && result[0]) { STATE.accountingEntries.unshift(result[0]); renderAccountingList(); showToast('✅ Entry posted!'); }
+  if (result && result[0]) { STATE.accountingEntries.unshift(result[0]); renderAccountingList(); showToast('✅ Journal entry posted!'); }
+  else { showToast('❌ Entry failed'); }
 }
-async function deleteAccEntry(id) { const ok = await supabaseDelete('accounting_entries', id); if (ok) { STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id); renderAccountingList(); showToast('🗑️ Entry deleted'); } }
+
+async function deleteAccEntry(id) {
+  const ok = await supabaseDelete('accounting_entries', id);
+  if (ok) { STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id); renderAccountingList(); showToast('🗑️ Entry deleted'); }
+}
 
 /* =========================================================
-   12. TASK MANAGER (KANBAN)
+   19. TASK MANAGER (KANBAN)
    ========================================================= */
 
 function renderKanban() {
@@ -747,7 +1112,10 @@ function renderKanban() {
       <div class="task-card" data-id="${t.id}" draggable="true" ondragstart="dragStart(event)" onclick="openTaskDetail(${t.id})">
         <div class="task-title">${escapeHtml(t.title)}</div>
         <div class="task-meta">${(t.tags||[]).map(tag => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}</div>
-        <div class="task-meta"><span>👤 ${escapeHtml(t.assignee||'Unassigned')}</span><span>📅 ${escapeHtml(t.due_date||'TBD')}</span></div>
+        <div class="task-meta">
+          <span>👤 ${escapeHtml(t.assignee||'Unassigned')}</span>
+          <span>📅 ${escapeHtml(t.due_date||'TBD')}</span>
+        </div>
       </div>
     `).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
     container.ondragover = (e) => e.preventDefault();
@@ -757,528 +1125,380 @@ function renderKanban() {
 }
 
 let draggedTaskId = null;
-function dragStart(e) { const card = e.target.closest('.task-card'); if (card) draggedTaskId = parseInt(card.getAttribute('data-id')); }
+
+function dragStart(e) {
+  const card = e.target.closest('.task-card');
+  if (card) draggedTaskId = parseInt(card.getAttribute('data-id'));
+}
+
 async function dropTask(e, targetCol) {
-  e.preventDefault(); if (!draggedTaskId) return;
+  e.preventDefault();
+  if (!draggedTaskId) return;
   const task = STATE.tasks.find(t => t.id === draggedTaskId);
-  if (task && task.column_name !== targetCol) { await supabaseUpdate('tasks', draggedTaskId, { column_name: targetCol }); task.column_name = targetCol; renderKanban(); showToast('✅ Task moved'); }
+  if (task && task.column_name !== targetCol) {
+    await supabaseUpdate('tasks', draggedTaskId, { column_name: targetCol });
+    task.column_name = targetCol;
+    renderKanban();
+    showToast('✅ Task moved to ' + columnLabel(targetCol));
+  }
   draggedTaskId = null;
 }
-function columnLabel(col) { return { todo: 'To Do', inprogress: 'In Progress', done: 'Done' }[col] || col; }
+
+function columnLabel(col) {
+  return { todo: 'To Do', inprogress: 'In Progress', done: 'Done' }[col] || col;
+}
+
 function addTask(col) {
-  openModalWithContent('➕ Add Task', `
+  openModalWithContent('➕ Add Task to ' + columnLabel(col), `
     <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
-    <div class="form-group"><label>Tags</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
-    <div class="form-group"><label>Assignee</label><select class="form-control" id="newTaskAssignee"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select></div>
+    <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
+    <div class="form-group"><label>Assignee</label>
+      <select class="form-control" id="newTaskAssignee"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
+    </div>
     <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDue" placeholder="e.g. 28 May" /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="createTask('${col}')">Add Task</button>
   `);
 }
+
 async function createTask(col) {
   const title = document.getElementById('newTaskTitle')?.value.trim();
   if (!title) { showToast('Please enter task title'); return; }
   const tagsRaw = document.getElementById('newTaskTags')?.value.trim();
-  const body = { title, tags: tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [], assignee: document.getElementById('newTaskAssignee')?.value||'Kamlesh', due_date: document.getElementById('newTaskDue')?.value.trim()||'TBD', column_name: col };
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const body = {
+    title, tags,
+    assignee: document.getElementById('newTaskAssignee')?.value || 'Kamlesh',
+    due_date: document.getElementById('newTaskDue')?.value.trim() || 'TBD',
+    column_name: col
+  };
   const result = await supabaseInsert('tasks', body);
   if (result && result[0]) { STATE.tasks.unshift(result[0]); closeModal(); renderKanban(); showToast('✅ Task added!'); }
+  else { showToast('❌ Failed to add task'); }
 }
+
 function openTaskDetail(id) {
-  const task = STATE.tasks.find(t => t.id === id); if (!task) return;
+  const task = STATE.tasks.find(t => t.id === id);
+  if (!task) return;
   openModalWithContent('📋 Task Details', `
     <div class="form-group"><label>Title</label><input type="text" class="form-control" id="editTaskTitle" value="${escapeHtml(task.title)}" /></div>
-    <div class="form-group"><label>Assignee</label><select class="form-control" id="taskAssigneeSel">${['Kamlesh','Punit','Shankar','Ganga','Damini'].map(a=>`<option ${task.assignee===a?'selected':''}>${a}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Assignee</label>
+      <select class="form-control" id="taskAssigneeSel">
+        ${['Kamlesh','Punit','Shankar','Ganga','Damini'].map(a=>`<option ${task.assignee===a?'selected':''}>${a}</option>`).join('')}
+      </select>
+    </div>
     <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="editTaskDue" value="${escapeHtml(task.due_date||'')}" /></div>
-    <div class="form-group"><label>Status</label><select class="form-control" id="taskStatusSelect"><option value="todo" ${task.column_name==='todo'?'selected':''}>To Do</option><option value="inprogress" ${task.column_name==='inprogress'?'selected':''}>In Progress</option><option value="done" ${task.column_name==='done'?'selected':''}>Done</option></select></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="taskStatusSelect">
+        <option value="todo" ${task.column_name==='todo'?'selected':''}>To Do</option>
+        <option value="inprogress" ${task.column_name==='inprogress'?'selected':''}>In Progress</option>
+        <option value="done" ${task.column_name==='done'?'selected':''}>Done</option>
+      </select>
+    </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn-primary" style="flex:1" onclick="updateTask(${task.id})">💾 Save</button>
       <button class="btn-outline" style="flex:1;border-color:var(--danger);color:var(--danger)" onclick="deleteTask(${task.id})">🗑️ Delete</button>
     </div>
   `);
 }
+
 async function updateTask(id) {
   const title = document.getElementById('editTaskTitle')?.value.trim();
   if (!title) { showToast('Task title required'); return; }
-  const updated = { title, assignee: document.getElementById('taskAssigneeSel')?.value, due_date: document.getElementById('editTaskDue')?.value.trim(), column_name: document.getElementById('taskStatusSelect')?.value };
+  const updated = {
+    title,
+    assignee: document.getElementById('taskAssigneeSel')?.value,
+    due_date: document.getElementById('editTaskDue')?.value.trim(),
+    column_name: document.getElementById('taskStatusSelect')?.value
+  };
   const ok = await supabaseUpdate('tasks', id, updated);
-  if (ok) { const idx = STATE.tasks.findIndex(t => t.id === id); if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated }; closeModal(); renderKanban(); showToast('✅ Task updated!'); }
+  if (ok) {
+    const idx = STATE.tasks.findIndex(t => t.id === id);
+    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated };
+    closeModal(); renderKanban(); showToast('✅ Task updated!');
+  }
 }
-async function deleteTask(id) { const ok = await supabaseDelete('tasks', id); if (ok) { STATE.tasks = STATE.tasks.filter(t => t.id !== id); closeModal(); renderKanban(); showToast('🗑️ Task deleted'); } }
+
+async function deleteTask(id) {
+  const ok = await supabaseDelete('tasks', id);
+  if (ok) { STATE.tasks = STATE.tasks.filter(t => t.id !== id); closeModal(); renderKanban(); showToast('🗑️ Task deleted'); }
+}
 
 /* =========================================================
-   13. REPORTS
+   20. REPORTS
    ========================================================= */
 
 function renderBarChart() {
-  const el = document.getElementById('barChart'); if (!el) return;
+  const el = document.getElementById('barChart');
+  if (!el) return;
   const months = ['Jan','Feb','Mar','Apr','May','Jun'];
-  const data = months.map((label, i) => { const count = STATE.gstReturns.filter(g => { if (!g.filed_date) return false; const d = new Date(g.filed_date); return d.getMonth() === i; }).length + STATE.itrFilings.filter(itr => { if (!itr.filed_date) return false; const d = new Date(itr.filed_date); return d.getMonth() === i; }).length; return { label, value: count }; });
+  const data = months.map((label, i) => {
+    const count = STATE.gstReturns.filter(g => {
+      if (!g.filed_date) return false;
+      const d = new Date(g.filed_date);
+      return d.getMonth() === i;
+    }).length + STATE.itrFilings.filter(itr => {
+      if (!itr.filed_date) return false;
+      const d = new Date(itr.filed_date);
+      return d.getMonth() === i;
+    }).length;
+    return { label, value: count };
+  });
   const max = Math.max(...data.map(d => d.value), 1);
-  el.innerHTML = data.map(d => `<div class="bar-item"><div class="bar-fill" style="height:0%" data-target="${(d.value/max)*100}"></div><div class="bar-label">${d.label} ${d.value > 0 ? '('+d.value+')' : ''}</div></div>`).join('');
-  requestAnimationFrame(() => { setTimeout(() => { document.querySelectorAll('#barChart .bar-fill').forEach(bar => { bar.style.height = bar.getAttribute('data-target') + '%'; }); }, 100); });
+  el.innerHTML = data.map(d => `
+    <div class="bar-item">
+      <div class="bar-fill" style="height:0%" data-target="${(d.value/max)*100}"></div>
+      <div class="bar-label">${d.label} ${d.value > 0 ? '(' + d.value + ')' : ''}</div>
+    </div>
+  `).join('');
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document.querySelectorAll('#barChart .bar-fill').forEach(bar => {
+        bar.style.height = bar.getAttribute('data-target') + '%';
+      });
+    }, 100);
+  });
   updateDashboardStats();
 }
+
 function exportReport() { showToast('📥 Preparing export...'); }
 function generateReport() { showToast('✅ Report generated!'); }
 
 /* =========================================================
-   14. AI ASSISTANT
+   21. AI ASSISTANT
    ========================================================= */
-
-function getAIResponse(query) {
-  const q = query.toLowerCase().trim();
-  const { clients, gstReturns, tasks, tdsReturns } = STATE;
-  if (q.includes('gst') && (q.includes('pending') || q.includes('show'))) {
-    const pending = gstReturns.filter(g => g.status === 'Pending' || g.status === 'Overdue');
-    if (!pending.length) return 'No pending GST returns right now! 🎉';
-    let txt = `${pending.length} GST returns need attention:<br><br>`;
-    pending.forEach(g => { txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'var(--danger)':'var(--warning)'}">${g.status}</span><br>`; });
-    return txt;
-  }
-  if (q.includes('task') || q.includes('pending')) {
-    const p = tasks.filter(t => t.column_name !== 'done');
-    if (!p.length) return 'No pending tasks! Everything is done. 🎉';
-    let txt = `${p.length} tasks pending:<br><br>`;
-    p.slice(0, 6).forEach(t => { txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name === 'todo' ? 'To Do' : 'In Progress'}<br>`; });
-    return txt;
-  }
-  if (q.includes('tds')) { const filed = tdsReturns.filter(t=>t.status==='Filed').length; const pend = tdsReturns.filter(t=>t.status==='Pending').length; return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`; }
-  if (q.includes('client')) { const active = clients.filter(c=>c.status==='Active').length; return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong>`; }
-  if (q.includes('vault')) return `The Vault stores all your credentials securely. Click <strong>🔐 Vault</strong> in the sidebar to access GST, MCA, Income Tax logins and more!`;
-  const defaults = ['I can help with GST, TDS, ITR, clients, tasks & Vault. Try asking "show pending GST returns"!', 'Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.'];
-  return defaults[Math.floor(Math.random() * defaults.length)];
-}
 
 function sendAIMessage(presetMsg) {
   const input = document.getElementById('aiInput');
   const msg = presetMsg || input?.value.trim();
   if (!msg) return;
-  const chatEl = document.getElementById('chatMessages'); if (!chatEl) return;
-  chatEl.insertAdjacentHTML('beforeend', `<div class="chat-msg user"><div class="msg-avatar">K</div><div class="msg-content">${escapeHtml(msg)}</div></div>`);
+  const chatEl = document.getElementById('chatMessages');
+  if (!chatEl) return;
+  chatEl.insertAdjacentHTML('beforeend', `
+    <div class="chat-msg user">
+      <div class="msg-avatar">K</div>
+      <div class="msg-content">${escapeHtml(msg)}</div>
+    </div>
+  `);
   if (input) input.value = '';
   chatEl.scrollTop = chatEl.scrollHeight;
   const typingId = 'typing-' + Date.now();
   chatEl.insertAdjacentHTML('beforeend', `<div class="chat-msg bot" id="${typingId}"><div class="msg-avatar">🤖</div><div class="msg-content"><em>Thinking...</em></div></div>`);
   chatEl.scrollTop = chatEl.scrollHeight;
-  setTimeout(() => { const el = document.getElementById(typingId); if (el) el.querySelector('.msg-content').innerHTML = getAIResponse(msg); chatEl.scrollTop = chatEl.scrollHeight; }, 700);
+  setTimeout(() => {
+    const el = document.getElementById(typingId);
+    if (el) el.querySelector('.msg-content').innerHTML = getAIResponse(msg);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }, 700);
 }
+
 function aiChip(text) { navigate('ai'); setTimeout(() => sendAIMessage(text), 200); }
 function openAI() { navigate('ai'); }
 
 /* =========================================================
-   15. DOCUMENTS
+   22. DOCUMENTS
    ========================================================= */
 
 function renderDocuments() {
-  const el = document.getElementById('docsGrid'); if (!el) return;
-  if (!STATE.documents.length) { el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📁</div><div class="empty-state-text">No documents yet</div></div>'; return; }
-  el.innerHTML = STATE.documents.map(d => `<div class="doc-card" onclick="showToast('Opening ${escapeHtml(d.name)}')"><div class="doc-icon">${d.icon||'📄'}</div><div class="doc-name">${escapeHtml(d.name)}</div><div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div><button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:var(--danger);color:var(--danger)" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button></div>`).join('');
+  const el = document.getElementById('docsGrid');
+  if (!el) return;
+  if (!STATE.documents.length) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📁</div><div class="empty-state-text">No documents yet</div><div class="empty-state-sub">Upload your first document</div></div>';
+    return;
+  }
+  el.innerHTML = STATE.documents.map(d => `
+    <div class="doc-card" onclick="showToast('Opening ${escapeHtml(d.name)}')">
+      <div class="doc-icon">${d.icon||'📄'}</div>
+      <div class="doc-name">${escapeHtml(d.name)}</div>
+      <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
+      <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:var(--danger);color:var(--danger)" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
+    </div>
+  `).join('');
 }
-async function deleteDoc(id) { const ok = await supabaseDelete('documents', id); if (ok) { STATE.documents = STATE.documents.filter(d => d.id !== id); renderDocuments(); showToast('🗑️ Document deleted'); } }
+
+async function deleteDoc(id) {
+  const ok = await supabaseDelete('documents', id);
+  if (ok) { STATE.documents = STATE.documents.filter(d => d.id !== id); renderDocuments(); showToast('🗑️ Document deleted'); }
+}
 
 /* =========================================================
-   16. CALENDAR
+   23. CALENDAR
    ========================================================= */
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function renderCalendar() {
   const { month, year } = STATE.calendar;
-  const titleEl = document.getElementById('calTitle'); const gridEl = document.getElementById('calGrid');
+  const titleEl = document.getElementById('calTitle');
+  const gridEl = document.getElementById('calGrid');
   if (!titleEl || !gridEl) return;
   titleEl.textContent = MONTH_NAMES[month] + ' ' + year;
-  const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate(); const daysInPrevMonth = new Date(year, month, 0).getDate();
-  const eventMap = {}; STATE.calendarEvents.forEach(e => { const d = new Date(e.event_date); if (d.getFullYear() === year && d.getMonth() === month) { const key = d.getDate(); if (!eventMap[key]) eventMap[key] = []; eventMap[key].push(e); } });
-  const today = new Date(); let html = '';
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const eventMap = {};
+  STATE.calendarEvents.forEach(e => {
+    const d = new Date(e.event_date);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = d.getDate();
+      if (!eventMap[key]) eventMap[key] = [];
+      eventMap[key].push(e);
+    }
+  });
+  const today = new Date();
+  let html = '';
   for (let i = firstDay - 1; i >= 0; i--) html += `<div class="cal-day other-month">${daysInPrevMonth - i}</div>`;
-  for (let d = 1; d <= daysInMonth; d++) { const hasEvent = eventMap[d] ? 'has-event' : ''; const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) ? 'today' : ''; html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d})">${d}</div>`; }
-  const totalCells = firstDay + daysInMonth; const remaining = (7 - (totalCells % 7)) % 7;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const hasEvent = eventMap[d] ? 'has-event' : '';
+    const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) ? 'today' : '';
+    html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d})">${d}</div>`;
+  }
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - (totalCells % 7)) % 7;
   for (let d = 1; d <= remaining; d++) html += `<div class="cal-day other-month">${d}</div>`;
   gridEl.innerHTML = html;
 }
+
 function showDayEvents(day) {
-  const events = STATE.calendarEvents.filter(e => { const d = new Date(e.event_date); return d.getFullYear()===STATE.calendar.year && d.getMonth()===STATE.calendar.month && d.getDate()===day; });
-  if (!events.length) { showToast('No events on ' + day + ' ' + MONTH_NAMES[STATE.calendar.month]); return; }
-  openModalWithContent('📅 Events', `${events.map(e=>`<div class="upcoming-item" style="margin-bottom:10px"><div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div></div>`).join('')}<button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>`);
+  const events = STATE.calendarEvents.filter(e => {
+    const d = new Date(e.event_date);
+    return d.getFullYear() === STATE.calendar.year &&
+           d.getMonth() === STATE.calendar.month &&
+           d.getDate() === day;
+  });
+  if (!events || !events.length) {
+    showToast('No events on ' + day + ' ' + MONTH_NAMES[STATE.calendar.month]);
+    return;
+  }
+  openModalWithContent('📅 Events — ' + day + ' ' + MONTH_NAMES[STATE.calendar.month], `
+    ${events.map(e => `
+      <div class="upcoming-item" style="margin-bottom:10px">
+        <div>
+          <div class="gst-item-name">${escapeHtml(e.title)}</div>
+          <div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div>
+        </div>
+      </div>
+    `).join('')}
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
+  `);
 }
-function changeMonth(delta) { STATE.calendar.month += delta; if (STATE.calendar.month > 11) { STATE.calendar.month = 0; STATE.calendar.year++; } else if (STATE.calendar.month < 0) { STATE.calendar.month = 11; STATE.calendar.year--; } renderCalendar(); }
+
+function changeMonth(delta) {
+  STATE.calendar.month += delta;
+  if (STATE.calendar.month > 11) { STATE.calendar.month = 0; STATE.calendar.year++; }
+  else if (STATE.calendar.month < 0) { STATE.calendar.month = 11; STATE.calendar.year--; }
+  renderCalendar();
+}
+
 function renderEventList() {
-  const el = document.getElementById('eventList'); if (!el) return;
-  const sorted = [...STATE.calendarEvents].sort((a,b) => new Date(a.event_date)-new Date(b.event_date));
-  el.innerHTML = sorted.length ? sorted.map(e => `<div class="upcoming-item" style="margin-bottom:10px"><div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div><div style="display:flex;align-items:center;gap:8px"><div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div><button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteEvent(${e.id})">✕</button></div></div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No events</div></div>';
+  const el = document.getElementById('eventList');
+  if (!el) return;
+  const sorted = [...STATE.calendarEvents].sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+  el.innerHTML = sorted.length ? sorted.map(e => `
+    <div class="upcoming-item" style="margin-bottom:10px">
+      <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
+        <button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteEvent(${e.id})">✕</button>
+      </div>
+    </div>
+  `).join('') : '<div class="empty-state"><div class="empty-state-text">No events</div></div>';
 }
-async function deleteEvent(id) { const ok = await supabaseDelete('calendar_events', id); if (ok) { STATE.calendarEvents = STATE.calendarEvents.filter(e => e.id !== id); renderCalendar(); renderEventList(); renderDueDates(); showToast('🗑️ Event deleted'); } }
+
+async function deleteEvent(id) {
+  const ok = await supabaseDelete('calendar_events', id);
+  if (ok) {
+    STATE.calendarEvents = STATE.calendarEvents.filter(e => e.id !== id);
+    renderCalendar(); renderEventList(); renderDueDates(); showToast('🗑️ Event deleted');
+  }
+}
 
 /* =========================================================
-   17. RIGHT PANEL
+   24. RIGHT PANEL
    ========================================================= */
 
 function renderDueDates() {
-  const el = document.getElementById('dueDateList'); if (!el) return;
+  const el = document.getElementById('dueDateList');
+  if (!el) return;
   const today = new Date();
-  const upcoming = STATE.calendarEvents.filter(e => new Date(e.event_date) >= today).sort((a,b) => new Date(a.event_date)-new Date(b.event_date)).slice(0, 5);
-  el.innerHTML = upcoming.length ? upcoming.map(e => { const d = new Date(e.event_date); const diff = Math.ceil((d-today)/(1000*60*60*24)); const sub = diff===0?'Due Today':diff===1?'Due Tomorrow':'Due in '+diff+' days'; const urgent = diff<=1; return `<div class="due-item"><div class="due-date-badge"><div class="due-date-num">${d.getDate()}</div><div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0,3)}</div></div><div style="flex:1"><div class="due-title">${escapeHtml(e.title)}</div><div class="due-sub ${urgent?'red':''}">${sub}</div></div></div>`; }).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming dates</div></div>';
+  const upcoming = STATE.calendarEvents
+    .filter(e => new Date(e.event_date) >= today)
+    .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+    .slice(0, 5);
+  el.innerHTML = upcoming.length ? upcoming.map(e => {
+    const d = new Date(e.event_date);
+    const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+    const sub = diff === 0 ? 'Due Today' : diff === 1 ? 'Due Tomorrow' : 'Due in ' + diff + ' days';
+    const urgent = diff <= 1;
+    return `
+      <div class="due-item">
+        <div class="due-date-badge"><div class="due-date-num">${d.getDate()}</div><div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0,3)}</div></div>
+        <div style="flex:1">
+          <div class="due-title">${escapeHtml(e.title)}</div>
+          <div class="due-sub ${urgent ? 'red' : ''}">${sub}</div>
+        </div>
+      </div>
+    `;
+  }).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming dates</div></div>';
 }
+
 function renderActivity() {
-  const el = document.getElementById('activityList'); if (!el) return;
+  const el = document.getElementById('activityList');
+  if (!el) return;
   const activities = [];
-  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => activities.push({ icon:'✅', color:'green', text:'GSTR filed for '+g.client_name, time: g.filed_date||'Recently' }));
-  STATE.itrFilings.filter(i=>i.status==='Filed').slice(0,2).forEach(i => activities.push({ icon:'💰', color:'blue', text:'ITR filed for '+i.client_name, time: i.filed_date||'Recently' }));
-  STATE.tasks.filter(t=>t.column_name==='done').slice(0,2).forEach(t => activities.push({ icon:'✅', color:'orange', text: t.title, time:'Completed' }));
-  el.innerHTML = activities.length ? activities.slice(0,6).map(a => `<div class="activity-item"><div class="activity-dot ${a.color}">${a.icon}</div><div><div class="activity-text">${escapeHtml(a.text)}</div><div class="activity-time">${escapeHtml(a.time)}</div></div></div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No recent activity</div></div>';
+  STATE.gstReturns.filter(g => g.status === 'Filed').slice(0, 2).forEach(g => {
+    activities.push({ icon: '✅', color: 'green', text: 'GSTR filed for ' + g.client_name, time: g.filed_date || 'Recently' });
+  });
+  STATE.itrFilings.filter(i => i.status === 'Filed').slice(0, 2).forEach(i => {
+    activities.push({ icon: '💰', color: 'blue', text: 'ITR filed for ' + i.client_name, time: i.filed_date || 'Recently' });
+  });
+  STATE.tasks.filter(t => t.column_name === 'done').slice(0, 2).forEach(t => {
+    activities.push({ icon: '✅', color: 'orange', text: t.title, time: 'Completed' });
+  });
+  el.innerHTML = activities.length ? activities.slice(0, 6).map(a => `
+    <div class="activity-item">
+      <div class="activity-dot ${a.color}">${a.icon}</div>
+      <div><div class="activity-text">${escapeHtml(a.text)}</div><div class="activity-time">${escapeHtml(a.time)}</div></div>
+    </div>
+  `).join('') : '<div class="empty-state"><div class="empty-state-text">No recent activity</div></div>';
 }
 
 /* =========================================================
-   18. 🔐 VAULT MODULE — FULL IMPLEMENTATION
+   25. TEAM CHAT
    ========================================================= */
-
-function renderVaultPage() {
-  const page = document.getElementById('page-vault');
-  if (!page) return;
-
-  const activeFolder = STATE.activeVaultFolder || 'All';
-  const filtered = activeFolder === 'All' ? STATE.vault : STATE.vault.filter(v => v.folder === activeFolder);
-
-  // Folder tabs
-  const folderTabs = VAULT_FOLDERS.map(f => {
-    const count = f.id === 'All' ? STATE.vault.length : STATE.vault.filter(v => v.folder === f.id).length;
-    return `<button class="vault-folder-tab ${activeFolder === f.id ? 'active' : ''}" onclick="switchVaultFolder('${f.id}')" style="${activeFolder===f.id?`border-color:${f.color};background:${f.color}15;color:${f.color}`:''}">
-      <span>${f.icon}</span>
-      <span>${f.label}</span>
-      ${count > 0 ? `<span class="vault-folder-count">${count}</span>` : ''}
-    </button>`;
-  }).join('');
-
-  // Credentials grid
-  const credsHtml = filtered.length ? filtered.map(v => {
-    const folder = VAULT_FOLDERS.find(f => f.id === v.folder) || VAULT_FOLDERS[VAULT_FOLDERS.length-1];
-    return `
-      <div class="vault-card" data-id="${v.id}">
-        <div class="vault-card-header" style="background:${folder.color}18;border-bottom:1px solid ${folder.color}30">
-          <div class="vault-card-folder" style="color:${folder.color}">${folder.icon} ${folder.label}</div>
-          <div class="vault-card-actions">
-            <button class="vault-action-btn" onclick="editVaultEntry(${v.id})" title="Edit">✏️</button>
-            <button class="vault-action-btn" onclick="deleteVaultEntry(${v.id})" title="Delete">🗑️</button>
-          </div>
-        </div>
-        <div class="vault-card-body">
-          <div class="vault-card-label">${escapeHtml(v.label)}</div>
-          ${v.url ? `<div class="vault-card-url"><a href="${escapeHtml(v.url)}" target="_blank" rel="noopener" style="color:var(--primary);font-size:11.5px;text-decoration:none">🔗 ${escapeHtml(v.url.replace(/^https?:\/\//,''))}</a></div>` : ''}
-          
-          <div class="vault-field">
-            <div class="vault-field-label">👤 Username / ID</div>
-            <div class="vault-field-value">
-              <span class="vault-field-text" id="user_${v.id}">${escapeHtml(v.username||'—')}</span>
-              <button class="vault-copy-btn" onclick="copyToClipboard('${escapeHtml(v.username||'')}','Username')" title="Copy Username">📋</button>
-            </div>
-          </div>
-          
-          <div class="vault-field">
-            <div class="vault-field-label">🔑 Password</div>
-            <div class="vault-field-value">
-              <span class="vault-field-text vault-password-mask" id="pass_${v.id}" data-val="${escapeHtml(v.password||'')}">••••••••</span>
-              <button class="vault-eye-btn" onclick="togglePasswordVisibility(${v.id})" title="Show/Hide Password" id="eyebtn_${v.id}">👁️</button>
-              <button class="vault-copy-btn" onclick="copyToClipboard('${escapeHtml(v.password||'')}','Password')" title="Copy Password">📋</button>
-            </div>
-          </div>
-          
-          ${v.notes ? `<div class="vault-notes">${escapeHtml(v.notes)}</div>` : ''}
-        </div>
-      </div>
-    `;
-  }).join('') : `<div class="vault-empty"><div style="font-size:48px">🔐</div><div style="font-size:16px;font-weight:700;margin:12px 0 8px">No credentials in ${activeFolder === 'All' ? 'Vault' : activeFolder}</div><div style="color:var(--text-muted);font-size:13px">Click "+ Add Credential" to store your first login</div></div>`;
-
-  // Stats
-  const totalCreds = STATE.vault.length;
-  const foldersUsed = [...new Set(STATE.vault.map(v => v.folder))].length;
-
-  page.innerHTML = `
-    <div class="page-header">
-      <div>
-        <h1>🔐 Vault</h1>
-        <p>Securely store all credentials — GST, MCA, Income Tax, Bank & more</p>
-      </div>
-      <div class="page-header-right">
-        <div class="vault-stats-mini">
-          <span>🔐 <strong>${totalCreds}</strong> credentials</span>
-          <span>📁 <strong>${foldersUsed}</strong> folders used</span>
-        </div>
-        <button class="btn-primary" onclick="openAddVaultModal()">+ Add Credential</button>
-      </div>
-    </div>
-
-    <div class="vault-folders-bar">
-      ${folderTabs}
-    </div>
-
-    <div class="vault-search-bar">
-      <span>🔍</span>
-      <input type="text" placeholder="Search credentials by label, username..." oninput="searchVault(this.value)" id="vaultSearch" />
-    </div>
-
-    <div class="vault-grid" id="vaultGrid">
-      ${credsHtml}
-    </div>
-  `;
-}
-
-function switchVaultFolder(folderId) {
-  STATE.activeVaultFolder = folderId;
-  renderVaultPage();
-}
-
-function searchVault(query) {
-  const q = query.toLowerCase().trim();
-  const filtered = STATE.vault.filter(v => {
-    if (!q) return STATE.activeVaultFolder === 'All' || v.folder === STATE.activeVaultFolder;
-    return (v.label||'').toLowerCase().includes(q) || (v.username||'').toLowerCase().includes(q) || (v.folder||'').toLowerCase().includes(q) || (v.notes||'').toLowerCase().includes(q);
-  });
-  const grid = document.getElementById('vaultGrid');
-  if (!grid) return;
-  if (!filtered.length) { grid.innerHTML = `<div class="vault-empty"><div style="font-size:36px">🔍</div><div style="font-size:15px;font-weight:600;margin-top:8px">No results for "${escapeHtml(query)}"</div></div>`; return; }
-  grid.innerHTML = filtered.map(v => {
-    const folder = VAULT_FOLDERS.find(f => f.id === v.folder) || VAULT_FOLDERS[VAULT_FOLDERS.length-1];
-    return `
-      <div class="vault-card" data-id="${v.id}">
-        <div class="vault-card-header" style="background:${folder.color}18;border-bottom:1px solid ${folder.color}30">
-          <div class="vault-card-folder" style="color:${folder.color}">${folder.icon} ${folder.label}</div>
-          <div class="vault-card-actions">
-            <button class="vault-action-btn" onclick="editVaultEntry(${v.id})">✏️</button>
-            <button class="vault-action-btn" onclick="deleteVaultEntry(${v.id})">🗑️</button>
-          </div>
-        </div>
-        <div class="vault-card-body">
-          <div class="vault-card-label">${escapeHtml(v.label)}</div>
-          <div class="vault-field"><div class="vault-field-label">👤 Username / ID</div><div class="vault-field-value"><span class="vault-field-text">${escapeHtml(v.username||'—')}</span><button class="vault-copy-btn" onclick="copyToClipboard('${escapeHtml(v.username||'')}','Username')">📋</button></div></div>
-          <div class="vault-field"><div class="vault-field-label">🔑 Password</div><div class="vault-field-value"><span class="vault-field-text vault-password-mask" id="pass_${v.id}" data-val="${escapeHtml(v.password||'')}">••••••••</span><button class="vault-eye-btn" onclick="togglePasswordVisibility(${v.id})" id="eyebtn_${v.id}">👁️</button><button class="vault-copy-btn" onclick="copyToClipboard('${escapeHtml(v.password||'')}','Password')">📋</button></div></div>
-          ${v.notes ? `<div class="vault-notes">${escapeHtml(v.notes)}</div>` : ''}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function togglePasswordVisibility(id) {
-  const passEl = document.getElementById('pass_' + id);
-  const btnEl = document.getElementById('eyebtn_' + id);
-  if (!passEl) return;
-  const isHidden = passEl.classList.contains('vault-password-mask');
-  if (isHidden) {
-    passEl.textContent = passEl.getAttribute('data-val') || '(empty)';
-    passEl.classList.remove('vault-password-mask');
-    if (btnEl) btnEl.textContent = '🙈';
-  } else {
-    passEl.textContent = '••••••••';
-    passEl.classList.add('vault-password-mask');
-    if (btnEl) btnEl.textContent = '👁️';
-  }
-}
-
-function copyToClipboard(text, label) {
-  if (!text) { showToast(`No ${label} to copy`); return; }
-  navigator.clipboard.writeText(text).then(() => {
-    showToast(`✅ ${label} copied to clipboard!`);
-  }).catch(() => {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); showToast(`✅ ${label} copied!`); }
-    catch(e) { showToast(`❌ Copy failed`); }
-    document.body.removeChild(ta);
-  });
-}
-
-function openAddVaultModal() {
-  const folderOptions = VAULT_FOLDERS.filter(f => f.id !== 'All').map(f => `<option value="${f.id}">${f.icon} ${f.label}</option>`).join('');
-  openModalWithContent('🔐 Add Credential', `
-    <div class="form-group">
-      <label>Folder / Category *</label>
-      <select class="form-control" id="vaultFolder">${folderOptions}</select>
-    </div>
-    <div class="form-group">
-      <label>Label / Name *</label>
-      <input type="text" class="form-control" id="vaultLabel" placeholder="e.g. ABC Pvt Ltd - GST Portal" />
-    </div>
-    <div class="form-group">
-      <label>Website URL</label>
-      <input type="text" class="form-control" id="vaultUrl" placeholder="e.g. https://gst.gov.in" />
-    </div>
-    <div class="form-group">
-      <label>Username / User ID</label>
-      <input type="text" class="form-control" id="vaultUsername" placeholder="Enter username or user ID" autocomplete="off" />
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <div style="position:relative">
-        <input type="password" class="form-control" id="vaultPassword" placeholder="Enter password" autocomplete="new-password" style="padding-right:44px" />
-        <button onclick="toggleInputPassword('vaultPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">👁️</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea class="form-control" id="vaultNotes" rows="2" placeholder="Optional notes (e.g. 2FA enabled, contact person...)"></textarea>
-    </div>
-    <button class="btn-primary" style="width:100%" onclick="submitAddVault()">🔐 Save Credential</button>
-  `);
-}
-
-function toggleInputPassword(inputId) {
-  const inp = document.getElementById(inputId);
-  if (!inp) return;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
-async function submitAddVault() {
-  const folder = document.getElementById('vaultFolder')?.value;
-  const label = document.getElementById('vaultLabel')?.value.trim();
-  if (!label) { showToast('Please enter a label'); return; }
-  const body = {
-    folder, label,
-    url: document.getElementById('vaultUrl')?.value.trim() || null,
-    username: document.getElementById('vaultUsername')?.value.trim() || null,
-    password: document.getElementById('vaultPassword')?.value || null,
-    notes: document.getElementById('vaultNotes')?.value.trim() || null,
-    created_by: STATE.myEmail
-  };
-  const result = await supabaseInsert('vault_credentials', body);
-  if (result && result[0]) {
-    STATE.vault.unshift(result[0]);
-    closeModal(); renderVaultPage(); showToast('✅ Credential saved in Vault!');
-  } else { showToast('❌ Failed to save credential'); }
-}
-
-function editVaultEntry(id) {
-  const v = STATE.vault.find(x => x.id === id);
-  if (!v) return;
-  const folderOptions = VAULT_FOLDERS.filter(f => f.id !== 'All').map(f => `<option value="${f.id}" ${v.folder===f.id?'selected':''}>${f.icon} ${f.label}</option>`).join('');
-  openModalWithContent('✏️ Edit Credential', `
-    <div class="form-group"><label>Folder *</label><select class="form-control" id="editVaultFolder">${folderOptions}</select></div>
-    <div class="form-group"><label>Label *</label><input type="text" class="form-control" id="editVaultLabel" value="${escapeHtml(v.label)}" /></div>
-    <div class="form-group"><label>Website URL</label><input type="text" class="form-control" id="editVaultUrl" value="${escapeHtml(v.url||'')}" /></div>
-    <div class="form-group"><label>Username / User ID</label><input type="text" class="form-control" id="editVaultUsername" value="${escapeHtml(v.username||'')}" autocomplete="off" /></div>
-    <div class="form-group"><label>Password</label>
-      <div style="position:relative">
-        <input type="password" class="form-control" id="editVaultPassword" value="${escapeHtml(v.password||'')}" autocomplete="new-password" style="padding-right:44px" />
-        <button onclick="toggleInputPassword('editVaultPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">👁️</button>
-      </div>
-    </div>
-    <div class="form-group"><label>Notes</label><textarea class="form-control" id="editVaultNotes" rows="2">${escapeHtml(v.notes||'')}</textarea></div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn-primary" style="flex:1" onclick="saveVaultEdit(${id})">💾 Save Changes</button>
-      <button class="btn-outline" style="flex:1;border-color:var(--danger);color:var(--danger)" onclick="deleteVaultEntry(${id})">🗑️ Delete</button>
-    </div>
-  `);
-}
-
-async function saveVaultEdit(id) {
-  const label = document.getElementById('editVaultLabel')?.value.trim();
-  if (!label) { showToast('Label required'); return; }
-  const updated = {
-    folder: document.getElementById('editVaultFolder')?.value,
-    label,
-    url: document.getElementById('editVaultUrl')?.value.trim() || null,
-    username: document.getElementById('editVaultUsername')?.value.trim() || null,
-    password: document.getElementById('editVaultPassword')?.value || null,
-    notes: document.getElementById('editVaultNotes')?.value.trim() || null,
-  };
-  const ok = await supabaseUpdate('vault_credentials', id, updated);
-  if (ok) {
-    const idx = STATE.vault.findIndex(v => v.id === id);
-    if (idx !== -1) STATE.vault[idx] = { ...STATE.vault[idx], ...updated };
-    closeModal(); renderVaultPage(); showToast('✅ Credential updated!');
-  } else { showToast('❌ Update failed'); }
-}
-
-async function deleteVaultEntry(id) {
-  const v = STATE.vault.find(x => x.id === id);
-  if (!v) return;
-  openModalWithContent('🗑️ Delete Credential', `
-    <div style="text-align:center;padding:10px 0">
-      <div style="font-size:40px;margin-bottom:12px">⚠️</div>
-      <div style="font-weight:700;font-size:15px;margin-bottom:8px">Delete "${escapeHtml(v.label)}"?</div>
-      <div style="color:var(--text-muted);font-size:13px;margin-bottom:20px">This action cannot be undone.</div>
-      <div style="display:flex;gap:10px">
-        <button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>
-        <button class="btn-primary" style="flex:1;background:var(--danger)" onclick="confirmDeleteVault(${id})">Delete</button>
-      </div>
-    </div>
-  `);
-}
-async function confirmDeleteVault(id) {
-  const ok = await supabaseDelete('vault_credentials', id);
-  if (ok) { STATE.vault = STATE.vault.filter(v => v.id !== id); closeModal(); renderVaultPage(); showToast('🗑️ Credential deleted'); }
-  else { showToast('❌ Delete failed'); }
-}
-
-/* =========================================================
-   19. 💬 ENHANCED TEAM CHAT
-   ========================================================= */
-
-// Emoji sets
-const EMOJI_SET = ['😀','😂','😍','🥰','😎','🤔','👍','👎','🙏','💪','🔥','❤️','⭐','✅','❌','⚠️','📊','💰','🏛️','📋','🧾','🛡️','✍️','🧮','📁','📅','💬','🎉','🚀','💡','📌','🔔','📞','📧','🔐','🔑'];
-
-const STICKER_SET = [
-  { emoji: '🎉', label: 'Congrats' },
-  { emoji: '👍🏼', label: 'Good Job' },
-  { emoji: '🔥', label: 'Fire' },
-  { emoji: '✅', label: 'Done' },
-  { emoji: '⏰', label: 'Urgent' },
-  { emoji: '💡', label: 'Idea' },
-  { emoji: '📌', label: 'Note' },
-  { emoji: '🚀', label: 'Let\'s Go' },
-  { emoji: '😂', label: 'LOL' },
-  { emoji: '🙏', label: 'Thanks' },
-  { emoji: '💪', label: 'Strong' },
-  { emoji: '❤️', label: 'Love' },
-];
-
-async function updatePresence(isOnline) {
-  if (!STATE.myEmail) return;
-  const url = `${SUPABASE_URL}/rest/v1/user_presence?email=eq.${encodeURIComponent(STATE.myEmail)}`;
-  const body = { email: STATE.myEmail, is_online: isOnline, last_seen: new Date().toISOString() };
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: JSON.stringify(body)
-  });
-  if (res.status === 404 || !res.ok) {
-    await supabaseInsert('user_presence', body);
-  }
-}
-
-async function getOnlineUsers() {
-  const cutoff = new Date(Date.now() - 45000).toISOString();
-  const url = `${SUPABASE_URL}/rest/v1/user_presence?is_online=eq.true&last_seen=gte.${cutoff}`;
-  const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } });
-  return res.ok ? await res.json() : [];
-}
 
 async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
-  const myEmail = STATE.myEmail;
+
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+
   const profiles = await supabase('profiles', { order: 'full_name.asc' });
-  const onlineUsers = await getOnlineUsers();
-  const onlineEmails = new Set((onlineUsers||[]).map(u => u.email));
-  const others = (profiles||[]).filter(p => p.email !== myEmail);
+  const others = (profiles || []).filter(p => p.email !== myEmail);
+
   if (!others.length) {
-    el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet.<br>Use the email field above to start a new chat.</div>`;
+    el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">
+      No team members yet.
+    </div>`;
     return;
   }
+
   el.innerHTML = others.map(p => {
     const name = p.full_name || p.email.split('@')[0];
-    const initial = name.charAt(0).toUpperCase();
+    const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
     const isActive = p.email === STATE.activeChatContact;
-    const isOnline = onlineEmails.has(p.email);
     return `
-      <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
-        <div style="position:relative;flex-shrink:0">
-          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>
-          <div style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:${isOnline?'#10b981':'#94a3b8'};border:2px solid var(--surface)"></div>
+      <div class="contact-item ${isActive ? 'active' : ''}"
+           onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
+        <div style="width:38px;height:38px;border-radius:50%;
+                    background:linear-gradient(135deg,var(--primary),#4f46e5);
+                    display:flex;align-items:center;justify-content:center;
+                    color:#fff;font-weight:700;font-size:15px;flex-shrink:0">
+          ${initial}
         </div>
         <div style="flex:1;overflow:hidden;margin-left:10px">
           <div style="font-weight:600;font-size:13.5px">${escapeHtml(name)}</div>
-          <div style="font-size:11px;color:${isOnline?'#10b981':'var(--text-muted)'}">● ${isOnline ? 'Online' : 'Offline'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(p.email)}</div>
         </div>
       </div>
     `;
@@ -1287,313 +1507,186 @@ async function renderTeamContacts() {
 
 function switchChatContact(email, name) {
   STATE.activeChatContact = email;
-  STATE.activeChatContactName = name || email.split('@')[0];
-  STATE.replyingTo = null;
-  STATE.editingMessageId = null;
   const nameEl = document.getElementById('activeChatName');
-  if (nameEl) nameEl.textContent = STATE.activeChatContactName;
+  if (nameEl) nameEl.textContent = name || email.split('@')[0];
   const avatarEl = document.querySelector('.chat-avatar-sm');
-  if (avatarEl) avatarEl.textContent = STATE.activeChatContactName.charAt(0).toUpperCase();
-  hideEmojiPicker(); hideStickerPicker(); clearReplyUI();
+  if (avatarEl) avatarEl.textContent = name ? name.charAt(0).toUpperCase() : '?';
   renderTeamContacts();
   renderTeamMessages();
-}
-
-function startNewChat() {
-  const emailInput = document.getElementById('newChatEmail');
-  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-  if (!email || !email.includes('@')) { showToast('Enter a valid email address'); return; }
-  if (email === STATE.myEmail) { showToast('Cannot message yourself!'); return; }
-  emailInput.value = '';
-  switchChatContact(email, email.split('@')[0]);
-  showToast('Starting chat with ' + email);
-}
-
-// Typing indicator
-async function sendTypingIndicator() {
-  if (!STATE.activeChatContact || !STATE.myEmail) return;
-  await supabaseInsert('typing_indicators', { sender_email: STATE.myEmail, receiver_email: STATE.activeChatContact, updated_at: new Date().toISOString() });
-}
-
-async function checkTypingIndicator() {
-  if (!STATE.activeChatContact || !STATE.myEmail) return;
-  const cutoff = new Date(Date.now() - 3000).toISOString();
-  const url = `${SUPABASE_URL}/rest/v1/typing_indicators?sender_email=eq.${encodeURIComponent(STATE.activeChatContact)}&receiver_email=eq.${encodeURIComponent(STATE.myEmail)}&updated_at=gte.${cutoff}`;
-  const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } });
-  const data = res.ok ? await res.json() : [];
-  const indicator = document.getElementById('typingIndicator');
-  if (indicator) {
-    indicator.style.display = data.length > 0 ? 'flex' : 'none';
-    if (data.length > 0) indicator.querySelector('.typing-name').textContent = STATE.activeChatContactName + ' is typing...';
-  }
 }
 
 async function renderTeamMessages() {
   const el = document.getElementById('teamMessages');
   if (!el) return;
-  const myEmail = STATE.myEmail;
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
   const contactEmail = STATE.activeChatContact;
   if (!contactEmail) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact to start chatting</div>';
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>';
     return;
   }
   const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(myEmail)},receiver_email.eq.${encodeURIComponent(contactEmail)}),and(sender_email.eq.${encodeURIComponent(contactEmail)},receiver_email.eq.${encodeURIComponent(myEmail)}))&order=created_at.asc`;
-  const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } });
+  const res = await fetch(url, {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+  });
   const messages = res.ok ? await res.json() : [];
-  STATE.chatMessages = messages;
-  const prevScroll = el.scrollTop;
-  const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-
-  if (!messages.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
-    return;
-  }
-
-  // Group messages by date
-  let lastDate = '';
-  el.innerHTML = messages.map(m => {
-    if (m.is_deleted) return `<div class="chat-msg ${m.sender_email===myEmail?'user':''} deleted-msg"><div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div><div class="msg-content deleted-content">🚫 This message was deleted</div></div>`;
-    
-    const msgDate = new Date(m.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
-    const dateSep = msgDate !== lastDate ? `<div class="chat-date-sep"><span>${msgDate}</span></div>` : '';
-    lastDate = msgDate;
-
-    const isMe = m.sender_email === myEmail;
-    const timeStr = new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
-    const reactions = m.reactions || {};
-    const reactHtml = Object.entries(reactions).map(([emoji, users]) => users.length > 0 ? `<button class="msg-reaction" onclick="toggleReaction(${m.id},'${emoji}')">${emoji} ${users.length}</button>` : '').join('');
-
-    const replyPreview = m.reply_to && m.reply_preview ? `<div class="msg-reply-preview">↩️ ${escapeHtml(m.reply_preview.slice(0,60))}${m.reply_preview.length>60?'...':''}</div>` : '';
-    
-    const msgType = m.message_type || 'text';
-    let contentHtml = '';
-    if (msgType === 'sticker') {
-      contentHtml = `<div class="sticker-msg">${escapeHtml(m.message)}</div>`;
-    } else {
-      contentHtml = escapeHtml(m.message) + (m.is_edited ? ' <span class="edited-tag">(edited)</span>' : '');
-    }
-
-    return `${dateSep}<div class="chat-msg ${isMe?'user':''}" id="msg_${m.id}">
+  el.innerHTML = messages.length ? messages.map(m => `
+    <div class="chat-msg ${m.sender_email === myEmail ? 'user' : ''}">
       <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
-      <div class="msg-bubble-wrap">
-        ${replyPreview}
-        <div class="msg-content">
-          ${contentHtml}
-          <div class="msg-meta"><span class="msg-time">${timeStr}</span>${isMe?'<span class="msg-status">✓✓</span>':''}</div>
-        </div>
-        ${reactHtml ? `<div class="msg-reactions">${reactHtml}</div>` : ''}
-        <div class="msg-hover-actions">
-          <button onclick="setReply(${m.id})" title="Reply">↩️</button>
-          <button onclick="openEmojiReact(${m.id})" title="React">😊</button>
-          ${isMe ? `<button onclick="startEditMessage(${m.id})" title="Edit">✏️</button>` : ''}
-          ${isMe ? `<button onclick="deleteMessage(${m.id})" title="Delete">🗑️</button>` : ''}
+      <div class="msg-content">
+        ${escapeHtml(m.message)}
+        <div style="font-size:10.5px;opacity:.6;margin-top:4px">
+          ${new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}
         </div>
       </div>
-    </div>`;
-  }).join('');
-
-  if (wasAtBottom) el.scrollTop = el.scrollHeight;
-}
-
-// Reply
-function setReply(msgId) {
-  const msg = STATE.chatMessages.find(m => m.id === msgId);
-  if (!msg) return;
-  STATE.replyingTo = msg;
-  const replyBar = document.getElementById('replyBar');
-  if (replyBar) {
-    replyBar.style.display = 'flex';
-    replyBar.querySelector('.reply-preview-text').textContent = msg.message?.slice(0,80) || '...';
-  }
-  document.getElementById('teamChatInput')?.focus();
-}
-function clearReplyUI() {
-  STATE.replyingTo = null;
-  const replyBar = document.getElementById('replyBar');
-  if (replyBar) replyBar.style.display = 'none';
-}
-
-// Emoji picker
-function toggleEmojiPicker() {
-  const picker = document.getElementById('emojiPicker');
-  if (!picker) return;
-  const isVisible = picker.style.display === 'block';
-  hideStickerPicker();
-  picker.style.display = isVisible ? 'none' : 'block';
-}
-function hideEmojiPicker() { const p = document.getElementById('emojiPicker'); if (p) p.style.display = 'none'; }
-function insertEmoji(emoji) {
-  const input = document.getElementById('teamChatInput');
-  if (input) { input.value += emoji; input.focus(); }
-  hideEmojiPicker();
-}
-
-// Sticker picker
-function toggleStickerPicker() {
-  const picker = document.getElementById('stickerPicker');
-  if (!picker) return;
-  const isVisible = picker.style.display === 'block';
-  hideEmojiPicker();
-  picker.style.display = isVisible ? 'none' : 'block';
-}
-function hideStickerPicker() { const p = document.getElementById('stickerPicker'); if (p) p.style.display = 'none'; }
-async function sendSticker(emoji) {
-  hideStickerPicker();
-  const contactEmail = STATE.activeChatContact;
-  if (!contactEmail) return;
-  await supabaseInsert('team_messages', { sender_email: STATE.myEmail, receiver_email: contactEmail, message: emoji, message_type: 'sticker' });
-  await renderTeamMessages();
-}
-
-// Mention
-function insertMention() {
-  const input = document.getElementById('teamChatInput');
-  if (!input) return;
-  input.value += '@' + STATE.activeChatContactName + ' ';
-  input.focus();
-}
-
-// React to message
-async function toggleReaction(msgId, emoji) {
-  const msg = STATE.chatMessages.find(m => m.id === msgId);
-  if (!msg) return;
-  const reactions = msg.reactions || {};
-  if (!reactions[emoji]) reactions[emoji] = [];
-  const idx = reactions[emoji].indexOf(STATE.myEmail);
-  if (idx === -1) reactions[emoji].push(STATE.myEmail);
-  else reactions[emoji].splice(idx, 1);
-  await supabaseUpdate('team_messages', msgId, { reactions });
-  await renderTeamMessages();
-}
-
-function openEmojiReact(msgId) {
-  const quickEmojis = ['👍','❤️','😂','😮','😢','🔥','✅','🙏'];
-  openModalWithContent('React to message', `
-    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:10px">
-      ${quickEmojis.map(e => `<button onclick="toggleReaction(${msgId},'${e}');closeModal()" style="font-size:28px;background:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">${e}</button>`).join('')}
     </div>
-  `);
-}
-
-// Edit message
-function startEditMessage(msgId) {
-  const msg = STATE.chatMessages.find(m => m.id === msgId);
-  if (!msg) return;
-  STATE.editingMessageId = msgId;
-  const input = document.getElementById('teamChatInput');
-  if (input) { input.value = msg.message; input.focus(); }
-  const editBar = document.getElementById('editBar');
-  if (editBar) { editBar.style.display = 'flex'; editBar.querySelector('.edit-preview-text').textContent = 'Editing: ' + (msg.message?.slice(0,50)||''); }
-}
-function cancelEdit() {
-  STATE.editingMessageId = null;
-  const editBar = document.getElementById('editBar');
-  if (editBar) editBar.style.display = 'none';
-  const input = document.getElementById('teamChatInput');
-  if (input) input.value = '';
-}
-
-// Delete message
-async function deleteMessage(msgId) {
-  const ok = await supabaseUpdate('team_messages', msgId, { is_deleted: true, message: '[deleted]' });
-  if (ok) { await renderTeamMessages(); showToast('🗑️ Message deleted'); }
+  `).join('') : '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
+  el.scrollTop = el.scrollHeight;
 }
 
 async function sendTeamMessage() {
   const input = document.getElementById('teamChatInput');
   const text = input?.value.trim();
   if (!text) return;
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
   const contactEmail = STATE.activeChatContact;
   if (!contactEmail) { showToast('Select a contact first'); return; }
-
-  // Editing mode
-  if (STATE.editingMessageId) {
-    const ok = await supabaseUpdate('team_messages', STATE.editingMessageId, { message: text, is_edited: true });
-    if (ok) { input.value = ''; cancelEdit(); await renderTeamMessages(); showToast('✏️ Message edited'); }
-    return;
-  }
-
-  const msgBody = {
-    sender_email: STATE.myEmail,
-    receiver_email: contactEmail,
-    message: text,
-    message_type: 'text',
-    reply_to: STATE.replyingTo ? STATE.replyingTo.id : null,
-    reply_preview: STATE.replyingTo ? STATE.replyingTo.message?.slice(0,100) : null,
-  };
   input.value = '';
-  clearReplyUI();
-  hideEmojiPicker(); hideStickerPicker();
-  await supabaseInsert('team_messages', msgBody);
+  await supabaseInsert('team_messages', { sender_email: myEmail, receiver_email: contactEmail, message: text });
   await renderTeamMessages();
   await renderTeamContacts();
 }
 
-// Polling for realtime
-function startChatPolling() {
-  if (STATE.pollInterval) clearInterval(STATE.pollInterval);
-  STATE.pollInterval = setInterval(async () => {
-    if (STATE.currentPage === 'teamchat' && STATE.activeChatContact) {
-      await renderTeamMessages();
-      await checkTypingIndicator();
-    }
-    // Refresh contact presence every 30s
-    if (STATE.currentPage === 'teamchat') await renderTeamContacts();
-  }, 3000);
-}
-
-// Supabase Realtime
-function setupRealtimeChat() {
-  try {
-    const wsUrl = SUPABASE_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?vsn=1.0.0&apikey=' + SUPABASE_ANON_KEY;
-    const ws = new WebSocket(wsUrl);
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ topic: 'realtime:public:team_messages', event: 'phx_join', payload: {}, ref: '1' }));
-    };
-    ws.onmessage = async (evt) => {
-      try {
-        const data = JSON.parse(evt.data);
-        if (data.event === 'INSERT' && STATE.currentPage === 'teamchat') {
-          await renderTeamMessages();
-        }
-      } catch(e) {}
-    };
-    ws.onerror = () => {}; // Silent fail, polling handles it
-    STATE.realtimeChannel = ws;
-  } catch(e) {}
-}
-
 /* =========================================================
-   20. NOTIFICATIONS
+   26. NOTIFICATIONS
    ========================================================= */
 
 function openNotifications() {
   const panel = document.getElementById('notifPanel');
   STATE.notifOpen = !STATE.notifOpen;
   if (panel) panel.classList.toggle('show', STATE.notifOpen);
-  const notifList = document.getElementById('notifList'); if (!notifList) return;
+  const notifList = document.getElementById('notifList');
+  if (!notifList) return;
   const notifs = [];
-  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => notifs.push({ icon:'📊', text:'GSTR pending: '+g.client_name+' — '+g.return_type, time:'Pending' }));
-  STATE.dscRecords.filter(d=>(d.days_left||99)<=30).forEach(d => notifs.push({ icon:'⚠️', text:'DSC expiring: '+d.client_name+' in '+d.days_left+' days', time:'Alert' }));
-  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => notifs.push({ icon:'🔴', text:'High priority: '+t.title, time:'Task' }));
-  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅', text:'No new notifications', time:''}]).map(n => `<div class="notif-item"><div class="notif-icon">${n.icon}</div><div><div class="notif-text">${escapeHtml(n.text)}</div><div class="notif-time">${escapeHtml(n.time)}</div></div></div>`).join('');
-  const dot = document.querySelector('.notif-dot'); if (dot) dot.textContent = notifs.length || '0';
+  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => {
+    notifs.push({ icon: '📊', text: 'GSTR pending: ' + g.client_name + ' — ' + g.return_type, time: 'Pending' });
+  });
+  STATE.dscRecords.filter(d=>(d.days_left||99)<=30).forEach(d => {
+    notifs.push({ icon: '⚠️', text: 'DSC expiring: ' + d.client_name + ' in ' + d.days_left + ' days', time: 'Alert' });
+  });
+  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => {
+    notifs.push({ icon: '🔴', text: 'High priority: ' + t.title, time: 'Task' });
+  });
+  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅', text:'No new notifications', time:''}]).map(n => `
+    <div class="notif-item">
+      <div class="notif-icon">${n.icon}</div>
+      <div><div class="notif-text">${escapeHtml(n.text)}</div><div class="notif-time">${escapeHtml(n.time)}</div></div>
+    </div>
+  `).join('');
+  const dot = document.querySelector('.notif-dot');
+  if (dot) dot.textContent = notifs.length || '0';
 }
-function closeNotifications() { const panel = document.getElementById('notifPanel'); if (panel) panel.classList.remove('show'); STATE.notifOpen = false; }
+
+function closeNotifications() {
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('show');
+  STATE.notifOpen = false;
+}
 
 /* =========================================================
-   21. MODALS
+   27. MODALS
    ========================================================= */
 
 function openModal(type) {
   const clientOptions = STATE.clients.slice(0, 30).map(c => `<option>${escapeHtml(c.name)}</option>`).join('');
   const configs = {
-    addClient: { title: '➕ Add New Client', body: `<div class="form-grid"><div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="addClientName" placeholder="Enter client name" /></div><div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="Enter PAN/TAN" /></div><div class="form-group"><label>Type</label><select class="form-control" id="addClientType"><option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option></select></div><div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="addClientGST" placeholder="GSTIN" /></div><div class="form-group"><label>Email</label><input type="text" class="form-control" id="addClientEmail" placeholder="Email" /></div><div class="form-group"><label>Phone</label><input type="text" class="form-control" id="addClientPhone" placeholder="Phone" /></div></div><button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>` },
-    rocFiling: { title: '🏛️ New ROC Filing', body: `<div class="form-group"><label>Company Name *</label><input type="text" class="form-control" id="rocCompany" /></div><div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" /></div><div class="form-group"><label>Form Type</label><select class="form-control" id="rocForm"><option>AOC-4</option><option>MGT-7</option><option>ADT-1</option><option>DIR-3 KYC</option></select></div><div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="rocDue" /></div><button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Create Filing</button>` },
-    newAudit: { title: '🛡️ Schedule Audit', body: `<div class="form-group"><label>Client *</label><select class="form-control" id="auditClient"><option>Select Client</option>${clientOptions}</select></div><div class="form-group"><label>Audit Type</label><select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option></select></div><div class="form-group"><label>Auditor</label><select class="form-control" id="auditAuditor"><option>Kamlesh Yadav</option><option>Anjali Rao</option><option>Sameer Joshi</option></select></div><div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div><div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div><button class="btn-primary" style="width:100%" onclick="submitNewAudit()">✅ Schedule</button>` },
-    newTask: { title: '✅ Add New Task', body: `<div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitleModal" /></div><div class="form-group"><label>Tags</label><input type="text" class="form-control" id="newTaskTagsModal" placeholder="GST, High" /></div><div class="form-group"><label>Assignee</label><select class="form-control" id="newTaskAssigneeModal"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option></select></div><div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDueModal" /></div><div class="form-group"><label>Column</label><select class="form-control" id="newTaskColModal"><option value="todo">To Do</option><option value="inprogress">In Progress</option><option value="done">Done</option></select></div><button class="btn-primary" style="width:100%" onclick="submitNewTaskModal()">✅ Add Task</button>` },
-    uploadDoc: { title: '📁 Upload Document', body: `<div class="form-group"><label>Document Name *</label><input type="text" class="form-control" id="uploadDocName" /></div><div class="form-group"><label>Client</label><select class="form-control" id="uploadDocClient"><option>Internal</option>${clientOptions}</select></div><div class="form-group"><label>Type</label><select class="form-control" id="uploadDocType"><option>PDF</option><option>Excel</option><option>Word</option><option>Image</option></select></div><div class="form-group"><label>File Size</label><input type="text" class="form-control" id="uploadDocSize" /></div><button class="btn-primary" style="width:100%" onclick="submitUploadDoc()">⬆ Upload</button>` },
-    newEvent: { title: '📅 Add Calendar Event', body: `<div class="form-group"><label>Event Title *</label><input type="text" class="form-control" id="newEventTitle" /></div><div class="form-group"><label>Type</label><select class="form-control" id="newEventType"><option>GST</option><option>TDS</option><option>ROC</option><option>DSC</option><option>Income Tax</option><option>Internal</option></select></div><div class="form-group"><label>Date *</label><input type="date" class="form-control" id="newEventDate" /></div><button class="btn-primary" style="width:100%" onclick="submitNewEvent()">✅ Add Event</button>` },
+    addClient: {
+      title: '➕ Add New Client',
+      body: `
+        <div class="form-grid">
+          <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="addClientName" placeholder="Enter client name" /></div>
+          <div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="Enter PAN/TAN" /></div>
+          <div class="form-group"><label>Type</label>
+            <select class="form-control" id="addClientType"><option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option></select>
+          </div>
+          <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="addClientGST" placeholder="Enter GSTIN (optional)" /></div>
+          <div class="form-group"><label>Email</label><input type="text" class="form-control" id="addClientEmail" placeholder="Enter email" /></div>
+          <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="addClientPhone" placeholder="Enter phone" /></div>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>
+      `
+    },
+    gstReturn: { title: '📊 File GST Return', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">📊</div><p style="margin:12px 0">Use the GST Dashboard form</p><button class="btn-primary" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button></div>` },
+    rocFiling: {
+      title: '🏛️ New ROC Filing',
+      body: `
+        <div class="form-group"><label>Company Name *</label><input type="text" class="form-control" id="rocCompany" placeholder="Enter company name" /></div>
+        <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" placeholder="Enter CIN" /></div>
+        <div class="form-group"><label>Form Type</label>
+          <select class="form-control" id="rocForm"><option>AOC-4</option><option>MGT-7</option><option>ADT-1</option><option>DIR-3 KYC</option><option>MGT-14</option></select>
+        </div>
+        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="rocDue" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Create Filing</button>
+      `
+    },
+    itrFiling: { title: '💰 File ITR', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">💰</div><p style="margin:12px 0">Use the Income Tax form</p><button class="btn-primary" onclick="closeModal();navigate('incometax')">Go to Income Tax</button></div>` },
+    tdsReturn: { title: '🧾 File TDS', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">🧾</div><p style="margin:12px 0">Use the TDS Returns form</p><button class="btn-primary" onclick="closeModal();navigate('tds')">Go to TDS Returns</button></div>` },
+    newAudit: {
+      title: '🛡️ Schedule Audit',
+      body: `
+        <div class="form-group"><label>Client *</label><select class="form-control" id="auditClient"><option>Select Client</option>${clientOptions}</select></div>
+        <div class="form-group"><label>Audit Type</label>
+          <select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option></select>
+        </div>
+        <div class="form-group"><label>Auditor</label>
+          <select class="form-control" id="auditAuditor"><option>Kamlesh Yadav</option><option>Anjali Rao</option><option>Sameer Joshi</option></select>
+        </div>
+        <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div>
+        <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewAudit()">✅ Schedule Audit</button>
+      `
+    },
+    newDSC: { title: '✍️ New DSC', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
+    newEntry: { title: '🧮 Journal Entry', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">🧮</div><p style="margin:12px 0">Use the Accounting Hub form</p><button class="btn-primary" onclick="closeModal();navigate('accounting')">Go to Accounting Hub</button></div>` },
+    newTask: {
+      title: '✅ Add New Task',
+      body: `
+        <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitleModal" placeholder="Enter task title" /></div>
+        <div class="form-group"><label>Tags</label><input type="text" class="form-control" id="newTaskTagsModal" placeholder="e.g. GST, High" /></div>
+        <div class="form-group"><label>Assignee</label>
+          <select class="form-control" id="newTaskAssigneeModal"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
+        </div>
+        <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDueModal" placeholder="e.g. 28 May" /></div>
+        <div class="form-group"><label>Column</label>
+          <select class="form-control" id="newTaskColModal"><option value="todo">To Do</option><option value="inprogress">In Progress</option><option value="done">Done</option></select>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewTaskModal()">✅ Add Task</button>
+      `
+    },
+    uploadDoc: {
+      title: '📁 Upload Document',
+      body: `
+        <div class="form-group"><label>Document Name *</label><input type="text" class="form-control" id="uploadDocName" placeholder="e.g. Balance Sheet FY24-25.pdf" /></div>
+        <div class="form-group"><label>Client</label><select class="form-control" id="uploadDocClient"><option>Internal</option>${clientOptions}</select></div>
+        <div class="form-group"><label>Type</label>
+          <select class="form-control" id="uploadDocType"><option value="PDF">PDF</option><option value="Excel">Excel</option><option value="Word">Word</option><option value="Image">Image</option></select>
+        </div>
+        <div class="form-group"><label>File Size</label><input type="text" class="form-control" id="uploadDocSize" placeholder="e.g. 2.4 MB" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitUploadDoc()">⬆ Upload</button>
+      `
+    },
+    newEvent: {
+      title: '📅 Add Calendar Event',
+      body: `
+        <div class="form-group"><label>Event Title *</label><input type="text" class="form-control" id="newEventTitle" placeholder="Enter event title" /></div>
+        <div class="form-group"><label>Type</label>
+          <select class="form-control" id="newEventType"><option>GST</option><option>TDS</option><option>ROC</option><option>DSC</option><option>Income Tax</option><option>PF</option><option>Internal</option></select>
+        </div>
+        <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="newEventDate" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewEvent()">✅ Add Event</button>
+      `
+    }
   };
   const config = configs[type];
   if (config) openModalWithContent(config.title, config.body);
@@ -1607,98 +1700,154 @@ function openModalWithContent(title, bodyHtml) {
   if (bodyEl) bodyEl.innerHTML = bodyHtml;
   if (overlay) overlay.classList.add('show');
 }
-function closeModal() { const overlay = document.getElementById('modalOverlay'); if (overlay) overlay.classList.remove('show'); }
+
+function closeModal() {
+  const overlay = document.getElementById('modalOverlay');
+  if (overlay) overlay.classList.remove('show');
+}
 
 async function submitAddClient() {
   const name = document.getElementById('addClientName')?.value.trim();
   if (!name) { showToast('Client name is required'); return; }
-  const body = { name, pan: document.getElementById('addClientPAN')?.value.trim()||'-', type: document.getElementById('addClientType')?.value, gst: document.getElementById('addClientGST')?.value.trim()||'-', email: document.getElementById('addClientEmail')?.value.trim()||'-', phone: document.getElementById('addClientPhone')?.value.trim()||'-', status: 'Active' };
+  const body = {
+    name,
+    pan: document.getElementById('addClientPAN')?.value.trim() || '-',
+    type: document.getElementById('addClientType')?.value,
+    gst: document.getElementById('addClientGST')?.value.trim() || '-',
+    email: document.getElementById('addClientEmail')?.value.trim() || '-',
+    phone: document.getElementById('addClientPhone')?.value.trim() || '-',
+    status: 'Active'
+  };
   const result = await supabaseInsert('clients', body);
-  if (result && result[0]) { STATE.clients.unshift(result[0]); closeModal(); renderClientTable(); updateDashboardStats(); populateGSTClientDropdown(); showToast('✅ Client added!'); }
-  else { showToast('❌ Failed to add client'); }
+  if (result && result[0]) {
+    STATE.clients.unshift(result[0]);
+    closeModal(); renderClientTable(); updateDashboardStats(); populateGSTClientDropdown(); showToast('✅ Client added!');
+  } else { showToast('❌ Failed to add client'); }
 }
+
 async function submitROCFiling() {
   const company = document.getElementById('rocCompany')?.value.trim();
   if (!company) { showToast('Company name required'); return; }
-  const body = { company, cin: document.getElementById('rocCIN')?.value.trim()||'-', form: document.getElementById('rocForm')?.value, due_date: document.getElementById('rocDue')?.value||'TBD', status: 'In Progress' };
+  const body = {
+    company,
+    cin: document.getElementById('rocCIN')?.value.trim() || '-',
+    form: document.getElementById('rocForm')?.value,
+    due_date: document.getElementById('rocDue')?.value || 'TBD',
+    status: 'In Progress'
+  };
   const result = await supabaseInsert('roc_filings', body);
   if (result && result[0]) { STATE.rocFilings.unshift(result[0]); closeModal(); renderROCTable(); showToast('✅ ROC filing created!'); }
+  else { showToast('❌ ROC filing failed'); }
 }
+
 async function submitNewAudit() {
   const client = document.getElementById('auditClient')?.value;
-  if (!client || client==='Select Client') { showToast('Please select a client'); return; }
-  const body = { client, audit_type: document.getElementById('auditType')?.value, auditor: document.getElementById('auditAuditor')?.value, start_date: document.getElementById('auditStart')?.value||'TBD', end_date: document.getElementById('auditEnd')?.value||'TBD', status: 'In Progress' };
+  if (!client || client === 'Select Client') { showToast('Please select a client'); return; }
+  const body = {
+    client,
+    audit_type: document.getElementById('auditType')?.value,
+    auditor: document.getElementById('auditAuditor')?.value,
+    start_date: document.getElementById('auditStart')?.value || 'TBD',
+    end_date: document.getElementById('auditEnd')?.value || 'TBD',
+    status: 'In Progress'
+  };
   const result = await supabaseInsert('audits', body);
   if (result && result[0]) { STATE.audits.unshift(result[0]); closeModal(); renderAuditTable(); showToast('✅ Audit scheduled!'); }
+  else { showToast('❌ Audit scheduling failed'); }
 }
+
 async function submitNewTaskModal() {
   const title = document.getElementById('newTaskTitleModal')?.value.trim();
   if (!title) { showToast('Task title required'); return; }
   const tagsRaw = document.getElementById('newTaskTagsModal')?.value.trim();
-  const body = { title, tags: tagsRaw?tagsRaw.split(',').map(t=>t.trim()).filter(Boolean):[], assignee: document.getElementById('newTaskAssigneeModal')?.value||'Kamlesh', due_date: document.getElementById('newTaskDueModal')?.value.trim()||'TBD', column_name: document.getElementById('newTaskColModal')?.value||'todo' };
+  const body = {
+    title,
+    tags: tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [],
+    assignee: document.getElementById('newTaskAssigneeModal')?.value || 'Kamlesh',
+    due_date: document.getElementById('newTaskDueModal')?.value.trim() || 'TBD',
+    column_name: document.getElementById('newTaskColModal')?.value || 'todo'
+  };
   const result = await supabaseInsert('tasks', body);
   if (result && result[0]) { STATE.tasks.unshift(result[0]); closeModal(); renderKanban(); showToast('✅ Task added!'); }
+  else { showToast('❌ Failed to add task'); }
 }
+
 async function submitUploadDoc() {
   const name = document.getElementById('uploadDocName')?.value.trim();
   if (!name) { showToast('Document name required'); return; }
-  const typeVal = document.getElementById('uploadDocType')?.value||'PDF';
-  const iconMap = { PDF:'📕', Excel:'📗', Word:'📘', Image:'🖼️' };
-  const body = { name, doc_type: typeVal, icon: iconMap[typeVal]||'📄', client_name: document.getElementById('uploadDocClient')?.value||'Internal', file_size: document.getElementById('uploadDocSize')?.value.trim()||'Unknown' };
+  const typeVal = document.getElementById('uploadDocType')?.value || 'PDF';
+  const iconMap = { PDF: '📕', Excel: '📗', Word: '📘', Image: '🖼️' };
+  const body = {
+    name, doc_type: typeVal, icon: iconMap[typeVal] || '📄',
+    client_name: document.getElementById('uploadDocClient')?.value || 'Internal',
+    file_size: document.getElementById('uploadDocSize')?.value.trim() || 'Unknown'
+  };
   const result = await supabaseInsert('documents', body);
   if (result && result[0]) { STATE.documents.unshift(result[0]); closeModal(); renderDocuments(); showToast('✅ Document uploaded!'); }
+  else { showToast('❌ Upload failed'); }
 }
+
 async function submitNewEvent() {
-  const title = document.getElementById('newEventTitle')?.value.trim(); const dateVal = document.getElementById('newEventDate')?.value;
+  const title = document.getElementById('newEventTitle')?.value.trim();
+  const dateVal = document.getElementById('newEventDate')?.value;
   if (!title || !dateVal) { showToast('Please fill all fields'); return; }
   const body = { title, event_type: document.getElementById('newEventType')?.value, event_date: dateVal };
   const result = await supabaseInsert('calendar_events', body);
-  if (result && result[0]) { STATE.calendarEvents.push(result[0]); closeModal(); renderCalendar(); renderEventList(); renderDueDates(); showToast('✅ Event added!'); }
+  if (result && result[0]) {
+    STATE.calendarEvents.push(result[0]);
+    closeModal(); renderCalendar(); renderEventList(); renderDueDates(); showToast('✅ Event added to calendar!');
+  } else { showToast('❌ Failed to add event'); }
 }
 
 /* =========================================================
-   22. QUICK ACTION & PROFILE
+   28. QUICK ACTION
    ========================================================= */
 
 function openQuickAction() {
   openModalWithContent('⚡ Quick Action', `
     <div class="quick-action-grid">
       <button class="qa-btn" onclick="closeModal();openModal('addClient')"><span class="qa-btn-icon">👥</span><span class="qa-btn-label">Add Client</span></button>
-      <button class="qa-btn" onclick="closeModal();navigate('gst')"><span class="qa-btn-icon">📊</span><span class="qa-btn-label">File GST</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('gst')"><span class="qa-btn-icon">📊</span><span class="qa-btn-label">File GST Return</span></button>
       <button class="qa-btn" onclick="closeModal();navigate('incometax')"><span class="qa-btn-icon">💰</span><span class="qa-btn-label">File ITR</span></button>
-      <button class="qa-btn" onclick="closeModal();navigate('tds')"><span class="qa-btn-icon">🧾</span><span class="qa-btn-label">File TDS</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('tds')"><span class="qa-btn-icon">🧾</span><span class="qa-btn-label">File TDS Return</span></button>
       <button class="qa-btn" onclick="closeModal();openModal('newAudit')"><span class="qa-btn-icon">🛡️</span><span class="qa-btn-label">Schedule Audit</span></button>
       <button class="qa-btn" onclick="closeModal();openModal('newTask')"><span class="qa-btn-icon">✅</span><span class="qa-btn-label">Add Task</span></button>
-      <button class="qa-btn" onclick="closeModal();openAddVaultModal()"><span class="qa-btn-icon">🔐</span><span class="qa-btn-label">Add to Vault</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('dsc')"><span class="qa-btn-icon">✍️</span><span class="qa-btn-label">Request DSC</span></button>
       <button class="qa-btn" onclick="closeModal();openModal('newEvent')"><span class="qa-btn-icon">📅</span><span class="qa-btn-label">Add Event</span></button>
     </div>
   `);
 }
 
-function loadUserInfo() {
-  const userRaw = localStorage.getItem('witcorp-user'); if (!userRaw) return;
-  const user = JSON.parse(userRaw);
-  const name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email ? user.email.split('@')[0] : 'User');
-  const initial = name.charAt(0).toUpperCase();
-  const initEl = document.getElementById('userInitial'); const nameEl = document.getElementById('userDisplayName');
-  if (initEl) initEl.textContent = initial; if (nameEl) nameEl.textContent = name;
-  const welcomeEl = document.getElementById('welcomeUserName'); if (welcomeEl) welcomeEl.textContent = name;
-}
+/* =========================================================
+   29. PROFILE & LOGOUT
+   ========================================================= */
 
-function loadUserInfoExtended() {
-  const userRaw = localStorage.getItem('witcorp-user'); if (!userRaw) return;
-  const user = JSON.parse(userRaw); const meta = user.user_metadata || {};
-  const name = meta.full_name || (user.email ? user.email.split('@')[0] : 'User');
-  const role = meta.role || 'Member'; const initial = name.charAt(0).toUpperCase();
-  const initEl = document.getElementById('userInitial'); const nameEl = document.getElementById('userDisplayName'); const roleEl = document.getElementById('userDisplayRole');
-  if (initEl) initEl.textContent = initial; if (nameEl) nameEl.textContent = name; if (roleEl) roleEl.textContent = role;
+function loadUserInfo() {
+  const userRaw = localStorage.getItem('witcorp-user');
+  if (!userRaw) return;
+  const user = JSON.parse(userRaw);
+  const name = (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name
+    : (user.email ? user.email.split('@')[0] : 'User');
+  const initial = name.charAt(0).toUpperCase();
+  
+  const initEl = document.getElementById('userInitial');
+  const nameEl = document.getElementById('userDisplayName');
+  if (initEl) initEl.textContent = initial;
+  if (nameEl) nameEl.textContent = name;
+  
+  const welcomeEl = document.getElementById('welcomeUserName');
+  if (welcomeEl) welcomeEl.textContent = name;
 }
-document.addEventListener('DOMContentLoaded', loadUserInfoExtended);
 
 function openProfile() {
-  const userRaw = localStorage.getItem('witcorp-user'); const user = userRaw ? JSON.parse(userRaw) : {};
-  const name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email ? user.email.split('@')[0] : 'User');
-  const email = user.email || 'Not available'; const initial = name.charAt(0).toUpperCase();
+  const userRaw = localStorage.getItem('witcorp-user');
+  const user = userRaw ? JSON.parse(userRaw) : {};
+  const name = (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name
+    : (user.email ? user.email.split('@')[0] : 'User');
+  const email = user.email || 'Not available';
+  const initial = name.charAt(0).toUpperCase();
   openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
       <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${initial}</div>
@@ -1706,23 +1855,31 @@ function openProfile() {
       <div style="color:var(--text-muted);font-size:13px">WITCORP India Advisors LLP</div>
     </div>
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(email)}</div></div>
+    <div class="form-group"><label>User ID</label><div class="form-control" style="background:var(--bg)">${escapeHtml(user.id || 'N/A')}</div></div>
     <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
-    <div class="form-group"><label>Vault Credentials</label><div class="form-control" style="background:var(--bg)">${STATE.vault.length}</div></div>
     <button class="btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)" onclick="logout()">🚪 Logout</button>
   `);
 }
 
 async function logout() {
   if (typeof closeModal === 'function') closeModal();
-  await updatePresence(false);
-  if (STATE.pollInterval) clearInterval(STATE.pollInterval);
   const token = localStorage.getItem('witcorp-access-token');
-  if (token) await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/logout', { method:'POST', headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+token} }).catch(()=>{});
-  localStorage.clear(); sessionStorage.clear(); window.location.replace('login.html');
+  if (token) {
+    await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/logout', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + token
+      }
+    }).catch(() => {});
+  }
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.replace('login.html');
 }
 
 /* =========================================================
-   23. GLOBAL SEARCH, TOAST, LISTENERS
+   30. GLOBAL SEARCH
    ========================================================= */
 
 function handleSearch(query) {
@@ -1732,1096 +1889,87 @@ function handleSearch(query) {
     const q = query.toLowerCase();
     const clients = STATE.clients.filter(c => (c.name||'').toLowerCase().includes(q)).length;
     const tasks = STATE.tasks.filter(t => (t.title||'').toLowerCase().includes(q)).length;
-    const vault = STATE.vault.filter(v => (v.label||'').toLowerCase().includes(q) || (v.username||'').toLowerCase().includes(q)).length;
     const msg = [];
     if (clients) msg.push(clients + ' client(s)');
     if (tasks) msg.push(tasks + ' task(s)');
-    if (vault) msg.push(vault + ' vault entry(ies)');
     if (msg.length) showToast('Found: ' + msg.join(', '));
   }, 500);
 }
 
+/* =========================================================
+   31. TOAST
+   ========================================================= */
+
 let toastTimeout = null;
+
 function showToast(message) {
-  const toast = document.getElementById('toast'); if (!toast) return;
-  toast.textContent = message; toast.classList.add('show');
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('show');
   if (toastTimeout) clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+/* =========================================================
+   32. KEYBOARD & GLOBAL LISTENERS
+   ========================================================= */
+
 function attachGlobalListeners() {
   document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); document.getElementById('globalSearch')?.focus(); }
-    if (e.key === 'Escape') { closeModal(); closeNotifications(); hideEmojiPicker(); hideStickerPicker(); if (window.innerWidth <= 768) closeSidebar(); }
-    if (e.key === 'Enter' && STATE.currentPage === 'teamchat' && document.activeElement?.id === 'teamChatInput') sendTeamMessage();
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      document.getElementById('globalSearch')?.focus();
+    }
+    if (e.key === 'Escape') {
+      closeModal();
+      closeNotifications();
+      if (window.innerWidth <= 768) closeSidebar();
+    }
   });
   document.addEventListener('click', (e) => {
     const panel = document.getElementById('notifPanel');
-    if (panel && panel.classList.contains('show') && !panel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) closeNotifications();
+    if (panel && panel.classList.contains('show')) {
+      if (!panel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) closeNotifications();
+    }
     const modalOverlay = document.getElementById('modalOverlay');
-    if (modalOverlay && modalOverlay.classList.contains('show') && e.target === modalOverlay) closeModal();
-    // Close emoji/sticker pickers on outside click
-    const emojiPicker = document.getElementById('emojiPicker');
-    const stickerPicker = document.getElementById('stickerPicker');
-    if (emojiPicker && !emojiPicker.contains(e.target) && !e.target.closest('[onclick*="toggleEmojiPicker"]')) hideEmojiPicker();
-    if (stickerPicker && !stickerPicker.contains(e.target) && !e.target.closest('[onclick*="toggleStickerPicker"]')) hideStickerPicker();
+    if (modalOverlay && modalOverlay.classList.contains('show')) {
+      if (e.target === modalOverlay) closeModal();
+    }
   });
   window.addEventListener('resize', () => { if (window.innerWidth > 768) closeSidebar(); });
-
-  // Typing indicator on chat input
-  const chatInput = document.getElementById('teamChatInput');
-  if (chatInput) {
-    chatInput.addEventListener('input', () => {
-      if (STATE.activeChatContact) {
-        sendTypingIndicator();
-        clearTimeout(STATE.typingTimeout);
-        STATE.typingTimeout = setTimeout(() => {}, 2000);
-      }
-    });
-  }
 }
 
 /* =========================================================
-   24. UTILITY
+   33. UTILITY
    ========================================================= */
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
+
 function formatAmount(num) {
   if (!num) return '0';
-  if (num >= 100000) return (num/100000).toFixed(1)+'L';
-  if (num >= 1000) return (num/1000).toFixed(1)+'K';
+  if (num >= 100000) return (num / 100000).toFixed(1) + 'L';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toLocaleString('en-IN');
 }
+
 function statusBadge(status) {
-  const map = {'Active':'badge-success','Inactive':'badge-danger','Pending':'badge-warning','Filed':'badge-success','Overdue':'badge-danger','In Progress':'badge-info','In Review':'badge-purple','Completed':'badge-success','Expiring Soon':'badge-warning','Expired':'badge-danger'};
+  const map = {
+    'Active':'badge-success','Inactive':'badge-danger','Pending':'badge-warning',
+    'Filed':'badge-success','Overdue':'badge-danger','In Progress':'badge-info',
+    'In Review':'badge-purple','Completed':'badge-success','Expiring Soon':'badge-warning','Expired':'badge-danger'
+  };
   return `<span class="badge ${map[status]||'badge-info'}">${escapeHtml(status)}</span>`;
 }
 
 /* =========================================================
-   END OF app.js — WITCORP | Vault + Enhanced Chat
-   ========================================================= */
-/* ══════════════════════════════════════════════════════════════
-   PART 1 — TEAM CHAT ENHANCED
-══════════════════════════════════════════════════════════════ */
-
-const CHAT = {
-  messages: [],
-  replyTo: null,
-  editingId: null,
-  typingTimer: null,
-  presenceTimer: null,
-  pollTimer: null,
-  myEmail: '',
-  myName: '',
-  contactEmail: '',
-  contactName: '',
-};
-
-const EMOJI_LIST = [
-  '😀','😂','🥰','😍','🤩','😎','🥳','😊','🙏','👍',
-  '👎','❤️','🔥','💯','✅','⚡','🎉','💪','👏','😭',
-  '😤','😂','🤔','😅','🙈','💀','🤣','😬','🫡','🫂',
-  '💸','📊','✍️','🧾','📋','🏛️','💰','📅','🔔','⚠️'
-];
-
-const STICKER_LIST = [
-  { label: 'Done!',        emoji: '✅🎉' },
-  { label: 'On it!',       emoji: '💪🔥' },
-  { label: 'Please check', emoji: '👀📋' },
-  { label: 'Urgent!',      emoji: '🚨⚡' },
-  { label: 'Good work',    emoji: '👏💯' },
-  { label: 'Thanks!',      emoji: '🙏❤️' },
-  { label: 'GST Filed',    emoji: '📊✅' },
-  { label: 'ITR Done',     emoji: '💰✅' },
-  { label: 'Meeting?',     emoji: '📅🤝' },
-  { label: 'Call me',      emoji: '📞👋' },
-  { label: 'Running late', emoji: '⏰😅' },
-  { label: 'Approved!',    emoji: '✅👍' },
-];
-
-/* ── PRESENCE ─────────────────────────────────────────────── */
-function initEnhancedChat() {
-  const raw = localStorage.getItem('witcorp-user');
-  if (!raw) return;
-  const user = JSON.parse(raw);
-  CHAT.myEmail = user.email || '';
-  const meta = user.user_metadata || {};
-  CHAT.myName = meta.full_name || CHAT.myEmail.split('@')[0];
-  updateMyPresence(true);
-  startPresenceLoop();
-}
-
-async function updateMyPresence(online) {
-  if (!CHAT.myEmail) return;
-  await fetch(SUPABASE_URL + '/rest/v1/user_presence', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates'
-    },
-    body: JSON.stringify({ email: CHAT.myEmail, is_online: online, last_seen: new Date().toISOString() })
-  });
-}
-
-async function getPresence(email) {
-  if (!email) return null;
-  try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/user_presence?email=eq.' + encodeURIComponent(email) + '&select=is_online,last_seen', {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-    });
-    const data = await res.json();
-    return data[0] || null;
-  } catch { return null; }
-}
-
-function startPresenceLoop() {
-  if (CHAT.presenceTimer) clearInterval(CHAT.presenceTimer);
-  CHAT.presenceTimer = setInterval(function() { updateMyPresence(true); }, 20000);
-  window.addEventListener('beforeunload', function() { updateMyPresence(false); });
-  document.addEventListener('visibilitychange', function() { updateMyPresence(!document.hidden); });
-}
-
-/* ── TYPING ───────────────────────────────────────────────── */
-async function sendTypingIndicator() {
-  if (!CHAT.contactEmail || !CHAT.myEmail) return;
-  await fetch(SUPABASE_URL + '/rest/v1/typing_indicators', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates'
-    },
-    body: JSON.stringify({ sender_email: CHAT.myEmail, receiver_email: CHAT.contactEmail, updated_at: new Date().toISOString() })
-  });
-}
-
-async function checkTyping() {
-  if (!CHAT.contactEmail || !CHAT.myEmail) return false;
-  try {
-    const since = new Date(Date.now() - 3000).toISOString();
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/typing_indicators?sender_email=eq.' + encodeURIComponent(CHAT.contactEmail) +
-      '&receiver_email=eq.' + encodeURIComponent(CHAT.myEmail) + '&updated_at=gte.' + since,
-      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
-    );
-    const data = await res.json();
-    return data && data.length > 0;
-  } catch { return false; }
-}
-
-function onChatInput() {
-  if (CHAT.typingTimer) clearTimeout(CHAT.typingTimer);
-  sendTypingIndicator();
-  CHAT.typingTimer = setTimeout(function() {}, 2000);
-}
-
-/* ── MESSAGES ─────────────────────────────────────────────── */
-async function loadChatMessages() {
-  if (!CHAT.contactEmail || !CHAT.myEmail) return;
-  try {
-    const url = SUPABASE_URL + '/rest/v1/team_messages?or=(and(sender_email.eq.' +
-      encodeURIComponent(CHAT.myEmail) + ',receiver_email.eq.' + encodeURIComponent(CHAT.contactEmail) +
-      '),and(sender_email.eq.' + encodeURIComponent(CHAT.contactEmail) + ',receiver_email.eq.' +
-      encodeURIComponent(CHAT.myEmail) + '))&order=created_at.asc';
-    const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } });
-    CHAT.messages = res.ok ? (await res.json()) : [];
-  } catch { CHAT.messages = []; }
-}
-
-function timeStr(ts) {
-  if (!ts) return '';
-  return new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-}
-
-function dateSeparator(ts) {
-  if (!ts) return '';
-  const d = new Date(ts);
-  const diff = Math.floor((new Date() - d) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function renderMsgContent(msg) {
-  if (msg.is_deleted) return '<span style="opacity:.55;font-style:italic;font-size:12.5px">🚫 This message was deleted</span>';
-  return escapeHtml(msg.message || '').replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-}
-
-function renderReactions(msg) {
-  if (!msg.reactions || Object.keys(msg.reactions).length === 0) return '';
-  return '<div class="msg-reactions">' +
-    Object.entries(msg.reactions).map(function(entry) {
-      var emoji = entry[0]; var users = entry[1];
-      return '<span class="reaction-chip ' + (users.includes(CHAT.myEmail) ? 'mine' : '') + '" onclick="toggleReaction(' + msg.id + ',\'' + emoji + '\')" title="' + users.join(', ') + '">' + emoji + ' <span>' + users.length + '</span></span>';
-    }).join('') + '</div>';
-}
-
-function renderReplyPreview(msg) {
-  if (!msg.reply_to || !msg.reply_preview) return '';
-  return '<div class="reply-preview-bubble"><div class="reply-preview-bar"></div><div class="reply-preview-text">' + escapeHtml(msg.reply_preview) + '</div></div>';
-}
-
-async function renderEnhancedTeamMessages() {
-  var el = document.getElementById('teamMessages');
-  if (!el) return;
-  await loadChatMessages();
-
-  if (!CHAT.contactEmail) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px;font-size:13.5px">👈 Select a contact to start chatting</div>';
-    return;
-  }
-  if (!CHAT.messages.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px;font-size:13.5px">No messages yet. Say Namaste! 👋</div>';
-  } else {
-    var lastDate = '';
-    var html = '';
-    CHAT.messages.forEach(function(msg) {
-      var msgDate = dateSeparator(msg.created_at);
-      if (msgDate !== lastDate) {
-        html += '<div class="chat-date-separator"><span>' + msgDate + '</span></div>';
-        lastDate = msgDate;
-      }
-      var isMe = msg.sender_email === CHAT.myEmail;
-      var init = msg.sender_email.charAt(0).toUpperCase();
-      html += '<div class="chat-msg-wrap ' + (isMe ? 'me' : 'them') + '" id="msg-' + msg.id + '">';
-      if (!isMe) html += '<div class="msg-avatar-sm">' + init + '</div>';
-      html += '<div class="msg-bubble-outer">';
-      html += renderReplyPreview(msg);
-      html += '<div class="msg-bubble ' + (isMe ? 'mine' : 'theirs') + (msg.is_deleted ? ' deleted' : '') + '">';
-      html += '<div class="msg-text">' + renderMsgContent(msg) + '</div>';
-      html += '<div class="msg-meta"><span class="msg-time">' + timeStr(msg.created_at) + '</span>';
-      if (msg.is_edited && !msg.is_deleted) html += '<span class="msg-edited">edited</span>';
-      if (isMe) html += '<span class="msg-tick">✓✓</span>';
-      html += '</div></div>';
-      html += renderReactions(msg);
-      if (!msg.is_deleted) {
-        html += '<div class="msg-actions" id="actions-' + msg.id + '">';
-        html += '<button onclick="startReply(' + msg.id + ')" title="Reply">↩</button>';
-        html += '<button onclick="openEmojiForMsg(' + msg.id + ')" title="React">😊</button>';
-        if (isMe) html += '<button onclick="startEdit(' + msg.id + ')" title="Edit">✏️</button>';
-        if (isMe) html += '<button onclick="deleteMsg(' + msg.id + ')" title="Delete" style="color:var(--danger)">🗑️</button>';
-        html += '</div>';
-      }
-      html += '</div>';
-      if (isMe) html += '<div class="msg-avatar-sm mine">' + init + '</div>';
-      html += '</div>';
-    });
-    el.innerHTML = html;
-  }
-
-  var isTyping = await checkTyping();
-  updateTypingIndicator(isTyping);
-  var presence = await getPresence(CHAT.contactEmail);
-  updateContactPresence(presence);
-  el.scrollTop = el.scrollHeight;
-}
-
-function updateTypingIndicator(isTyping) {
-  var onlineEl = document.querySelector('.chat-online');
-  if (!onlineEl) return;
-  if (isTyping) {
-    onlineEl.innerHTML = '<span style="color:var(--primary)">● typing...</span>';
-  } else {
-    var p = onlineEl.__lastPresence;
-    onlineEl.innerHTML = p && p.is_online ? '<span style="color:var(--success)">● Online</span>' : '<span style="color:var(--text-muted)">⊘ ' + (p ? 'Last seen ' + timeStr(p.last_seen) : 'Offline') + '</span>';
-  }
-}
-
-function updateContactPresence(presence) {
-  var onlineEl = document.querySelector('.chat-online');
-  if (!onlineEl) return;
-  onlineEl.__lastPresence = presence;
-  if (presence && presence.is_online) {
-    onlineEl.innerHTML = '<span style="color:var(--success)">● Online</span>';
-  } else {
-    onlineEl.innerHTML = '<span style="color:var(--text-muted)">⊘ ' + (presence ? 'Last seen ' + timeStr(presence.last_seen) : 'Offline') + '</span>';
-  }
-}
-
-/* ── SEND / REPLY / EDIT / DELETE ─────────────────────────── */
-async function sendEnhancedTeamMessage() {
-  var input = document.getElementById('teamChatInput');
-  var text = input ? input.value.trim() : '';
-  if (!text && !CHAT.editingId) return;
-  if (!CHAT.contactEmail) { showToast('Select a contact first'); return; }
-
-  if (CHAT.editingId) {
-    await updateChatMessage(CHAT.editingId, text);
-    cancelEdit();
-    return;
-  }
-
-  var payload = {
-    sender_email: CHAT.myEmail,
-    receiver_email: CHAT.contactEmail,
-    message: text,
-    message_type: 'text',
-    is_edited: false,
-    is_deleted: false,
-    reactions: {}
-  };
-  if (CHAT.replyTo) {
-    payload.reply_to = CHAT.replyTo.id;
-    payload.reply_preview = CHAT.replyTo.text.substring(0, 80);
-  }
-  input.value = '';
-  cancelReply();
-  await supabaseInsert('team_messages', payload);
-  await renderEnhancedTeamMessages();
-  await renderEnhancedTeamContacts();
-}
-
-function startReply(msgId) {
-  var msg = CHAT.messages.find(function(m) { return m.id === msgId; });
-  if (!msg) return;
-  CHAT.replyTo = { id: msgId, text: msg.message || '' };
-  var bar = document.getElementById('replyBar');
-  if (bar) {
-    bar.style.display = 'flex';
-    bar.querySelector('.reply-bar-text').textContent = (msg.message || '').substring(0, 80);
-  }
-  var inp = document.getElementById('teamChatInput');
-  if (inp) inp.focus();
-}
-
-function cancelReply() {
-  CHAT.replyTo = null;
-  var bar = document.getElementById('replyBar');
-  if (bar) bar.style.display = 'none';
-}
-
-function startEdit(msgId) {
-  var msg = CHAT.messages.find(function(m) { return m.id === msgId; });
-  if (!msg) return;
-  CHAT.editingId = msgId;
-  var input = document.getElementById('teamChatInput');
-  if (input) { input.value = msg.message || ''; input.focus(); }
-  var bar = document.getElementById('editBar');
-  if (bar) {
-    bar.style.display = 'flex';
-    bar.querySelector('.edit-bar-text').textContent = 'Editing: ' + (msg.message || '').substring(0, 60);
-  }
-}
-
-function cancelEdit() {
-  CHAT.editingId = null;
-  var input = document.getElementById('teamChatInput');
-  if (input) input.value = '';
-  var bar = document.getElementById('editBar');
-  if (bar) bar.style.display = 'none';
-}
-
-async function updateChatMessage(id, newText) {
-  await fetch(SUPABASE_URL + '/rest/v1/team_messages?id=eq.' + id, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: newText, is_edited: true })
-  });
-  await renderEnhancedTeamMessages();
-  showToast('✅ Message edited');
-}
-
-async function deleteMsg(id) {
-  await fetch(SUPABASE_URL + '/rest/v1/team_messages?id=eq.' + id, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_deleted: true, message: '' })
-  });
-  await renderEnhancedTeamMessages();
-  showToast('🗑️ Message deleted');
-}
-
-/* ── REACTIONS ────────────────────────────────────────────── */
-async function toggleReaction(msgId, emoji) {
-  var msg = CHAT.messages.find(function(m) { return m.id === msgId; });
-  if (!msg) return;
-  var reactions = Object.assign({}, msg.reactions || {});
-  if (!reactions[emoji]) reactions[emoji] = [];
-  var idx = reactions[emoji].indexOf(CHAT.myEmail);
-  if (idx > -1) reactions[emoji].splice(idx, 1);
-  else reactions[emoji].push(CHAT.myEmail);
-  if (reactions[emoji].length === 0) delete reactions[emoji];
-  await fetch(SUPABASE_URL + '/rest/v1/team_messages?id=eq.' + msgId, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reactions: reactions })
-  });
-  await renderEnhancedTeamMessages();
-}
-
-/* ── EMOJI & STICKER PICKERS ─────────────────────────────── */
-function openEmojiForMsg(msgId) {
-  closeAllPickers();
-  var actions = document.getElementById('actions-' + msgId);
-  if (!actions) return;
-  var picker = document.createElement('div');
-  picker.className = 'emoji-picker-popup';
-  picker.innerHTML = EMOJI_LIST.map(function(e) {
-    return '<span onclick="toggleReaction(' + msgId + ',\'' + e + '\');closeAllPickers()">' + e + '</span>';
-  }).join('');
-  actions.parentNode.appendChild(picker);
-}
-
-function openMainEmojiPicker() {
-  closeAllPickers();
-  var bar = document.querySelector('.chat-input-bar');
-  if (!bar) return;
-  var picker = document.createElement('div');
-  picker.className = 'emoji-picker-popup main-emoji-picker';
-  picker.innerHTML = EMOJI_LIST.map(function(e) {
-    return '<span onclick="insertEmoji(\'' + e + '\')">' + e + '</span>';
-  }).join('');
-  bar.parentNode.insertBefore(picker, bar);
-}
-
-function insertEmoji(e) {
-  var input = document.getElementById('teamChatInput');
-  if (input) {
-    var pos = input.selectionStart || input.value.length;
-    input.value = input.value.slice(0, pos) + e + input.value.slice(pos);
-    input.focus();
-    input.setSelectionRange(pos + e.length, pos + e.length);
-  }
-  closeAllPickers();
-}
-
-function openStickerPicker() {
-  closeAllPickers();
-  var bar = document.querySelector('.chat-input-bar');
-  if (!bar) return;
-  var picker = document.createElement('div');
-  picker.className = 'sticker-picker-popup';
-  picker.innerHTML = '<div class="sticker-grid">' +
-    STICKER_LIST.map(function(s) {
-      return '<button class="sticker-item" onclick="sendSticker(\'' + s.emoji + '\',\'' + s.label + '\')"><span>' + s.emoji + '</span><span>' + s.label + '</span></button>';
-    }).join('') + '</div>';
-  bar.parentNode.insertBefore(picker, bar);
-}
-
-async function sendSticker(emoji, label) {
-  closeAllPickers();
-  if (!CHAT.contactEmail) return;
-  await supabaseInsert('team_messages', {
-    sender_email: CHAT.myEmail, receiver_email: CHAT.contactEmail,
-    message: emoji + ' ' + label, message_type: 'sticker',
-    is_edited: false, is_deleted: false, reactions: {}
-  });
-  await renderEnhancedTeamMessages();
-}
-
-function closeAllPickers() {
-  document.querySelectorAll('.emoji-picker-popup, .sticker-picker-popup').forEach(function(el) { el.remove(); });
-}
-
-/* ── MENTION ──────────────────────────────────────────────── */
-function handleMentionInput(val) {
-  var atPos = val.lastIndexOf('@');
-  if (atPos === -1) { closeMentionDropdown(); return; }
-  var query = val.slice(atPos + 1).toLowerCase();
-  if (query.includes(' ')) { closeMentionDropdown(); return; }
-  var contacts = Array.from(document.querySelectorAll('.contact-item')).map(function(el) {
-    var nameEl = el.querySelector('div > div:first-child');
-    return nameEl ? nameEl.textContent.trim() : '';
-  }).filter(Boolean);
-  var matches = contacts.filter(function(c) { return c.toLowerCase().startsWith(query); });
-  if (!matches.length) { closeMentionDropdown(); return; }
-  closeMentionDropdown();
-  var bar = document.querySelector('.chat-input-bar');
-  if (!bar) return;
-  var dd = document.createElement('div');
-  dd.className = 'mention-dropdown';
-  dd.id = 'mention-dd';
-  dd.innerHTML = matches.map(function(m) {
-    return '<div class="mention-option" onclick="completeMention(\'' + m + '\',' + atPos + ')">@' + m + '</div>';
-  }).join('');
-  bar.parentNode.insertBefore(dd, bar);
-}
-
-function completeMention(name, atPos) {
-  var input = document.getElementById('teamChatInput');
-  if (!input) return;
-  input.value = input.value.slice(0, atPos) + '@' + name + ' ';
-  input.focus();
-  closeMentionDropdown();
-}
-
-function closeMentionDropdown() {
-  var dd = document.getElementById('mention-dd');
-  if (dd) dd.remove();
-}
-
-/* ── POLLING ──────────────────────────────────────────────── */
-function startChatPolling() {
-  stopChatPolling();
-  CHAT.pollTimer = setInterval(async function() {
-    if (STATE.currentPage !== 'teamchat' || !CHAT.contactEmail) return;
-    var prevCount = CHAT.messages.length;
-    await renderEnhancedTeamMessages();
-    if (CHAT.messages.length > prevCount) {
-      var el = document.getElementById('teamMessages');
-      if (el) el.scrollTop = el.scrollHeight;
-    }
-  }, 3000);
-}
-
-function stopChatPolling() {
-  if (CHAT.pollTimer) clearInterval(CHAT.pollTimer);
-}
-
-/* ── SWITCH CONTACT ───────────────────────────────────────── */
-async function switchChatContactEnhanced(email, name) {
-  CHAT.contactEmail = email;
-  CHAT.contactName = name || email.split('@')[0];
-  STATE.activeChatContact = email;
-  var nameEl = document.getElementById('activeChatName');
-  if (nameEl) nameEl.textContent = CHAT.contactName;
-  var avatarEl = document.querySelector('.chat-avatar-sm:not(.mine)');
-  if (avatarEl) avatarEl.textContent = CHAT.contactName.charAt(0).toUpperCase();
-  cancelReply(); cancelEdit(); closeAllPickers();
-
-  // Mobile: show chat panel
-  var layout = document.querySelector('.chat-layout-enhanced');
-  if (layout) layout.classList.add('chat-open');
-
-  await renderEnhancedTeamMessages();
-  await renderEnhancedTeamContacts();
-  startChatPolling();
-}
-
-/* ── RENDER CONTACTS ──────────────────────────────────────── */
-async function renderEnhancedTeamContacts() {
-  var el = document.getElementById('chatContacts');
-  if (!el) return;
-  var profiles = await supabase('profiles', { order: 'full_name.asc' });
-  var others = (profiles || []).filter(function(p) { return p.email !== CHAT.myEmail; });
-  if (!others.length) {
-    el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet</div>';
-    return;
-  }
-  var presences = await Promise.all(others.map(function(p) { return getPresence(p.email); }));
-  el.innerHTML = others.map(function(p, i) {
-    var name = p.full_name || p.email.split('@')[0];
-    var initial = name.charAt(0).toUpperCase();
-    var isActive = p.email === CHAT.contactEmail;
-    var online = presences[i] && presences[i].is_online;
-    return '<div class="contact-item ' + (isActive ? 'active' : '') + '" onclick="switchChatContactEnhanced(\'' + p.email + '\',\'' + escapeHtml(name) + '\')">' +
-      '<div class="contact-avatar-wrap"><div class="contact-avatar">' + initial + '</div><div class="presence-dot ' + (online ? 'online' : 'offline') + '"></div></div>' +
-      '<div style="flex:1;min-width:0;margin-left:10px">' +
-      '<div style="font-weight:600;font-size:13.5px;color:var(--text)">' + escapeHtml(name) + '</div>' +
-      '<div style="font-size:11px;color:' + (online ? 'var(--success)' : 'var(--text-muted)') + '">' + (online ? '● Online' : '⊘ Offline') + '</div>' +
-      '</div></div>';
-  }).join('');
-}
-
-/* ── BUILD CHAT UI ────────────────────────────────────────── */
-function buildEnhancedChatUI() {
-  var chatPage = document.getElementById('page-teamchat');
-  if (!chatPage) return;
-  chatPage.innerHTML =
-    '<div class="page-header"><div><h1>💬 Team Chat</h1><p>WhatsApp-style team collaboration</p></div></div>' +
-    '<div class="chat-layout-enhanced">' +
-      '<div class="chat-sidebar-enhanced" id="chatSidebarEnhanced">' +
-        '<div class="chat-search">' +
-          '<input type="text" id="newChatEmail" placeholder="Enter email for new chat..." />' +
-          '<button class="btn-primary" style="margin-top:6px;width:100%;padding:8px;font-size:12px" onclick="startNewChatEnhanced()">+ New Chat</button>' +
-        '</div>' +
-        '<div class="chat-contacts" id="chatContacts"></div>' +
-      '</div>' +
-      '<div class="chat-main-enhanced">' +
-        '<div class="chat-header-bar" id="chatHeaderBar">' +
-          '<div class="chat-header-info">' +
-            '<button class="chat-back-btn" onclick="closeChatMobile()">‹</button>' +
-            '<div class="chat-avatar-sm">?</div>' +
-            '<div><div class="chat-contact-name" id="activeChatName">Select a contact</div><div class="chat-online">⊘ Offline</div></div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="chat-messages" id="teamMessages" style="flex:1;overflow-y:auto;padding:14px 16px">' +
-          '<div style="text-align:center;color:var(--text-muted);padding:40px 20px;font-size:13.5px">👈 Select a contact to start chatting</div>' +
-        '</div>' +
-        '<div id="replyBar" style="display:none;align-items:center;gap:10px;padding:8px 16px;background:var(--surface2);border-top:1px solid var(--border)">' +
-          '<div style="width:3px;height:36px;background:var(--primary);border-radius:2px;flex-shrink:0"></div>' +
-          '<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:2px">Replying to</div>' +
-          '<div class="reply-bar-text" style="font-size:12.5px;color:var(--text-muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis"></div></div>' +
-          '<button onclick="cancelReply()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);line-height:1">✕</button>' +
-        '</div>' +
-        '<div id="editBar" style="display:none;align-items:center;gap:10px;padding:8px 16px;background:rgba(99,102,241,.08);border-top:1px solid var(--border)">' +
-          '<span style="font-size:15px">✏️</span>' +
-          '<div class="edit-bar-text" style="flex:1;font-size:12.5px;color:var(--primary);font-weight:500"></div>' +
-          '<button onclick="cancelEdit()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);line-height:1">✕</button>' +
-        '</div>' +
-        '<div class="chat-input-bar" style="padding:12px 14px;gap:8px;flex-shrink:0">' +
-          '<button class="chat-tool-btn" onclick="openMainEmojiPicker()" title="Emoji">😊</button>' +
-          '<button class="chat-tool-btn" onclick="openStickerPicker()" title="Stickers">🎭</button>' +
-          '<input type="text" id="teamChatInput" placeholder="Type a message or @mention..." oninput="onChatInput();handleMentionInput(this.value)" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendEnhancedTeamMessage()}" />' +
-          '<button class="btn-primary" style="padding:10px 18px" onclick="sendEnhancedTeamMessage()">➤</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-}
-
-function startNewChatEnhanced() {
-  var emailInput = document.getElementById('newChatEmail');
-  var email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-  if (!email || !email.includes('@')) { showToast('Enter a valid email'); return; }
-  if (email === CHAT.myEmail) { showToast('Cannot chat with yourself!'); return; }
-  if (emailInput) emailInput.value = '';
-  switchChatContactEnhanced(email, email.split('@')[0]);
-}
-
-function closeChatMobile() {
-  var layout = document.querySelector('.chat-layout-enhanced');
-  if (layout) layout.classList.remove('chat-open');
-}
-
-/* ── CHAT CSS ─────────────────────────────────────────────── */
-function injectChatCSS() {
-  var style = document.createElement('style');
-  style.textContent = [
-    '.chat-layout-enhanced{display:grid;grid-template-columns:270px 1fr;gap:0;height:calc(100vh - 160px);min-height:520px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}',
-    '.chat-sidebar-enhanced{border-right:1.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--surface2)}',
-    '.chat-main-enhanced{display:flex;flex-direction:column;min-height:0;position:relative}',
-    '.contact-avatar-wrap{position:relative;flex-shrink:0}',
-    '.contact-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center}',
-    '.presence-dot{position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;border:2px solid var(--surface2)}',
-    '.presence-dot.online{background:var(--success)}.presence-dot.offline{background:var(--border)}',
-    '.chat-msg-wrap{display:flex;align-items:flex-end;gap:8px;margin-bottom:4px;position:relative}',
-    '.chat-msg-wrap.me{flex-direction:row-reverse}',
-    '.chat-msg-wrap:hover .msg-actions{opacity:1;pointer-events:auto}',
-    '.msg-avatar-sm{width:30px;height:30px;border-radius:50%;background:var(--primary-glow);color:var(--primary);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid var(--border)}',
-    '.msg-avatar-sm.mine{background:var(--primary);color:#fff}',
-    '.msg-bubble-outer{max-width:68%;display:flex;flex-direction:column}',
-    '.chat-msg-wrap.me .msg-bubble-outer{align-items:flex-end}',
-    '.msg-bubble{padding:9px 13px;border-radius:18px;font-size:13.5px;line-height:1.55;word-break:break-word;position:relative}',
-    '.msg-bubble.theirs{background:var(--surface2);border:1.5px solid var(--border);border-bottom-left-radius:4px;color:var(--text)}',
-    '.msg-bubble.mine{background:var(--primary);color:#fff;border-bottom-right-radius:4px}',
-    '.msg-bubble.deleted{opacity:.65}',
-    '.msg-meta{display:flex;align-items:center;gap:5px;margin-top:4px;justify-content:flex-end;font-size:10.5px;opacity:.7}',
-    '.msg-edited{font-style:italic}.msg-tick{color:#4fc3f7}',
-    '.msg-bubble.theirs .msg-meta{color:var(--text-muted)}.msg-bubble.mine .msg-meta{color:rgba(255,255,255,.7)}',
-    '.reply-preview-bubble{display:flex;gap:8px;align-items:stretch;background:rgba(0,0,0,.08);border-radius:10px 10px 0 0;padding:7px 10px;margin-bottom:2px;max-width:100%}',
-    '.msg-bubble.mine .reply-preview-bubble{background:rgba(255,255,255,.18)}',
-    '.reply-preview-bar{width:3px;border-radius:2px;background:var(--primary);flex-shrink:0}',
-    '.msg-bubble.mine .reply-preview-bar{background:rgba(255,255,255,.7)}',
-    '.reply-preview-text{font-size:12px;opacity:.8;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1}',
-    '.msg-reactions{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}',
-    '.reaction-chip{display:inline-flex;align-items:center;gap:3px;background:var(--surface2);border:1.5px solid var(--border);border-radius:99px;padding:2px 8px;font-size:13px;cursor:pointer;transition:border-color .2s,background .2s}',
-    '.reaction-chip:hover,.reaction-chip.mine{border-color:var(--primary);background:var(--primary-glow)}',
-    '.reaction-chip span{font-size:11.5px;font-weight:700;color:var(--text)}',
-    '.msg-actions{display:flex;align-items:center;gap:3px;opacity:0;pointer-events:none;transition:opacity .2s;position:absolute;top:-28px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:3px 6px;box-shadow:var(--shadow);z-index:10;right:0}',
-    '.chat-msg-wrap.me .msg-actions{right:40px}.chat-msg-wrap.them .msg-actions{left:40px;right:auto}',
-    '.msg-actions button{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 5px;border-radius:6px;transition:background .15s;color:var(--text)}',
-    '.msg-actions button:hover{background:var(--bg)}',
-    '.chat-date-separator{text-align:center;margin:12px 0;position:relative}',
-    '.chat-date-separator::before{content:"";position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}',
-    '.chat-date-separator span{background:var(--surface);position:relative;z-index:1;padding:2px 12px;font-size:11.5px;color:var(--text-muted);font-weight:600;border-radius:99px;border:1px solid var(--border)}',
-    '.emoji-picker-popup{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:10px;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;box-shadow:var(--shadow-lg);z-index:200;min-width:280px}',
-    '.emoji-picker-popup.main-emoji-picker{position:relative;bottom:auto;right:auto;margin-bottom:8px}',
-    '.emoji-picker-popup span{font-size:20px;cursor:pointer;padding:5px;border-radius:8px;text-align:center;transition:background .15s}',
-    '.emoji-picker-popup span:hover{background:var(--bg)}',
-    '.sticker-picker-popup{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:12px;box-shadow:var(--shadow-lg);z-index:200;margin-bottom:8px}',
-    '.sticker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}',
-    '.sticker-item{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;cursor:pointer;transition:border-color .2s,background .2s;font-family:var(--font)}',
-    '.sticker-item:hover{border-color:var(--primary);background:var(--primary-glow)}',
-    '.sticker-item span:first-child{font-size:22px}.sticker-item span:last-child{font-size:10.5px;color:var(--text-muted);font-weight:600;text-align:center}',
-    '.mention-dropdown{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:4px;z-index:200}',
-    '.mention-option{padding:9px 14px;font-size:13px;cursor:pointer;color:var(--text);transition:background .15s;font-weight:600}',
-    '.mention-option:hover{background:var(--primary-glow);color:var(--primary)}',
-    '.mention{color:var(--primary);font-weight:700;cursor:pointer}.mention:hover{text-decoration:underline}',
-    '.chat-tool-btn{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:18px;cursor:pointer;transition:border-color .2s,background .2s;flex-shrink:0}',
-    '.chat-tool-btn:hover{border-color:var(--primary);background:var(--primary-glow)}',
-    '.chat-back-btn{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px 8px;line-height:1}',
-    '@media(max-width:768px){.chat-layout-enhanced{grid-template-columns:1fr;height:calc(100vh - 140px)}.chat-main-enhanced{display:none}.chat-layout-enhanced.chat-open .chat-sidebar-enhanced{display:none}.chat-layout-enhanced.chat-open .chat-main-enhanced{display:flex}.chat-back-btn{display:block}.emoji-picker-popup{grid-template-columns:repeat(6,1fr);min-width:220px}.sticker-grid{grid-template-columns:repeat(3,1fr)}}'
-  ].join('');
-  document.head.appendChild(style);
-}
-
-
-/* ══════════════════════════════════════════════════════════════
-   PART 2 — VAULT PASSWORD MANAGER
-══════════════════════════════════════════════════════════════ */
-
-var VAULT_FOLDERS = [
-  { id: 'GST',       label: 'GST Portal',    icon: '📊', color: '#10b981' },
-  { id: 'MCA',       label: 'MCA / ROC',     icon: '🏛️', color: '#3b82f6' },
-  { id: 'IncomeTax', label: 'Income Tax',    icon: '💰', color: '#f59e0b' },
-  { id: 'TDS',       label: 'TDS / TRACES',  icon: '🧾', color: '#8b5cf6' },
-  { id: 'NSDL',      label: 'NSDL / CDSL',   icon: '📋', color: '#06b6d4' },
-  { id: 'Tally',     label: 'Tally / Zoho',  icon: '🧮', color: '#f43f5e' },
-  { id: 'Bank',      label: 'Bank Portals',  icon: '🏦', color: '#22c55e' },
-  { id: 'Email',     label: 'Email / Google',icon: '📧', color: '#ea580c' },
-  { id: 'Client',    label: 'Client Portals',icon: '👥', color: '#a78bfa' },
-  { id: 'Other',     label: 'Other',         icon: '🔑', color: '#64748b' },
-];
-
-var VAULT_STATE = {
-  credentials: [],
-  activeFolder: 'all',
-  searchQuery: '',
-  showPasswords: {},
-};
-
-async function loadVault() {
-  var res = await fetch(SUPABASE_URL + '/rest/v1/vault_credentials?order=folder.asc,created_at.desc', {
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-  });
-  VAULT_STATE.credentials = res.ok ? await res.json() : [];
-}
-
-function getVaultFiltered() {
-  var q = VAULT_STATE.searchQuery.toLowerCase();
-  return VAULT_STATE.credentials.filter(function(c) {
-    var mf = VAULT_STATE.activeFolder === 'all' || c.folder === VAULT_STATE.activeFolder;
-    var ms = !q || (c.label||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q) || (c.url||'').toLowerCase().includes(q);
-    return mf && ms;
-  });
-}
-
-function renderVaultPage() {
-  var page = document.getElementById('page-vault');
-  if (!page) return;
-  var filtered = getVaultFiltered();
-  var counts = {};
-  VAULT_STATE.credentials.forEach(function(c) { counts[c.folder] = (counts[c.folder] || 0) + 1; });
-
-  page.innerHTML =
-    '<div class="page-header"><div><h1>🔐 Vault</h1><p>Secure credential manager — ' + VAULT_STATE.credentials.length + ' saved credentials</p></div>' +
-    '<button class="btn-primary" onclick="openAddCredential()">+ Add Credential</button></div>' +
-    '<div class="vault-layout">' +
-      '<div class="vault-sidebar">' +
-        '<div class="vault-folder-item ' + (VAULT_STATE.activeFolder === 'all' ? 'active' : '') + '" onclick="setVaultFolder(\'all\')">' +
-        '<span>🔒</span><span style="flex:1">All Credentials</span><span class="vault-folder-count">' + VAULT_STATE.credentials.length + '</span></div>' +
-        '<div style="height:1px;background:var(--border);margin:8px 0"></div>' +
-        VAULT_FOLDERS.map(function(f) {
-          return '<div class="vault-folder-item ' + (VAULT_STATE.activeFolder === f.id ? 'active' : '') + '" onclick="setVaultFolder(\'' + f.id + '\')">' +
-            '<span>' + f.icon + '</span><span style="flex:1">' + f.label + '</span>' +
-            (counts[f.id] ? '<span class="vault-folder-count">' + counts[f.id] + '</span>' : '') + '</div>';
-        }).join('') +
-      '</div>' +
-      '<div class="vault-main">' +
-        '<div class="vault-search-bar"><span>🔍</span>' +
-        '<input type="text" placeholder="Search credentials..." value="' + escapeHtml(VAULT_STATE.searchQuery) + '" oninput="VAULT_STATE.searchQuery=this.value;renderVaultPage()" /></div>' +
-        '<div class="vault-section-title">' +
-          (VAULT_STATE.activeFolder === 'all' ? '🔒 All Credentials' : (function() { var f = VAULT_FOLDERS.find(function(x) { return x.id === VAULT_STATE.activeFolder; }); return f ? f.icon + ' ' + f.label : ''; })()) +
-          '<span style="color:var(--text-muted);font-weight:500;font-size:13px;margin-left:8px">(' + filtered.length + ')</span></div>' +
-        (filtered.length ?
-          '<div class="vault-grid">' + filtered.map(function(c) { return renderCredentialCard(c); }).join('') + '</div>' :
-          '<div class="empty-state" style="padding:60px 20px"><div class="empty-state-icon">🔑</div><div class="empty-state-text">No credentials here</div><div class="empty-state-sub">Click "+ Add Credential" to add one</div></div>'
-        ) +
-      '</div>' +
-    '</div>';
-}
-
-function renderCredentialCard(c) {
-  var folder = VAULT_FOLDERS.find(function(f) { return f.id === c.folder; }) || { icon: '🔑', color: '#64748b', label: c.folder };
-  var showPass = VAULT_STATE.showPasswords[c.id];
-  return '<div class="vault-card" id="vault-card-' + c.id + '">' +
-    '<div class="vault-card-header">' +
-      '<div class="vault-card-icon" style="background:' + folder.color + '22;color:' + folder.color + '">' + folder.icon + '</div>' +
-      '<div style="flex:1;min-width:0"><div class="vault-card-label">' + escapeHtml(c.label) + '</div><div class="vault-card-folder">' + folder.label + '</div></div>' +
-      '<div class="vault-card-actions">' +
-        '<button onclick="openEditCredential(' + c.id + ')" class="vault-icon-btn" title="Edit">✏️</button>' +
-        '<button onclick="confirmDeleteCredential(' + c.id + ')" class="vault-icon-btn danger" title="Delete">🗑️</button>' +
-      '</div>' +
-    '</div>' +
-    (c.url ? '<div class="vault-field"><span class="vault-field-label">🌐 URL</span><a href="' + escapeHtml(c.url) + '" target="_blank" class="vault-url">' + escapeHtml(c.url) + '</a></div>' : '') +
-    '<div class="vault-field"><span class="vault-field-label">👤 Username</span>' +
-      '<div class="vault-field-row"><span class="vault-field-val">' + escapeHtml(c.username || '—') + '</span>' +
-      (c.username ? '<button class="vault-copy-btn" onclick="copyVaultField(\'' + escapeHtml(c.username) + '\',\'Username\')" title="Copy username">📋</button>' : '') +
-      '</div></div>' +
-    '<div class="vault-field"><span class="vault-field-label">🔑 Password</span>' +
-      '<div class="vault-field-row"><span class="vault-field-val mono" id="pass-' + c.id + '">' + (showPass ? escapeHtml(c.password || '—') : (c.password ? '••••••••••' : '—')) + '</span>' +
-      '<div style="display:flex;gap:4px">' +
-      (c.password ?
-        '<button class="vault-copy-btn" onclick="copyVaultField(\'' + escapeHtml(c.password) + '\',\'Password\')" title="Copy password">📋</button>' +
-        '<button class="vault-copy-btn" onclick="toggleVaultPassword(' + c.id + ')" title="' + (showPass ? 'Hide' : 'Show') + ' password">' + (showPass ? '🙈' : '👁️') + '</button>'
-        : '') +
-      '</div></div></div>' +
-    (c.notes ? '<div class="vault-notes">' + escapeHtml(c.notes) + '</div>' : '') +
-    '</div>';
-}
-
-function toggleVaultPassword(id) {
-  VAULT_STATE.showPasswords[id] = !VAULT_STATE.showPasswords[id];
-  var c = VAULT_STATE.credentials.find(function(x) { return x.id === id; });
-  if (!c) return;
-  var el = document.getElementById('pass-' + id);
-  if (el) el.textContent = VAULT_STATE.showPasswords[id] ? (c.password || '—') : '••••••••••';
-  var card = document.getElementById('vault-card-' + id);
-  if (card) {
-    card.querySelectorAll('.vault-copy-btn').forEach(function(btn) {
-      if (btn.title.includes('Show') || btn.title.includes('Hide')) {
-        btn.textContent = VAULT_STATE.showPasswords[id] ? '🙈' : '👁️';
-        btn.title = (VAULT_STATE.showPasswords[id] ? 'Hide' : 'Show') + ' password';
-      }
-    });
-  }
-}
-
-function copyVaultField(value, label) {
-  if (!value || value === '—') return;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(value).then(function() { showToast('✅ ' + label + ' copied!'); });
-  } else {
-    var ta = document.createElement('textarea');
-    ta.value = value; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    showToast('✅ ' + label + ' copied!');
-  }
-}
-
-function setVaultFolder(folderId) {
-  VAULT_STATE.activeFolder = folderId;
-  VAULT_STATE.searchQuery = '';
-  renderVaultPage();
-}
-
-function openAddCredential(prefillFolder) {
-  var folderOptions = VAULT_FOLDERS.map(function(f) {
-    return '<option value="' + f.id + '"' + (prefillFolder === f.id ? ' selected' : '') + '>' + f.icon + ' ' + f.label + '</option>';
-  }).join('');
-  openModalWithContent('🔐 Add Credential',
-    '<div class="form-group"><label>Label / Name *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. GST Portal - Ramesh Enterprises" /></div>' +
-    '<div class="form-group"><label>Folder *</label><select class="form-control" id="vaultFolder">' + folderOptions + '</select></div>' +
-    '<div class="form-group"><label>Username / User ID</label><input type="text" class="form-control" id="vaultUsername" placeholder="Enter username or user ID" autocomplete="off" /></div>' +
-    '<div class="form-group"><label>Password</label><div style="position:relative">' +
-      '<input type="password" class="form-control" id="vaultPassword" placeholder="Enter password" autocomplete="new-password" style="padding-right:44px" />' +
-      '<button type="button" onclick="toggleAddPassVisibility()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px" id="addPassToggleBtn">👁️</button>' +
-    '</div></div>' +
-    '<div class="form-group"><label>Portal URL (optional)</label><input type="url" class="form-control" id="vaultUrl" placeholder="https://..." /></div>' +
-    '<div class="form-group"><label>Notes (optional)</label><textarea class="form-control" id="vaultNotes" rows="2" placeholder="Any extra info..."></textarea></div>' +
-    '<button class="btn-primary" style="width:100%;margin-top:4px" onclick="submitAddCredential()">🔐 Save Credential</button>'
-  );
-}
-
-function toggleAddPassVisibility() {
-  var inp = document.getElementById('vaultPassword');
-  var btn = document.getElementById('addPassToggleBtn');
-  if (!inp) return;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-  if (btn) btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
-}
-
-async function submitAddCredential() {
-  var label = document.getElementById('vaultLabel') ? document.getElementById('vaultLabel').value.trim() : '';
-  if (!label) { showToast('Label is required'); return; }
-  var raw = localStorage.getItem('witcorp-user');
-  var email = raw ? JSON.parse(raw).email : '';
-  var body = {
-    label: label,
-    folder: document.getElementById('vaultFolder') ? document.getElementById('vaultFolder').value : 'Other',
-    username: document.getElementById('vaultUsername') ? document.getElementById('vaultUsername').value.trim() : '',
-    password: document.getElementById('vaultPassword') ? document.getElementById('vaultPassword').value : '',
-    url: document.getElementById('vaultUrl') ? document.getElementById('vaultUrl').value.trim() : '',
-    notes: document.getElementById('vaultNotes') ? document.getElementById('vaultNotes').value.trim() : '',
-    created_by: email
-  };
-  var result = await supabaseInsert('vault_credentials', body);
-  if (result && result[0]) {
-    VAULT_STATE.credentials.unshift(result[0]);
-    closeModal(); renderVaultPage(); showToast('✅ Credential saved securely!');
-  } else { showToast('❌ Failed to save. Check Supabase.'); }
-}
-
-function openEditCredential(id) {
-  var c = VAULT_STATE.credentials.find(function(x) { return x.id === id; });
-  if (!c) return;
-  var folderOptions = VAULT_FOLDERS.map(function(f) {
-    return '<option value="' + f.id + '"' + (c.folder === f.id ? ' selected' : '') + '>' + f.icon + ' ' + f.label + '</option>';
-  }).join('');
-  openModalWithContent('✏️ Edit — ' + escapeHtml(c.label),
-    '<div class="form-group"><label>Label / Name *</label><input type="text" class="form-control" id="editVaultLabel" value="' + escapeHtml(c.label) + '" /></div>' +
-    '<div class="form-group"><label>Folder *</label><select class="form-control" id="editVaultFolder">' + folderOptions + '</select></div>' +
-    '<div class="form-group"><label>Username / User ID</label><input type="text" class="form-control" id="editVaultUsername" value="' + escapeHtml(c.username||'') + '" autocomplete="off" /></div>' +
-    '<div class="form-group"><label>Password</label><div style="position:relative">' +
-      '<input type="password" class="form-control" id="editVaultPassword" value="' + escapeHtml(c.password||'') + '" autocomplete="new-password" style="padding-right:44px" />' +
-      '<button type="button" onclick="toggleEditPassVisibility()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px" id="editPassToggleBtn">👁️</button>' +
-    '</div></div>' +
-    '<div class="form-group"><label>Portal URL</label><input type="url" class="form-control" id="editVaultUrl" value="' + escapeHtml(c.url||'') + '" /></div>' +
-    '<div class="form-group"><label>Notes</label><textarea class="form-control" id="editVaultNotes" rows="2">' + escapeHtml(c.notes||'') + '</textarea></div>' +
-    '<div style="display:flex;gap:10px;margin-top:4px">' +
-      '<button class="btn-primary" style="flex:1" onclick="submitEditCredential(' + id + ')">💾 Save Changes</button>' +
-      '<button class="btn-outline" style="flex:0 0 auto;border-color:var(--danger);color:var(--danger)" onclick="confirmDeleteCredential(' + id + ')">🗑️</button>' +
-    '</div>'
-  );
-}
-
-function toggleEditPassVisibility() {
-  var inp = document.getElementById('editVaultPassword');
-  var btn = document.getElementById('editPassToggleBtn');
-  if (!inp) return;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-  if (btn) btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
-}
-
-async function submitEditCredential(id) {
-  var label = document.getElementById('editVaultLabel') ? document.getElementById('editVaultLabel').value.trim() : '';
-  if (!label) { showToast('Label is required'); return; }
-  var body = {
-    label: label,
-    folder: document.getElementById('editVaultFolder') ? document.getElementById('editVaultFolder').value : 'Other',
-    username: document.getElementById('editVaultUsername') ? document.getElementById('editVaultUsername').value.trim() : '',
-    password: document.getElementById('editVaultPassword') ? document.getElementById('editVaultPassword').value : '',
-    url: document.getElementById('editVaultUrl') ? document.getElementById('editVaultUrl').value.trim() : '',
-    notes: document.getElementById('editVaultNotes') ? document.getElementById('editVaultNotes').value.trim() : ''
-  };
-  var res = await fetch(SUPABASE_URL + '/rest/v1/vault_credentials?id=eq.' + id, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (res.ok) {
-    var idx = VAULT_STATE.credentials.findIndex(function(c) { return c.id === id; });
-    if (idx !== -1) VAULT_STATE.credentials[idx] = Object.assign({}, VAULT_STATE.credentials[idx], body);
-    closeModal(); renderVaultPage(); showToast('✅ Credential updated!');
-  } else { showToast('❌ Update failed'); }
-}
-
-function confirmDeleteCredential(id) {
-  var c = VAULT_STATE.credentials.find(function(x) { return x.id === id; });
-  if (!c) return;
-  openModalWithContent('🗑️ Delete Credential',
-    '<div style="text-align:center;padding:14px 0">' +
-    '<div style="font-size:44px;margin-bottom:12px">⚠️</div>' +
-    '<div style="font-weight:700;font-size:15px;margin-bottom:8px">Delete "' + escapeHtml(c.label) + '"?</div>' +
-    '<div style="color:var(--text-muted);font-size:13px;margin-bottom:22px">This credential will be permanently deleted.</div>' +
-    '<div style="display:flex;gap:10px">' +
-      '<button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>' +
-      '<button class="btn-primary" style="flex:1;background:var(--danger)" onclick="doDeleteCredential(' + id + ')">Yes, Delete</button>' +
-    '</div></div>'
-  );
-}
-
-async function doDeleteCredential(id) {
-  var res = await fetch(SUPABASE_URL + '/rest/v1/vault_credentials?id=eq.' + id, {
-    method: 'DELETE',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-  });
-  if (res.ok) {
-    VAULT_STATE.credentials = VAULT_STATE.credentials.filter(function(c) { return c.id !== id; });
-    closeModal(); renderVaultPage(); showToast('🗑️ Credential deleted');
-  } else { showToast('❌ Delete failed'); }
-}
-
-function addVaultToSidebar() {
-  var dscItem = document.querySelector('[data-page="dsc"]');
-  if (dscItem) {
-    var vaultItem = document.createElement('a');
-    vaultItem.className = 'nav-item';
-    vaultItem.setAttribute('data-page', 'vault');
-    vaultItem.onclick = function() { navigate('vault'); };
-    vaultItem.innerHTML = '<span class="nav-icon">🔐</span><span class="nav-label">Vault</span>';
-    dscItem.insertAdjacentElement('afterend', vaultItem);
-  }
-  var pageContent = document.getElementById('pageContent');
-  if (pageContent && !document.getElementById('page-vault')) {
-    var section = document.createElement('section');
-    section.className = 'page';
-    section.id = 'page-vault';
-    pageContent.appendChild(section);
-  }
-}
-
-/* ── VAULT CSS ────────────────────────────────────────────── */
-function injectVaultCSS() {
-  var style = document.createElement('style');
-  style.textContent = [
-    '.vault-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}',
-    '.vault-sidebar{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px;position:sticky;top:calc(var(--topbar-h) + 16px);box-shadow:var(--shadow)}',
-    '.vault-folder-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--text);transition:background .15s,color .15s}',
-    '.vault-folder-item:hover{background:var(--bg)}',
-    '.vault-folder-item.active{background:var(--primary-glow);color:var(--primary);font-weight:700}',
-    '.vault-folder-count{background:var(--border);color:var(--text-muted);font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;flex-shrink:0}',
-    '.vault-folder-item.active .vault-folder-count{background:var(--primary-glow);color:var(--primary)}',
-    '.vault-main{min-width:0}',
-    '.vault-search-bar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:18px;transition:border-color .2s,box-shadow .2s}',
-    '.vault-search-bar:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow)}',
-    '.vault-search-bar input{flex:1;border:none;background:none;font-size:13.5px;color:var(--text);outline:none;font-family:var(--font)}',
-    '.vault-search-bar input::placeholder{color:var(--text-muted)}',
-    '.vault-section-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;font-family:"Poppins",sans-serif}',
-    '.vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}',
-    '.vault-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s}',
-    '.vault-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}',
-    '.vault-card-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}',
-    '.vault-card-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}',
-    '.vault-card-label{font-weight:700;font-size:13.5px;color:var(--text)}.vault-card-folder{font-size:11.5px;color:var(--text-muted);margin-top:2px}',
-    '.vault-card-actions{display:flex;gap:4px;margin-left:auto;flex-shrink:0;opacity:0;transition:opacity .2s}',
-    '.vault-card:hover .vault-card-actions{opacity:1}',
-    '.vault-field{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid var(--border)}',
-    '.vault-field:last-of-type{border-bottom:none}',
-    '.vault-field-label{font-size:10.5px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase}',
-    '.vault-field-row{display:flex;align-items:center;justify-content:space-between;gap:8px}',
-    '.vault-field-val{font-size:13.5px;color:var(--text);font-weight:500;flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}',
-    '.vault-field-val.mono{font-family:"Courier New",monospace;letter-spacing:.5px}',
-    '.vault-url{font-size:12.5px;color:var(--primary);text-decoration:none;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block}',
-    '.vault-url:hover{text-decoration:underline}',
-    '.vault-notes{font-size:12px;color:var(--text-muted);margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:8px;line-height:1.5}',
-    '.vault-icon-btn{background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:background .2s,border-color .2s}',
-    '.vault-icon-btn:hover{background:var(--bg);border-color:var(--primary)}',
-    '.vault-icon-btn.danger:hover{border-color:var(--danger);background:rgba(239,68,68,.08)}',
-    '.vault-copy-btn{background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:3px 7px;font-size:13px;cursor:pointer;transition:background .2s,border-color .2s;flex-shrink:0}',
-    '.vault-copy-btn:hover{background:var(--primary-glow);border-color:var(--primary)}',
-    '@media(max-width:768px){.vault-layout{grid-template-columns:1fr}.vault-sidebar{position:static;display:flex;flex-wrap:wrap;gap:6px;padding:8px}.vault-folder-item{padding:7px 10px;font-size:12.5px}.vault-grid{grid-template-columns:1fr}.vault-card-actions{opacity:1}}'
-  ].join('');
-  document.head.appendChild(style);
-}
-
-
-/* ══════════════════════════════════════════════════════════════
-   PART 3 — NAVIGATE PATCH (vault support)
-   Yeh app.js ke existing navigate() ko extend karta hai
-══════════════════════════════════════════════════════════════ */
-
-/* Existing navigate function ko wrap karo */
-(function() {
-  var _orig = navigate;
-  navigate = function(page) {
-    if (page === 'vault') {
-      STATE.currentPage = 'vault';
-      document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
-      var target = document.getElementById('page-vault');
-      if (target) target.classList.add('active');
-      document.querySelectorAll('.nav-item').forEach(function(item) {
-        item.classList.toggle('active', item.getAttribute('data-page') === 'vault');
-      });
-      if (window.innerWidth <= 768) {
-        var sidebar = document.getElementById('sidebar');
-        var overlay = document.getElementById('sidebarOverlay');
-        if (sidebar) sidebar.classList.remove('open');
-        if (overlay) overlay.classList.remove('show');
-        STATE.sidebarOpen = false;
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      loadVault().then(renderVaultPage);
-      return;
-    }
-    _orig(page);
-  };
-})();
-
-
-/* ══════════════════════════════════════════════════════════════
-   PART 4 — SINGLE DOMContentLoaded (sab ek jagah)
-══════════════════════════════════════════════════════════════ */
-
-document.addEventListener('DOMContentLoaded', function() {
-  /* Chat */
-  injectChatCSS();
-  buildEnhancedChatUI();
-  initEnhancedChat();
-  renderEnhancedTeamContacts();
-
-  /* Vault */
-  injectVaultCSS();
-  addVaultToSidebar();
-  loadVault();
-});
-
-/* ══════════════════════════════════════════════════════════════
-   END OF WITCORP ADDONS
-══════════════════════════════════════════════════════════════ */
+   END OF app.js — WITCORP | All Bugs Fixed | Complete Code
+   ===================
