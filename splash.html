@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WITCORP Hub</title>
+  <link rel="icon" href="logo.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0e1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Floating dots background ── */
+    .dots {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .dot {
+      position: absolute;
+      border-radius: 50%;
+      animation: float linear infinite;
+      opacity: 0.6;
+    }
+    @keyframes float {
+      0%   { transform: translateY(0) scale(1);   opacity: 0; }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.4; }
+      100% { transform: translateY(-100vh) scale(0.8); opacity: 0; }
+    }
+
+    /* ── Center container ── */
+    .splash-center {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* ── Logo glow ring ── */
+    .logo-ring {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: conic-gradient(#f0a500, #f5d060, #f0a500, #c47f00, #f0a500);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: ringPulse 2.5s ease-in-out infinite, fadeInScale 0.8s ease forwards;
+      box-shadow:
+        0 0 40px #f0a50060,
+        0 0 80px #f0a50030,
+        0 0 120px #f0a50015;
+      margin-bottom: 32px;
+    }
+    @keyframes ringPulse {
+      0%, 100% { box-shadow: 0 0 40px #f0a50060, 0 0 80px #f0a50030; }
+      50%       { box-shadow: 0 0 60px #f0a500a0, 0 0 120px #f0a50060; }
+    }
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.6); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .logo-inner {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: #0a0e1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-img {
+      width: 110px;
+      height: 110px;
+      border-radius: 22px;
+      object-fit: cover;
+    }
+
+    /* ── Text ── */
+    .splash-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #f0a500;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      animation: fadeInUp 0.6s ease 0.4s both;
+      margin-bottom: 8px;
+    }
+
+    .splash-sub {
+      font-size: 13px;
+      font-weight: 500;
+      color: #22c55e;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      animation: fadeInUp 0.6s ease 0.6s both;
+      margin-bottom: 40px;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrapper {
+      width: 240px;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 99px;
+      overflow: hidden;
+      animation: fadeInUp 0.6s ease 0.8s both;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f0a500, #f5d060);
+      border-radius: 99px;
+      transition: width 0.1s linear;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating dots -->
+<div class="dots" id="dots"></div>
+
+<!-- Center content -->
+<div class="splash-center">
+  <div class="logo-ring">
+    <div class="logo-inner">
+      <!-- ⬇️ Logo image — apna logo.png yahan use hoga -->
+      <img class="logo-img" src="logo.png" alt="WITCORP" 
+           onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'font-size:48px;font-weight:900;color:#f0a500;font-family:serif;\'>W</div>'" />
+    </div>
+  </div>
+
+  <div class="splash-title">WITCORP HUB</div>
+  <div class="splash-sub">Strategic Wisdom · Global Growth</div>
+
+  <div class="progress-wrapper">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+</div>
+
+<script>
+  /* ── Generate floating dots ── */
+  const dotsEl = document.getElementById('dots');
+  const colors = ['#f0a500','#22c55e','#6366f1','#3b82f6','#ec4899','#f0a50066'];
+  for (let i = 0; i < 18; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    const size = Math.random() * 6 + 3;
+    dot.style.cssText = `
+      width: ${size}px;
+      height: ${size}px;
+      left: ${Math.random() * 100}%;
+      top: ${Math.random() * 100 + 100}%;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      animation-duration: ${Math.random() * 6 + 5}s;
+      animation-delay: ${Math.random() * 4}s;
+    `;
+    dotsEl.appendChild(dot);
+  }
+
+  /* ── Progress bar animation → then redirect ── */
+  const fill = document.getElementById('progressFill');
+  let pct = 0;
+
+  /* Check if already logged in */
+  const token = localStorage.getItem('witcorp-access-token');
+  const target = token ? 'index.html' : 'login.html';
+
+  const interval = setInterval(() => {
+    pct += Math.random() * 3 + 1.5;
+    if (pct >= 100) {
+      pct = 100;
+      fill.style.width = '100%';
+      clearInterval(interval);
+      setTimeout(() => {
+        window.location.replace(target);
+      }, 300);
+    } else {
+      fill.style.width = pct + '%';
+    }
+  }, 50);
+</script>
+
+</body>
+</html>
