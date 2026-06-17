@@ -60,23 +60,27 @@
     }
 
     .auth-logo-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 18px;
-      overflow: hidden;
-      margin: 0 auto 14px;
-      background: var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+  width: 68px;
+  height: 68px;
+  border-radius: 22px;
+  overflow: visible;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  background: conic-gradient(#f0a500, #f5d060, #ffe082, #f0a500, #c47f00, #f0a500);
+  animation: spinBorder 3s linear infinite;
+}
 
-    .auth-logo-icon img {
-      width: 64px;
-      height: 64px;
-      object-fit: cover;
-      border-radius: 18px;
-    }
+.auth-logo-icon img {
+  width: 62px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 18px;
+  display: block;
+  background: #1e293b;
+}
 
     .auth-logo-icon .logo-fallback-text {
       font-size: 32px;
