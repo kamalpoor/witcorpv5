@@ -9,7 +9,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="WITCORP" />
-  <title>WITCORP – India Advisors LLP</title>
+  <title>Witcorp India Advisors LLP</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,32 +20,31 @@
   <!-- ===== AUTH GUARD ===== -->
   <script src="auth.js"></script>
   <script>
-   (async function () {
-  if (handleOAuthCallback()) {
-    window.location.replace('index.html');
-    return;
-  }
-  const token = localStorage.getItem('witcorp-access-token');
-  if (!token) {
-    window.location.replace('login.html');  // replace() use karo, href nahi
-    return;
-  }
-  const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-    headers: {
-      'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
-      'Authorization': 'Bearer ' + token
-    }
-  });
-  if (!res.ok) {
-    localStorage.clear();
-    window.location.replace('login.html');
-  }
-})();
+    (async function () {
+      if (handleOAuthCallback()) {
+        window.location.replace('index.html');
+        return;
+      }
+      const token = localStorage.getItem('witcorp-access-token');
+      if (!token) {
+        window.location.replace('login.html');
+        return;
+      }
+      const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
+        headers: {
+          'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      if (!res.ok) {
+        localStorage.clear();
+        window.location.replace('login.html');
+      }
+    })();
   </script>
 
-  <!-- ===== INLINE FIXES: toggleDarkMode + setTheme (missing from app.js) ===== -->
+  <!-- ===== INLINE FIXES ===== -->
   <script>
-    /* ---------- Dark Mode Toggle ---------- */
     function toggleDarkMode() {
       const isDark = document.body.classList.toggle('force-dark');
       localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
@@ -53,9 +52,7 @@
       if (btn) btn.textContent = isDark ? '☀️' : '🌙';
     }
 
-    /* ---------- Sidebar Theme Swatches ---------- */
     function setTheme(themeName) {
-      // Remove all theme classes from body
       const themes = [
         'theme-violet','theme-blue','theme-emerald','theme-rose',
         'theme-amber','theme-cyan','theme-dark','theme-midnight',
@@ -64,13 +61,11 @@
       themes.forEach(t => document.body.classList.remove(t));
       document.body.classList.add(themeName);
       localStorage.setItem('witcorp-body-theme', themeName);
-      // Active swatch highlight
       document.querySelectorAll('.swatch').forEach(s => {
         s.classList.toggle('active', s.dataset.theme === themeName);
       });
     }
 
-    /* ---------- Restore dark mode + theme on load ---------- */
     document.addEventListener('DOMContentLoaded', () => {
       const savedDark = localStorage.getItem('witcorp-dark-mode');
       if (savedDark === '1') {
@@ -82,7 +77,6 @@
       if (savedTheme) setTheme(savedTheme);
     });
 
-    /* ---------- filterClientType (missing from app.js) ---------- */
     function filterClientType(value) {
       if (typeof STATE !== 'undefined') {
         STATE.filters.clients.type = value;
@@ -91,7 +85,6 @@
       }
     }
 
-    /* ---------- loadUserInfo extended (role support) ---------- */
     function loadUserInfoExtended() {
       const userRaw = localStorage.getItem('witcorp-user');
       if (!userRaw) return;
@@ -120,11 +113,10 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon" style="background:none;padding:0;">
-  <img src="logo.png" alt="W" style="width:40px;height:40px;border-radius:12px;object-fit:cover;" />
-</div>
+      <img src="logo.png" alt="W" style="width:40px;height:40px;border-radius:12px;object-fit:cover;background:#6366f1;padding:4px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-size:24px;font-weight:800;color:#fff\'>W</span>'" />
+    </div>
     <div class="logo-text">
-      <span class="logo-name">Witcorp India</span>
-      <span class="logo-sub">Advisors LLP</span>
+      <span class="logo-name">Witcorp India Advisors LLP</span>
     </div>
   </div>
 
@@ -217,8 +209,8 @@
     </div>
     <div class="topbar-actions">
       <button class="topbar-btn" onclick="openAI()">✨ Ask AI</button>
-     <button class="topbar-btn icon-btn" onclick="openNotifications()">
-  🔔 <span class="notif-dot" id="notifCount">0</span>
+      <button class="topbar-btn icon-btn" onclick="openNotifications()">
+        🔔 <span class="notif-dot" id="notifCount">0</span>
       </button>
       <button class="topbar-btn icon-btn" id="toggleRightPanel" onclick="toggleRightPanel()" title="Show Panel" style="display:none">📋</button>
       <button class="topbar-btn icon-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
@@ -792,7 +784,7 @@
             </div>
           </div>
           <div class="chat-messages" id="teamMessages">
-            <div style="text-align:center;color:var(--text-muted,#64748b);padding:40px 20px">Select a contact or start a new chat</div>
+            <div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>
           </div>
           <div class="chat-input-bar">
             <input type="text" id="teamChatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendTeamMessage()" />
@@ -827,7 +819,7 @@
 </aside>
 
 <!-- ========== MODALS ========== -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+<div class="modal-overlay" id="modalOverlay" onclick="event.target.id === 'modalOverlay' && closeModal()">
   <div class="modal" id="modalBox" onclick="event.stopPropagation()">
     <div class="modal-header">
       <h3 id="modalTitle">Modal</h3>
@@ -852,34 +844,7 @@
 <!-- ========== APP SCRIPT ========== -->
 <script src="app.js"></script>
 
-<!-- ========== POST-LOAD PATCHES ========== -->
-<script>
-  /* Populate GST client dropdown dynamically after data loads */
-  const _origLoadAll = typeof loadAllData === 'function' ? loadAllData : null;
-  document.addEventListener('DOMContentLoaded', () => {
-    // After app.js DOMContentLoaded fires, patch GST client select
-    setTimeout(() => {
-      const gstSel = document.getElementById('gstClientSel');
-      if (gstSel && typeof STATE !== 'undefined' && STATE.clients.length) {
-        gstSel.innerHTML = '<option value="">Select Client</option>' +
-          STATE.clients.map(c => `<option>${c.name}</option>`).join('');
-      }
-    }, 3000);
-
-    /* Patch submitGSTReturn to use gstClientSel */
-    const origSubmitGST = window.submitGSTReturn;
-    window.submitGSTReturn = function () {
-      const gstSel = document.getElementById('gstClientSel');
-      if (gstSel) {
-        // Temporarily swap first select value so original function reads correctly
-        const allSelects = document.querySelectorAll('#page-gst select');
-        if (allSelects[0] && gstSel) allSelects[0].value = gstSel.value;
-      }
-      if (origSubmitGST) origSubmitGST();
-    };
-  });
-</script>
-  <!-- ========== SERVICE WORKER REGISTER — index.html ke </body> se pehle paste karo ========== -->
+<!-- ========== SERVICE WORKER REGISTER ========== -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
