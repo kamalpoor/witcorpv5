@@ -879,6 +879,21 @@
     };
   });
 </script>
+  <!-- ========== SERVICE WORKER REGISTER — index.html ke </body> se pehle paste karo ========== -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => {
+          console.log('[SW] Registered:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('[SW] Registration failed:', err);
+        });
+    });
+  }
+</script>
+<!-- ========== END SW REGISTER ========== -->
 
 </body>
 </html>
