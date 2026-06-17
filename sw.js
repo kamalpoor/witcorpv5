@@ -6,8 +6,9 @@
 const CACHE_NAME = 'witcorp-v1';
 const STATIC_ASSETS = [
   './',
-  './index.html',
+   './splash.html',
   './login.html',
+   './index.html',
   './app.js',
   './auth.js',
   './style.css',
