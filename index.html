@@ -18,30 +18,31 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>W</text></svg>" />
 
   <!-- ===== AUTH GUARD ===== -->
-  <script src="auth.js"></script>
-  <script>
-    (async function () {
-      if (handleOAuthCallback()) {
-        window.location.replace('index.html');
-        return;
+<script src="auth.js"></script>
+<script>
+  (async function () {
+    const isCallback = await handleOAuthCallback();  // ✅ await lagao
+    if (isCallback) {
+      window.location.replace('index.html');
+      return;
+    }
+    const token = localStorage.getItem('witcorp-access-token');
+    if (!token) {
+      window.location.replace('login.html');
+      return;
+    }
+    const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
+      headers: {
+        'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
+        'Authorization': 'Bearer ' + token
       }
-      const token = localStorage.getItem('witcorp-access-token');
-      if (!token) {
-        window.location.replace('login.html');
-        return;
-      }
-      const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-        headers: {
-          'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
-          'Authorization': 'Bearer ' + token
-        }
-      });
-      if (!res.ok) {
-        localStorage.clear();
-        window.location.replace('login.html');
-      }
-    })();
-  </script>
+    });
+    if (!res.ok) {
+      localStorage.clear();
+      window.location.replace('login.html');
+    }
+  })();
+</script>
 
   <!-- ===== INLINE FIXES ===== -->
   <script>
