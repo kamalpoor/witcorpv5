@@ -95,7 +95,12 @@ async function loginWithEmail(email, password) {
 
 function loginWithGoogle() {
   var redirectTo = encodeURIComponent('https://kamalpoor.github.io/witcorpv5/');
-  window.location.href = SUPABASE_URL + '/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
+  var url = 'https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
+  try {
+    window.location.assign(url);
+  } catch(e) {
+    window.location.href = url;
+  }
 }
 
 /* =========================================================
