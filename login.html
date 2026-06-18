@@ -638,11 +638,26 @@
     }
 
     /* Already logged in? Go to dashboard */
-    try {
-      var token = localStorage.getItem('witcorp-access-token');
-      if (token) { redirectToDashboard(); }
-    } catch (e) {}
-
+   /* Already logged in? Verify token first */
+try {
+  var token = localStorage.getItem('witcorp-access-token');
+  if (token) {
+    fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
+      headers: {
+        'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
+        'Authorization': 'Bearer ' + token
+      }
+    }).then(function(res) {
+      if (res.ok) {
+        redirectToDashboard();
+      } else {
+        localStorage.clear();
+      }
+    }).catch(function() {
+      localStorage.clear();
+    });
+  }
+} catch (e) {}
     /* Auto-focus email field */
     var emailEl = document.getElementById('loginEmail');
     if (emailEl) setTimeout(function () { emailEl.focus(); }, 100);
