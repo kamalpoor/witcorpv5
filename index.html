@@ -113,8 +113,8 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon" style="background:conic-gradient(#f0a500,#f5d060,#ffe082,#f0a500,#c47f00,#f0a500);padding:3px;border-radius:14px;animation:spinBorder 3s linear infinite;display:flex;align-items:center;justify-content:center;width:46px;height:46px;">
-  <img src="logo.png" alt="W" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#1e1b4b;display:block;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-size:20px;font-weight:800;color:#f0a500\'>W</span>'" />
-</div>
+      <img src="logo.png" alt="W" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#1e1b4b;display:block;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-size:20px;font-weight:800;color:#f0a500\'>W</span>'" />
+    </div>
     <div class="logo-text">
       <span class="logo-name">Witcorp India Advisors LLP</span>
     </div>
@@ -149,6 +149,10 @@
     <div class="nav-section-label">Tools</div>
     <a class="nav-item" data-page="dsc" onclick="navigate('dsc')">
       <span class="nav-icon">✍️</span><span class="nav-label">DSC &amp; eSign</span>
+    </a>
+    <a class="nav-item" data-page="vault" onclick="navigate('vault')">
+      <span class="nav-icon">🔐</span><span class="nav-label">Vault</span>
+      <span class="nav-badge">New</span>
     </a>
     <a class="nav-item" data-page="accounting" onclick="navigate('accounting')">
       <span class="nav-icon">🧮</span><span class="nav-label">Accounting Hub</span>
@@ -320,6 +324,11 @@
           <div class="module-info"><div class="module-name">DSC &amp; eSign</div><div class="module-desc">Digital signature services</div></div>
           <span class="module-arrow">›</span>
         </div>
+        <div class="module-card" onclick="navigate('vault')">
+          <div class="module-icon" style="background:linear-gradient(135deg,#f97316,#dc2626)">🔐</div>
+          <div class="module-info"><div class="module-name">Vault</div><div class="module-desc">Secure password manager</div></div>
+          <span class="module-arrow">›</span>
+        </div>
         <div class="module-card" onclick="navigate('accounting')">
           <div class="module-icon" style="background:linear-gradient(135deg,#f472b6,#db2777)">🧮</div>
           <div class="module-info"><div class="module-name">Accounting Hub</div><div class="module-desc">Accounting &amp; bookkeeping</div></div>
@@ -328,11 +337,6 @@
         <div class="module-card" onclick="navigate('tasks')">
           <div class="module-icon" style="background:linear-gradient(135deg,#fde68a,#f59e0b)">✅</div>
           <div class="module-info"><div class="module-name">Task Manager</div><div class="module-desc">Tasks &amp; team collaboration</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('reports')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#f87171,#dc2626)">📈</div>
-          <div class="module-info"><div class="module-name">Reports &amp; Insights</div><div class="module-desc">Analytics &amp; reports</div></div>
           <span class="module-arrow">›</span>
         </div>
       </div>
@@ -594,6 +598,23 @@
       </div>
     </section>
 
+    <!-- ===== VAULT (NEW) ===== -->
+    <section class="page" id="page-vault">
+      <div class="page-header">
+        <div><h1>🔐 Vault</h1><p>Secure password &amp; credentials manager</p></div>
+        <button class="btn-primary" onclick="openModal('addVaultItem')">+ Add Credential</button>
+      </div>
+      <div class="vault-container">
+        <div class="vault-sidebar">
+          <div class="vault-folders" id="vaultFolderList"></div>
+          <button class="btn-outline" style="width:100%;margin-top:12px;padding:8px;font-size:12px" onclick="openModal('createVaultFolder')">+ New Folder</button>
+        </div>
+        <div class="vault-main">
+          <div class="vault-credentials" id="vaultCredentialsList"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== ACCOUNTING HUB ===== -->
     <section class="page" id="page-accounting">
       <div class="page-header">
@@ -760,10 +781,10 @@
       </div>
     </section>
 
-    <!-- ===== TEAM CHAT ===== -->
+    <!-- ===== TEAM CHAT (ENHANCED) ===== -->
     <section class="page" id="page-teamchat">
       <div class="page-header">
-        <div><h1>💬 Team Chat</h1><p>Collaborate with your team</p></div>
+        <div><h1>💬 Team Chat</h1><p>Real-time team collaboration</p></div>
       </div>
       <div class="chat-layout">
         <div class="chat-sidebar">
@@ -779,18 +800,30 @@
               <div class="chat-avatar-sm">K</div>
               <div>
                 <div class="chat-contact-name" id="activeChatName">Select a contact</div>
-                <div class="chat-online">● Online</div>
+                <div class="chat-online"><span class="online-indicator" id="onlineIndicator">●</span> <span id="onlineStatus">Offline</span></div>
               </div>
             </div>
           </div>
           <div class="chat-messages" id="teamMessages">
             <div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>
           </div>
+          <div class="chat-typing-indicator" id="typingIndicator" style="display:none;padding:8px 12px;font-size:12px;color:var(--text-muted)">
+            <span id="typingName"></span> is typing
+            <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+          </div>
           <div class="chat-input-bar">
-            <input type="text" id="teamChatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendTeamMessage()" />
-            <button class="btn-primary" onclick="sendTeamMessage()">Send</button>
+            <input type="text" id="teamChatInput" placeholder="Type a message..." onkeydown="handleChatKeypress(event)" oninput="notifyTyping()" />
+            <div class="chat-input-actions">
+              <button class="chat-action-btn" title="Emoji" onclick="openEmojiPicker()">😊</button>
+              <button class="btn-primary" onclick="sendTeamMessage()">Send</button>
+            </div>
           </div>
         </div>
+      </div>
+
+      <!-- Emoji Picker Modal -->
+      <div id="emojiPickerModal" style="display:none;position:fixed;bottom:100px;right:20px;background:var(--surface);border-radius:12px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;width:300px;max-height:300px;overflow-y:auto">
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px" id="emojiGrid"></div>
       </div>
     </section>
 
@@ -842,7 +875,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- ========== APP SCRIPT ========== -->
-<script src="app.js"></script>
+<script src="app_enhanced.js"></script>
 
 <!-- ========== SERVICE WORKER REGISTER ========== -->
 <script>
