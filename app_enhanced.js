@@ -32,7 +32,12 @@ async function supabaseInsert(table, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
     body: JSON.stringify(body)
   });
   if (!res.ok) { console.error('Insert error:', await res.text()); return null; }
@@ -43,7 +48,12 @@ async function supabaseUpdate(table, id, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
   const res = await fetch(url, {
     method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
     body: JSON.stringify(body)
   });
   if (!res.ok) { console.error('Update error:', await res.text()); return null; }
@@ -52,7 +62,13 @@ async function supabaseUpdate(table, id, body) {
 
 async function supabaseDelete(table, id) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
-  const res = await fetch(url, { method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } });
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+    }
+  });
   return res.ok;
 }
 
@@ -79,7 +95,7 @@ const STATE = {
 };
 
 /* =========================================================
-   3. THEME SYSTEM — 30 Themes
+   3. THEME SYSTEM
    ========================================================= */
 
 const BG_THEMES = [
@@ -176,7 +192,7 @@ function initTheme() {
 }
 
 /* =========================================================
-   4. VAULT SYSTEM (SECURE PASSWORD MANAGER)
+   4. VAULT SYSTEM
    ========================================================= */
 
 const VAULT_FOLDERS = ['General', 'GST', 'MCA', 'TDS', 'ITR', 'Banking', 'Clients', 'Other'];
@@ -271,15 +287,15 @@ function editVaultItem(id) {
 }
 
 async function saveVaultEdit(id) {
-  const label = document.getElementById('editVaultLabel')?.value.trim();
+  const label = document.getElementById('editVaultLabel') ? document.getElementById('editVaultLabel').value.trim() : '';
   if (!label) { showToast('Label is required'); return; }
   const updated = {
     label,
-    folder: document.getElementById('editVaultFolder')?.value || 'General',
-    url: document.getElementById('editVaultUrl')?.value.trim() || '',
-    username: document.getElementById('editVaultUsername')?.value.trim() || '',
-    password: document.getElementById('editVaultPassword')?.value || '',
-    notes: document.getElementById('editVaultNotes')?.value.trim() || ''
+    folder: document.getElementById('editVaultFolder') ? document.getElementById('editVaultFolder').value : 'General',
+    url: document.getElementById('editVaultUrl') ? document.getElementById('editVaultUrl').value.trim() : '',
+    username: document.getElementById('editVaultUsername') ? document.getElementById('editVaultUsername').value.trim() : '',
+    password: document.getElementById('editVaultPassword') ? document.getElementById('editVaultPassword').value : '',
+    notes: document.getElementById('editVaultNotes') ? document.getElementById('editVaultNotes').value.trim() : ''
   };
   const ok = await supabaseUpdate('vault_credentials', id, updated);
   if (ok) {
@@ -322,7 +338,7 @@ function copyToClipboard(text, message) {
    5. ENHANCED TEAM CHAT
    ========================================================= */
 
-const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','😑','😐','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤑','🤐','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾'];
+const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','😑','😐','😶','😏','😒','🙄','😬','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤑','🤗','🤭','🤫','🤔','🤨','😮','🤐','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'];
 
 function initPresence() {
   const userRaw = localStorage.getItem('witcorp-user');
@@ -354,7 +370,7 @@ async function renderTeamContacts() {
     const name = p.full_name || p.email.split('@')[0];
     const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
     const isActive = p.email === STATE.activeChatContact;
-    const isOnline = STATE.userPresence[p.email]?.is_online || false;
+    const isOnline = STATE.userPresence[p.email] ? STATE.userPresence[p.email].is_online : false;
     return `
       <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
@@ -378,7 +394,7 @@ function switchChatContact(email, name) {
   if (nameEl) nameEl.textContent = name || email.split('@')[0];
   const statusEl = document.getElementById('onlineStatus');
   const indicator = document.getElementById('onlineIndicator');
-  const isOnline = STATE.userPresence[email]?.is_online || false;
+  const isOnline = STATE.userPresence[email] ? STATE.userPresence[email].is_online : false;
   if (statusEl) statusEl.textContent = isOnline ? 'Online' : 'Offline';
   if (indicator) {
     indicator.style.color = isOnline ? '#10b981' : '#9ca3af';
@@ -412,7 +428,7 @@ async function renderTeamMessages() {
       <div class="chat-msg ${isOwn ? 'user' : ''}" data-msg-id="${m.id}">
         <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
         <div class="msg-content">
-          ${replyMsg ? `<div class="msg-reply" onclick="event.stopPropagation()">
+          ${replyMsg ? `<div class="msg-reply">
             <div style="font-size:11px;color:var(--text-muted)">↳ Reply to ${escapeHtml(replyMsg.message.substring(0, 40))}...</div>
           </div>` : ''}
           <div style="background:${isOwn ? 'var(--primary)' : 'var(--surface2)'};color:${isOwn ? '#fff' : 'var(--text)'};padding:8px 12px;border-radius:12px;word-break:break-word">
@@ -455,7 +471,7 @@ function notifyTyping() {
 
 async function sendTeamMessage() {
   const input = document.getElementById('teamChatInput');
-  const text = input?.value.trim();
+  const text = input ? input.value.trim() : '';
   if (!text) return;
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
@@ -484,7 +500,7 @@ function editMessage(msgId, originalText) {
 }
 
 async function saveEditMessage(msgId) {
-  const newText = document.getElementById('editMsgText')?.value.trim();
+  const newText = document.getElementById('editMsgText') ? document.getElementById('editMsgText').value.trim() : '';
   if (!newText) { showToast('Message cannot be empty'); return; }
   const ok = await supabaseUpdate('team_messages', msgId, { message: newText, is_edited: true });
   if (ok) {
@@ -576,10 +592,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderBarChart();
   renderVaultFolders();
   renderVaultCredentials();
-  
+
   populateGSTClientDropdown();
 
-  // Real-time updates every 5 seconds
   setInterval(async () => {
     await renderTeamContacts();
   }, 5000);
@@ -590,8 +605,8 @@ function showPageLoader(show) {
   if (!loader) {
     loader = document.createElement('div');
     loader.id = 'pageLoader';
-    loader.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:Inter,sans-serif;`;
-    loader.innerHTML = `<div class="spinner"></div><div style="margin-top:16px;font-size:14px;font-weight:600;color:#6366f1">Loading WITCORP...</div><div style="font-size:12px;color:#64748b;margin-top:6px">Connecting to database...</div>`;
+    loader.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:Inter,sans-serif;';
+    loader.innerHTML = '<div class="spinner"></div><div style="margin-top:16px;font-size:14px;font-weight:600;color:#6366f1">Loading WITCORP...</div><div style="font-size:12px;color:#64748b;margin-top:6px">Connecting to database...</div>';
     document.body.appendChild(loader);
   }
   loader.style.display = show ? 'flex' : 'none';
@@ -732,33 +747,33 @@ function updateDashboardStats() {
   if (dashStats[4]) dashStats[4].textContent = String(todayFilings).padStart(2, '0');
 
   const gstStats = document.querySelectorAll('#page-gst .stat-number');
-  if (gstStats[0]) gstStats[0].textContent = STATE.gstReturns.filter(g=>g.status==='Filed').length;
-  if (gstStats[1]) gstStats[1].textContent = STATE.gstReturns.filter(g=>g.status==='Pending').length;
-  if (gstStats[2]) gstStats[2].textContent = STATE.gstReturns.filter(g=>g.status==='Overdue').length;
-  if (gstStats[3]) { const t = STATE.gstReturns.reduce((s,g)=>s+(g.tax_liability||0),0); gstStats[3].textContent = '₹ ' + formatAmount(t); }
+  if (gstStats[0]) gstStats[0].textContent = STATE.gstReturns.filter(g => g.status === 'Filed').length;
+  if (gstStats[1]) gstStats[1].textContent = STATE.gstReturns.filter(g => g.status === 'Pending').length;
+  if (gstStats[2]) gstStats[2].textContent = STATE.gstReturns.filter(g => g.status === 'Overdue').length;
+  if (gstStats[3]) { const t = STATE.gstReturns.reduce((s, g) => s + (g.tax_liability || 0), 0); gstStats[3].textContent = '₹ ' + formatAmount(t); }
 
   const rocStats = document.querySelectorAll('#page-roc .stat-number');
-  if (rocStats[0]) rocStats[0].textContent = STATE.rocFilings.filter(r=>r.status==='Filed').length;
-  if (rocStats[1]) rocStats[1].textContent = STATE.rocFilings.filter(r=>r.status==='In Progress').length;
-  if (rocStats[2]) rocStats[2].textContent = STATE.rocFilings.filter(r=>r.status==='Overdue').length;
-  if (rocStats[3]) rocStats[3].textContent = STATE.clients.filter(c=>c.type==='Company').length;
+  if (rocStats[0]) rocStats[0].textContent = STATE.rocFilings.filter(r => r.status === 'Filed').length;
+  if (rocStats[1]) rocStats[1].textContent = STATE.rocFilings.filter(r => r.status === 'In Progress').length;
+  if (rocStats[2]) rocStats[2].textContent = STATE.rocFilings.filter(r => r.status === 'Overdue').length;
+  if (rocStats[3]) rocStats[3].textContent = STATE.clients.filter(c => c.type === 'Company').length;
 
   const itrStats = document.querySelectorAll('#page-incometax .stat-number');
-  if (itrStats[0]) itrStats[0].textContent = STATE.itrFilings.filter(i=>i.status==='Filed').length;
-  if (itrStats[1]) itrStats[1].textContent = STATE.itrFilings.filter(i=>i.status==='Pending'||i.status==='In Progress').length;
-  if (itrStats[2]) { const r = STATE.itrFilings.reduce((s,i)=>s+(i.tax_deducted||0),0); itrStats[2].textContent = '₹ ' + formatAmount(r); }
-  if (itrStats[3]) { const t = STATE.itrFilings.reduce((s,i)=>s+(i.gross_income||0)*0.1,0); itrStats[3].textContent = '₹ ' + formatAmount(t); }
+  if (itrStats[0]) itrStats[0].textContent = STATE.itrFilings.filter(i => i.status === 'Filed').length;
+  if (itrStats[1]) itrStats[1].textContent = STATE.itrFilings.filter(i => i.status === 'Pending' || i.status === 'In Progress').length;
+  if (itrStats[2]) { const r = STATE.itrFilings.reduce((s, i) => s + (i.tax_deducted || 0), 0); itrStats[2].textContent = '₹ ' + formatAmount(r); }
+  if (itrStats[3]) { const t = STATE.itrFilings.reduce((s, i) => s + (i.gross_income || 0) * 0.1, 0); itrStats[3].textContent = '₹ ' + formatAmount(t); }
 
   const tdsStats = document.querySelectorAll('#page-tds .stat-number');
-  if (tdsStats[0]) tdsStats[0].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
-  if (tdsStats[1]) tdsStats[1].textContent = STATE.tdsReturns.filter(t=>t.status==='Pending').length;
-  if (tdsStats[2]) { const a = STATE.tdsReturns.reduce((s,t)=>s+(t.amount||0),0); tdsStats[2].textContent = '₹ ' + formatAmount(a); }
-  if (tdsStats[3]) tdsStats[3].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
+  if (tdsStats[0]) tdsStats[0].textContent = STATE.tdsReturns.filter(t => t.status === 'Filed').length;
+  if (tdsStats[1]) tdsStats[1].textContent = STATE.tdsReturns.filter(t => t.status === 'Pending').length;
+  if (tdsStats[2]) { const a = STATE.tdsReturns.reduce((s, t) => s + (t.amount || 0), 0); tdsStats[2].textContent = '₹ ' + formatAmount(a); }
+  if (tdsStats[3]) tdsStats[3].textContent = STATE.tdsReturns.filter(t => t.status === 'Filed').length;
 
   const auditStats = document.querySelectorAll('#page-audit .stat-number');
-  if (auditStats[0]) auditStats[0].textContent = STATE.audits.filter(a=>a.status==='In Progress').length;
-  if (auditStats[1]) auditStats[1].textContent = STATE.audits.filter(a=>a.status==='Completed').length;
-  if (auditStats[2]) auditStats[2].textContent = STATE.audits.filter(a=>a.status==='In Review').length;
+  if (auditStats[0]) auditStats[0].textContent = STATE.audits.filter(a => a.status === 'In Progress').length;
+  if (auditStats[1]) auditStats[1].textContent = STATE.audits.filter(a => a.status === 'Completed').length;
+  if (auditStats[2]) auditStats[2].textContent = STATE.audits.filter(a => a.status === 'In Review').length;
   const dueThisMonth = STATE.audits.filter(a => {
     if (!a.end_date) return false;
     const d = new Date(a.end_date);
@@ -767,24 +782,24 @@ function updateDashboardStats() {
   if (auditStats[3]) auditStats[3].textContent = dueThisMonth;
 
   const dscStats = document.querySelectorAll('#page-dsc .stat-number');
-  if (dscStats[0]) dscStats[0].textContent = STATE.dscRecords.filter(d=>d.status==='Active').length;
-  if (dscStats[1]) dscStats[1].textContent = STATE.dscRecords.filter(d=>(d.days_left||999)<=30).length;
+  if (dscStats[0]) dscStats[0].textContent = STATE.dscRecords.filter(d => d.status === 'Active').length;
+  if (dscStats[1]) dscStats[1].textContent = STATE.dscRecords.filter(d => (d.days_left || 999) <= 30).length;
   if (dscStats[2]) dscStats[2].textContent = STATE.dscRecords.length;
-  if (dscStats[3]) dscStats[3].textContent = STATE.dscRecords.filter(d=>(d.days_left||999)<=30).length;
+  if (dscStats[3]) dscStats[3].textContent = STATE.dscRecords.filter(d => (d.days_left || 999) <= 30).length;
 
-  const totalRev = STATE.accountingEntries.filter(t=>t.entry_type==='credit').reduce((s,t)=>s+(t.amount||0),0);
-  const totalExp = STATE.accountingEntries.filter(t=>t.entry_type==='debit').reduce((s,t)=>s+(t.amount||0),0);
+  const totalRev = STATE.accountingEntries.filter(t => t.entry_type === 'credit').reduce((s, t) => s + (t.amount || 0), 0);
+  const totalExp = STATE.accountingEntries.filter(t => t.entry_type === 'debit').reduce((s, t) => s + (t.amount || 0), 0);
   const netProfit = totalRev - totalExp;
-  const margin = totalRev ? Math.round((netProfit/totalRev)*100) : 0;
+  const margin = totalRev ? Math.round((netProfit / totalRev) * 100) : 0;
   const accStats = document.querySelectorAll('#page-accounting .stat-number');
   if (accStats[0]) accStats[0].textContent = '₹ ' + formatAmount(totalRev);
   if (accStats[1]) accStats[1].textContent = '₹ ' + formatAmount(totalExp);
   if (accStats[2]) accStats[2].textContent = '₹ ' + formatAmount(netProfit);
   if (accStats[3]) accStats[3].textContent = margin + '%';
 
-  const done = STATE.tasks.filter(t=>t.column_name==='done').length;
-  const inprog = STATE.tasks.filter(t=>t.column_name==='inprogress').length;
-  const todo = STATE.tasks.filter(t=>t.column_name==='todo').length;
+  const done = STATE.tasks.filter(t => t.column_name === 'done').length;
+  const inprog = STATE.tasks.filter(t => t.column_name === 'inprogress').length;
+  const todo = STATE.tasks.filter(t => t.column_name === 'todo').length;
   const taskStats = document.querySelectorAll('#page-tasks .stat-number');
   if (taskStats[0]) taskStats[0].textContent = done;
   if (taskStats[1]) taskStats[1].textContent = inprog;
@@ -793,7 +808,7 @@ function updateDashboardStats() {
 
   const rptStats = document.querySelectorAll('#page-reports .stat-number');
   const totalFilings = STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length;
-  const pct = STATE.tasks.length ? Math.round((done/STATE.tasks.length)*100) : 0;
+  const pct = STATE.tasks.length ? Math.round((done / STATE.tasks.length) * 100) : 0;
   if (rptStats[0]) rptStats[0].textContent = STATE.clients.length;
   if (rptStats[1]) rptStats[1].textContent = totalFilings;
   if (rptStats[2]) rptStats[2].textContent = '₹ ' + formatAmount(totalRev);
@@ -803,9 +818,9 @@ function updateDashboardStats() {
   if (donutCenter) donutCenter.textContent = pct + '%';
   const donutChart = document.querySelector('#page-reports .donut-chart');
   if (donutChart && STATE.tasks.length) {
-    const doneP = done/STATE.tasks.length*100;
-    const ipP = inprog/STATE.tasks.length*100;
-    donutChart.style.background = `conic-gradient(var(--success) 0% ${doneP}%, var(--info) ${doneP}% ${doneP+ipP}%, var(--warning) ${doneP+ipP}% 100%)`;
+    const doneP = done / STATE.tasks.length * 100;
+    const ipP = inprog / STATE.tasks.length * 100;
+    donutChart.style.background = `conic-gradient(var(--success) 0% ${doneP}%, var(--info) ${doneP}% ${doneP + ipP}%, var(--warning) ${doneP + ipP}% 100%)`;
   }
 }
 
@@ -817,7 +832,7 @@ function getFilteredClients() {
   const { search, status, type } = STATE.filters.clients;
   return STATE.clients.filter(c => {
     const s = search.toLowerCase();
-    const matchSearch = !search || (c.name||'').toLowerCase().includes(s) || (c.pan||'').toLowerCase().includes(s) || (c.email||'').toLowerCase().includes(s);
+    const matchSearch = !search || (c.name || '').toLowerCase().includes(s) || (c.pan || '').toLowerCase().includes(s) || (c.email || '').toLowerCase().includes(s);
     const matchStatus = !status || c.status === status;
     const matchType = !type || c.type === type;
     return matchSearch && matchStatus && matchType;
@@ -900,11 +915,11 @@ function viewClient(id) {
   if (!c) return;
   openModalWithContent(`👥 ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.name)}</div></div>
-    <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan||'-')}</div></div>
-    <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.type||'-')}</div></div>
-    <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.gst||'-')}</div></div>
-    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email||'-')}</div></div>
-    <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone||'-')}</div></div>
+    <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan || '-')}</div></div>
+    <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.type || '-')}</div></div>
+    <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.gst || '-')}</div></div>
+    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email || '-')}</div></div>
+    <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone || '-')}</div></div>
     <div class="form-group"><label>Status</label><div>${statusBadge(c.status)}</div></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
@@ -915,14 +930,14 @@ function editClient(id) {
   if (!c) return;
   openModalWithContent(`✏️ Edit — ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeHtml(c.name)}" /></div>
-    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(c.email||'')}" /></div>
-    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(c.phone||'')}" /></div>
-    <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="editClientGST" value="${escapeHtml(c.gst||'')}" /></div>
+    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(c.email || '')}" /></div>
+    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(c.phone || '')}" /></div>
+    <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="editClientGST" value="${escapeHtml(c.gst || '')}" /></div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="editClientStatus">
-        <option ${c.status==='Active'?'selected':''}>Active</option>
-        <option ${c.status==='Inactive'?'selected':''}>Inactive</option>
-        <option ${c.status==='Pending'?'selected':''}>Pending</option>
+        <option ${c.status === 'Active' ? 'selected' : ''}>Active</option>
+        <option ${c.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+        <option ${c.status === 'Pending' ? 'selected' : ''}>Pending</option>
       </select>
     </div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveClientEdit(${id})">💾 Save Changes</button>
@@ -1058,9 +1073,9 @@ function renderROCTable() {
   tbody.innerHTML = STATE.rocFilings.map(r => `
     <tr>
       <td><strong>${escapeHtml(r.company)}</strong></td>
-      <td>${escapeHtml(r.cin||'-')}</td>
-      <td>${escapeHtml(r.form||'-')}</td>
-      <td>${escapeHtml(r.due_date||'-')}</td>
+      <td>${escapeHtml(r.cin || '-')}</td>
+      <td>${escapeHtml(r.form || '-')}</td>
+      <td>${escapeHtml(r.due_date || '-')}</td>
       <td>${statusBadge(r.status)}</td>
       <td>
         <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
@@ -1077,9 +1092,9 @@ function editROCStatus(id) {
   openModalWithContent(`Update ROC Filing — ${escapeHtml(r.company)}`, `
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="rocStatusSel">
-        <option ${r.status==='In Progress'?'selected':''}>In Progress</option>
-        <option ${r.status==='Filed'?'selected':''}>Filed</option>
-        <option ${r.status==='Overdue'?'selected':''}>Overdue</option>
+        <option ${r.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+        <option ${r.status === 'Filed' ? 'selected' : ''}>Filed</option>
+        <option ${r.status === 'Overdue' ? 'selected' : ''}>Overdue</option>
       </select>
     </div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>
@@ -1116,7 +1131,7 @@ function renderITRList() {
     <div class="itr-item">
       <div>
         <div class="gst-item-name">${escapeHtml(itr.client_name)}</div>
-        <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date||'-')}</div>
+        <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date || '-')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         ${statusBadge(itr.status)}
@@ -1130,15 +1145,15 @@ function renderITRList() {
 async function submitITR() {
   const selects = document.querySelectorAll('#page-incometax select');
   const inputs = document.querySelectorAll('#page-incometax input[type="number"]');
-  const clientName = selects[0]?.value;
+  const clientName = selects[0] ? selects[0].value : '';
   if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
   const body = {
     client_name: clientName,
-    assessment_year: selects[1]?.value || '2025-26',
-    form: selects[2]?.value || 'ITR-1',
-    gross_income: parseFloat(inputs[0]?.value) || 0,
-    tax_deducted: parseFloat(inputs[1]?.value) || 0,
-    deductions: parseFloat(inputs[2]?.value) || 0,
+    assessment_year: selects[1] ? selects[1].value : '2025-26',
+    form: selects[2] ? selects[2].value : 'ITR-1',
+    gross_income: parseFloat(inputs[0] ? inputs[0].value : 0) || 0,
+    tax_deducted: parseFloat(inputs[1] ? inputs[1].value : 0) || 0,
+    deductions: parseFloat(inputs[2] ? inputs[2].value : 0) || 0,
     status: 'Filed',
     filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   };
@@ -1166,10 +1181,10 @@ function renderTDSTable() {
   tbody.innerHTML = STATE.tdsReturns.map(t => `
     <tr>
       <td><strong>${escapeHtml(t.deductor)}</strong></td>
-      <td>${escapeHtml(t.tan||'-')}</td>
-      <td>${escapeHtml(t.quarter||'-')}</td>
-      <td>${escapeHtml(t.form_type||'-')}</td>
-      <td>₹ ${formatAmount(t.amount||0)}</td>
+      <td>${escapeHtml(t.tan || '-')}</td>
+      <td>${escapeHtml(t.quarter || '-')}</td>
+      <td>${escapeHtml(t.form_type || '-')}</td>
+      <td>₹ ${formatAmount(t.amount || 0)}</td>
       <td>
         ${statusBadge(t.status)}
         <button class="btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px;border-color:var(--danger);color:var(--danger)" onclick="deleteTDS(${t.id})">✕</button>
@@ -1182,15 +1197,15 @@ function renderTDSTable() {
 async function submitTDS() {
   const inputs = document.querySelectorAll('#page-tds input[type="text"], #page-tds input[type="number"]');
   const selects = document.querySelectorAll('#page-tds select');
-  const deductor = inputs[0]?.value.trim();
+  const deductor = inputs[0] ? inputs[0].value.trim() : '';
   if (!deductor) { showToast('Please enter deductor name'); return; }
   const body = {
     deductor,
-    tan: inputs[1]?.value.trim(),
-    quarter: selects[0]?.value,
-    form_type: selects[1]?.value,
-    amount: parseFloat(inputs[2]?.value) || 0,
-    challan_no: inputs[3]?.value.trim(),
+    tan: inputs[1] ? inputs[1].value.trim() : '',
+    quarter: selects[0] ? selects[0].value : '',
+    form_type: selects[1] ? selects[1].value : '',
+    amount: parseFloat(inputs[2] ? inputs[2].value : 0) || 0,
+    challan_no: inputs[3] ? inputs[3].value.trim() : '',
     status: 'Filed'
   };
   const result = await supabaseInsert('tds_returns', body);
@@ -1217,10 +1232,10 @@ function renderAuditTable() {
   tbody.innerHTML = STATE.audits.map(a => `
     <tr>
       <td><strong>${escapeHtml(a.client)}</strong></td>
-      <td>${escapeHtml(a.audit_type||'-')}</td>
-      <td>${escapeHtml(a.auditor||'-')}</td>
-      <td>${escapeHtml(a.start_date||'-')}</td>
-      <td>${escapeHtml(a.end_date||'-')}</td>
+      <td>${escapeHtml(a.audit_type || '-')}</td>
+      <td>${escapeHtml(a.auditor || '-')}</td>
+      <td>${escapeHtml(a.start_date || '-')}</td>
+      <td>${escapeHtml(a.end_date || '-')}</td>
       <td>${statusBadge(a.status)}</td>
       <td>
         <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
@@ -1237,9 +1252,9 @@ function editAuditStatus(id) {
   openModalWithContent(`Update Audit — ${escapeHtml(a.client)}`, `
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="auditStatusSel">
-        <option ${a.status==='In Progress'?'selected':''}>In Progress</option>
-        <option ${a.status==='In Review'?'selected':''}>In Review</option>
-        <option ${a.status==='Completed'?'selected':''}>Completed</option>
+        <option ${a.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+        <option ${a.status === 'In Review' ? 'selected' : ''}>In Review</option>
+        <option ${a.status === 'Completed' ? 'selected' : ''}>Completed</option>
       </select>
     </div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAuditStatus(${id})">Save</button>
@@ -1279,33 +1294,34 @@ function renderDSCAlerts() {
       <div class="activity-dot ${daysLeft <= 7 ? 'orange' : 'blue'}">⚠️</div>
       <div style="flex:1">
         <div class="gst-item-name">${escapeHtml(d.client_name)}</div>
-        <div class="gst-item-sub">${escapeHtml(d.purpose||'-')} • Expires ${escapeHtml(d.expiry_date||'-')}</div>
+        <div class="gst-item-sub">${escapeHtml(d.purpose || '-')} • Expires ${escapeHtml(d.expiry_date || '-')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="badge ${daysLeft <= 7 ? 'badge-danger' : 'badge-warning'}">${daysLeft}d left</span>
         <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteDSC(${d.id})">✕</button>
       </div>
     </div>
-  `}).join('');
+  `;
+  }).join('');
   updateDashboardStats();
 }
 
 async function submitDSC() {
   const inputs = document.querySelectorAll('#page-dsc input[type="text"]');
   const selects = document.querySelectorAll('#page-dsc select');
-  const clientName = inputs[0]?.value.trim();
+  const clientName = inputs[0] ? inputs[0].value.trim() : '';
   if (!clientName) { showToast('Please enter client name'); return; }
   const expiryDate = new Date();
-  const validity = selects[1]?.value || '2 Years';
+  const validity = selects[1] ? selects[1].value : '2 Years';
   const years = parseInt(validity) || 2;
   expiryDate.setFullYear(expiryDate.getFullYear() + years);
   const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
   const body = {
     client_name: clientName,
-    pan: inputs[1]?.value.trim(),
-    dsc_type: selects[0]?.value,
+    pan: inputs[1] ? inputs[1].value.trim() : '',
+    dsc_type: selects[0] ? selects[0].value : '',
     validity,
-    purpose: selects[2]?.value,
+    purpose: selects[2] ? selects[2].value : '',
     expiry_date: expiryDate.toISOString().split('T')[0],
     days_left: daysLeft,
     status: 'Active'
@@ -1335,10 +1351,10 @@ function renderAccountingList() {
     <div class="acc-item">
       <div>
         <div class="gst-item-name">${escapeHtml(t.narration)}</div>
-        <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
+        <div class="gst-item-sub">${escapeHtml(t.entry_date || '')} • ${escapeHtml(t.voucher_type || '')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
+        <div class="acc-amount ${t.entry_type}">${t.entry_type === 'credit' ? '+' : '-'} ₹ ${formatAmount(t.amount || 0)}</div>
         <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteAccEntry(${t.id})">✕</button>
       </div>
     </div>
@@ -1351,18 +1367,18 @@ async function submitJournalEntry() {
   const voucherSel = document.querySelector('#page-accounting select');
   const inputs = document.querySelectorAll('#page-accounting input[type="text"], #page-accounting input[type="number"]');
   const textarea = document.querySelector('#page-accounting textarea');
-  const narration = textarea?.value.trim();
-  const amount = parseFloat(inputs[inputs.length-1]?.value) || 0;
+  const narration = textarea ? textarea.value.trim() : '';
+  const amount = parseFloat(inputs[inputs.length - 1] ? inputs[inputs.length - 1].value : 0) || 0;
   if (!narration) { showToast('Please enter narration'); return; }
   if (!amount) { showToast('Please enter amount'); return; }
-  const voucherType = voucherSel?.value || 'Journal';
-  const entryType = ['Receipt','Sales','Invoice'].includes(voucherType) ? 'credit' : 'debit';
+  const voucherType = voucherSel ? voucherSel.value : 'Journal';
+  const entryType = ['Receipt', 'Sales', 'Invoice'].includes(voucherType) ? 'credit' : 'debit';
   const body = {
     narration, voucher_type: voucherType,
-    debit_account: inputs[0]?.value.trim(),
-    credit_account: inputs[1]?.value.trim(),
+    debit_account: inputs[0] ? inputs[0].value.trim() : '',
+    credit_account: inputs[1] ? inputs[1].value.trim() : '',
     amount, entry_type: entryType,
-    entry_date: dateEl?.value || new Date().toISOString().split('T')[0]
+    entry_date: dateEl ? dateEl.value : new Date().toISOString().split('T')[0]
   };
   const result = await supabaseInsert('accounting_entries', body);
   if (result && result[0]) { STATE.accountingEntries.unshift(result[0]); renderAccountingList(); showToast('✅ Journal entry posted!'); }
@@ -1389,10 +1405,10 @@ function renderKanban() {
     container.innerHTML = items.map(t => `
       <div class="task-card" data-id="${t.id}" draggable="true" ondragstart="dragStart(event)" onclick="openTaskDetail(${t.id})">
         <div class="task-title">${escapeHtml(t.title)}</div>
-        <div class="task-meta">${(t.tags||[]).map(tag => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}</div>
+        <div class="task-meta">${(t.tags || []).map(tag => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}</div>
         <div class="task-meta">
-          <span>👤 ${escapeHtml(t.assignee||'Unassigned')}</span>
-          <span>📅 ${escapeHtml(t.due_date||'TBD')}</span>
+          <span>👤 ${escapeHtml(t.assignee || 'Unassigned')}</span>
+          <span>📅 ${escapeHtml(t.due_date || 'TBD')}</span>
         </div>
       </div>
     `).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
@@ -1439,14 +1455,14 @@ function addTask(col) {
 }
 
 async function createTask(col) {
-  const title = document.getElementById('newTaskTitle')?.value.trim();
+  const title = document.getElementById('newTaskTitle') ? document.getElementById('newTaskTitle').value.trim() : '';
   if (!title) { showToast('Please enter task title'); return; }
-  const tagsRaw = document.getElementById('newTaskTags')?.value.trim();
+  const tagsRaw = document.getElementById('newTaskTags') ? document.getElementById('newTaskTags').value.trim() : '';
   const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
   const body = {
     title, tags,
-    assignee: document.getElementById('newTaskAssignee')?.value || 'Kamlesh',
-    due_date: document.getElementById('newTaskDue')?.value.trim() || 'TBD',
+    assignee: document.getElementById('newTaskAssignee') ? document.getElementById('newTaskAssignee').value : 'Kamlesh',
+    due_date: document.getElementById('newTaskDue') ? document.getElementById('newTaskDue').value.trim() : 'TBD',
     column_name: col
   };
   const result = await supabaseInsert('tasks', body);
@@ -1461,15 +1477,15 @@ function openTaskDetail(id) {
     <div class="form-group"><label>Title</label><input type="text" class="form-control" id="editTaskTitle" value="${escapeHtml(task.title)}" /></div>
     <div class="form-group"><label>Assignee</label>
       <select class="form-control" id="taskAssigneeSel">
-        ${['Kamlesh','Punit','Shankar','Ganga','Damini'].map(a=>`<option ${task.assignee===a?'selected':''}>${a}</option>`).join('')}
+        ${['Kamlesh','Punit','Shankar','Ganga','Damini'].map(a => `<option ${task.assignee === a ? 'selected' : ''}>${a}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="editTaskDue" value="${escapeHtml(task.due_date||'')}" /></div>
+    <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="editTaskDue" value="${escapeHtml(task.due_date || '')}" /></div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="taskStatusSelect">
-        <option value="todo" ${task.column_name==='todo'?'selected':''}>To Do</option>
-        <option value="inprogress" ${task.column_name==='inprogress'?'selected':''}>In Progress</option>
-        <option value="done" ${task.column_name==='done'?'selected':''}>Done</option>
+        <option value="todo" ${task.column_name === 'todo' ? 'selected' : ''}>To Do</option>
+        <option value="inprogress" ${task.column_name === 'inprogress' ? 'selected' : ''}>In Progress</option>
+        <option value="done" ${task.column_name === 'done' ? 'selected' : ''}>Done</option>
       </select>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
@@ -1480,13 +1496,13 @@ function openTaskDetail(id) {
 }
 
 async function updateTask(id) {
-  const title = document.getElementById('editTaskTitle')?.value.trim();
+  const title = document.getElementById('editTaskTitle') ? document.getElementById('editTaskTitle').value.trim() : '';
   if (!title) { showToast('Task title required'); return; }
   const updated = {
     title,
-    assignee: document.getElementById('taskAssigneeSel')?.value,
-    due_date: document.getElementById('editTaskDue')?.value.trim(),
-    column_name: document.getElementById('taskStatusSelect')?.value
+    assignee: document.getElementById('taskAssigneeSel') ? document.getElementById('taskAssigneeSel').value : '',
+    due_date: document.getElementById('editTaskDue') ? document.getElementById('editTaskDue').value.trim() : '',
+    column_name: document.getElementById('taskStatusSelect') ? document.getElementById('taskStatusSelect').value : 'todo'
   };
   const ok = await supabaseUpdate('tasks', id, updated);
   if (ok) {
@@ -1508,7 +1524,7 @@ async function deleteTask(id) {
 function renderBarChart() {
   const el = document.getElementById('barChart');
   if (!el) return;
-  const months = ['Jan','Feb','Mar','Apr','May','Jun'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
   const data = months.map((label, i) => {
     const count = STATE.gstReturns.filter(g => {
       if (!g.filed_date) return false;
@@ -1524,7 +1540,7 @@ function renderBarChart() {
   const max = Math.max(...data.map(d => d.value), 1);
   el.innerHTML = data.map(d => `
     <div class="bar-item">
-      <div class="bar-fill" style="height:0%" data-target="${(d.value/max)*100}"></div>
+      <div class="bar-fill" style="height:0%" data-target="${(d.value / max) * 100}"></div>
       <div class="bar-label">${d.label} ${d.value > 0 ? '(' + d.value + ')' : ''}</div>
     </div>
   `).join('');
@@ -1554,7 +1570,7 @@ function getAIResponse(query) {
     if (!pending.length) return 'No pending GST returns right now! 🎉';
     let txt = `${pending.length} GST returns need attention:<br><br>`;
     pending.forEach(g => {
-      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'var(--danger)':'var(--warning)'}">${g.status}</span><br>`;
+      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status === 'Overdue' ? 'var(--danger)' : 'var(--warning)'}">${g.status}</span><br>`;
     });
     return txt;
   }
@@ -1574,10 +1590,10 @@ function getAIResponse(query) {
   }
   if (q.includes('client')) {
     const active = clients.filter(c => c.status === 'Active').length;
-    return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c=>c.status==='Pending').length}</strong>`;
+    return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c => c.status === 'Pending').length}</strong>`;
   }
   if (q.includes('upcoming') || q.includes('due') || q.includes('compliance')) {
-    return `Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!`;
+    return 'Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!';
   }
   const defaults = [
     'I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!',
@@ -1589,7 +1605,7 @@ function getAIResponse(query) {
 
 function sendAIMessage(presetMsg) {
   const input = document.getElementById('aiInput');
-  const msg = presetMsg || input?.value.trim();
+  const msg = presetMsg || (input ? input.value.trim() : '');
   if (!msg) return;
   const chatEl = document.getElementById('chatMessages');
   if (!chatEl) return;
@@ -1627,9 +1643,9 @@ function renderDocuments() {
   }
   el.innerHTML = STATE.documents.map(d => `
     <div class="doc-card" onclick="showToast('Opening ${escapeHtml(d.name)}')">
-      <div class="doc-icon">${d.icon||'📄'}</div>
+      <div class="doc-icon">${d.icon || '📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
-      <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
+      <div class="doc-meta">${escapeHtml(d.client_name || '')} • ${escapeHtml(d.file_size || '')}</div>
       <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:var(--danger);color:var(--danger)" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
     </div>
   `).join('');
@@ -1682,8 +1698,8 @@ function showDayEvents(day) {
   const events = STATE.calendarEvents.filter(e => {
     const d = new Date(e.event_date);
     return d.getFullYear() === STATE.calendar.year &&
-           d.getMonth() === STATE.calendar.month &&
-           d.getDate() === day;
+      d.getMonth() === STATE.calendar.month &&
+      d.getDate() === day;
   });
   if (!events || !events.length) {
     showToast('No events on ' + day + ' ' + MONTH_NAMES[STATE.calendar.month]);
@@ -1694,7 +1710,7 @@ function showDayEvents(day) {
       <div class="upcoming-item" style="margin-bottom:10px">
         <div>
           <div class="gst-item-name">${escapeHtml(e.title)}</div>
-          <div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div>
+          <div class="gst-item-sub">${escapeHtml(e.event_type || '')}</div>
         </div>
       </div>
     `).join('')}
@@ -1715,7 +1731,7 @@ function renderEventList() {
   const sorted = [...STATE.calendarEvents].sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
   el.innerHTML = sorted.length ? sorted.map(e => `
     <div class="upcoming-item" style="margin-bottom:10px">
-      <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
+      <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type || '')}</div></div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
         <button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteEvent(${e.id})">✕</button>
@@ -1751,7 +1767,7 @@ function renderDueDates() {
     const urgent = diff <= 1;
     return `
       <div class="due-item">
-        <div class="due-date-badge"><div class="due-date-num">${d.getDate()}</div><div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0,3)}</div></div>
+        <div class="due-date-badge"><div class="due-date-num">${d.getDate()}</div><div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0, 3)}</div></div>
         <div style="flex:1">
           <div class="due-title">${escapeHtml(e.title)}</div>
           <div class="due-sub ${urgent ? 'red' : ''}">${sub}</div>
@@ -1918,15 +1934,15 @@ function closeModal() {
 }
 
 async function submitAddClient() {
-  const name = document.getElementById('addClientName')?.value.trim();
+  const name = document.getElementById('addClientName') ? document.getElementById('addClientName').value.trim() : '';
   if (!name) { showToast('Client name is required'); return; }
   const body = {
     name,
-    pan: document.getElementById('addClientPAN')?.value.trim() || '-',
-    type: document.getElementById('addClientType')?.value,
-    gst: document.getElementById('addClientGST')?.value.trim() || '-',
-    email: document.getElementById('addClientEmail')?.value.trim() || '-',
-    phone: document.getElementById('addClientPhone')?.value.trim() || '-',
+    pan: document.getElementById('addClientPAN') ? document.getElementById('addClientPAN').value.trim() : '-',
+    type: document.getElementById('addClientType') ? document.getElementById('addClientType').value : 'Individual',
+    gst: document.getElementById('addClientGST') ? document.getElementById('addClientGST').value.trim() : '-',
+    email: document.getElementById('addClientEmail') ? document.getElementById('addClientEmail').value.trim() : '-',
+    phone: document.getElementById('addClientPhone') ? document.getElementById('addClientPhone').value.trim() : '-',
     status: 'Active'
   };
   const result = await supabaseInsert('clients', body);
@@ -1937,13 +1953,13 @@ async function submitAddClient() {
 }
 
 async function submitROCFiling() {
-  const company = document.getElementById('rocCompany')?.value.trim();
+  const company = document.getElementById('rocCompany') ? document.getElementById('rocCompany').value.trim() : '';
   if (!company) { showToast('Company name required'); return; }
   const body = {
     company,
-    cin: document.getElementById('rocCIN')?.value.trim() || '-',
-    form: document.getElementById('rocForm')?.value,
-    due_date: document.getElementById('rocDue')?.value || 'TBD',
+    cin: document.getElementById('rocCIN') ? document.getElementById('rocCIN').value.trim() : '-',
+    form: document.getElementById('rocForm') ? document.getElementById('rocForm').value : 'AOC-4',
+    due_date: document.getElementById('rocDue') ? document.getElementById('rocDue').value : 'TBD',
     status: 'In Progress'
   };
   const result = await supabaseInsert('roc_filings', body);
@@ -1952,14 +1968,14 @@ async function submitROCFiling() {
 }
 
 async function submitNewAudit() {
-  const client = document.getElementById('auditClient')?.value;
+  const client = document.getElementById('auditClient') ? document.getElementById('auditClient').value : '';
   if (!client || client === 'Select Client') { showToast('Please select a client'); return; }
   const body = {
     client,
-    audit_type: document.getElementById('auditType')?.value,
-    auditor: document.getElementById('auditAuditor')?.value,
-    start_date: document.getElementById('auditStart')?.value || 'TBD',
-    end_date: document.getElementById('auditEnd')?.value || 'TBD',
+    audit_type: document.getElementById('auditType') ? document.getElementById('auditType').value : '',
+    auditor: document.getElementById('auditAuditor') ? document.getElementById('auditAuditor').value : '',
+    start_date: document.getElementById('auditStart') ? document.getElementById('auditStart').value : 'TBD',
+    end_date: document.getElementById('auditEnd') ? document.getElementById('auditEnd').value : 'TBD',
     status: 'In Progress'
   };
   const result = await supabaseInsert('audits', body);
@@ -1968,15 +1984,15 @@ async function submitNewAudit() {
 }
 
 async function submitVaultItem() {
-  const label = document.getElementById('vaultLabel')?.value.trim();
+  const label = document.getElementById('vaultLabel') ? document.getElementById('vaultLabel').value.trim() : '';
   if (!label) { showToast('Label is required'); return; }
   const body = {
     label,
-    folder: document.getElementById('vaultFolder')?.value || 'General',
-    url: document.getElementById('vaultUrl')?.value.trim() || '',
-    username: document.getElementById('vaultUsername')?.value.trim() || '',
-    password: document.getElementById('vaultPassword')?.value || '',
-    notes: document.getElementById('vaultNotes')?.value.trim() || ''
+    folder: document.getElementById('vaultFolder') ? document.getElementById('vaultFolder').value : 'General',
+    url: document.getElementById('vaultUrl') ? document.getElementById('vaultUrl').value.trim() : '',
+    username: document.getElementById('vaultUsername') ? document.getElementById('vaultUsername').value.trim() : '',
+    password: document.getElementById('vaultPassword') ? document.getElementById('vaultPassword').value : '',
+    notes: document.getElementById('vaultNotes') ? document.getElementById('vaultNotes').value.trim() : ''
   };
   const result = await supabaseInsert('vault_credentials', body);
   if (result && result[0]) {
@@ -1986,22 +2002,22 @@ async function submitVaultItem() {
 }
 
 async function submitCreateFolder() {
-  const folderName = document.getElementById('newFolderName')?.value.trim();
+  const folderName = document.getElementById('newFolderName') ? document.getElementById('newFolderName').value.trim() : '';
   if (!folderName) { showToast('Folder name required'); return; }
   STATE.vaultSelectedFolder = folderName;
   closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('📁 Folder created!');
 }
 
 async function submitNewTaskModal() {
-  const title = document.getElementById('newTaskTitleModal')?.value.trim();
+  const title = document.getElementById('newTaskTitleModal') ? document.getElementById('newTaskTitleModal').value.trim() : '';
   if (!title) { showToast('Task title required'); return; }
-  const tagsRaw = document.getElementById('newTaskTagsModal')?.value.trim();
+  const tagsRaw = document.getElementById('newTaskTagsModal') ? document.getElementById('newTaskTagsModal').value.trim() : '';
   const body = {
     title,
-    tags: tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [],
-    assignee: document.getElementById('newTaskAssigneeModal')?.value || 'Kamlesh',
-    due_date: document.getElementById('newTaskDueModal')?.value.trim() || 'TBD',
-    column_name: document.getElementById('newTaskColModal')?.value || 'todo'
+    tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
+    assignee: document.getElementById('newTaskAssigneeModal') ? document.getElementById('newTaskAssigneeModal').value : 'Kamlesh',
+    due_date: document.getElementById('newTaskDueModal') ? document.getElementById('newTaskDueModal').value.trim() : 'TBD',
+    column_name: document.getElementById('newTaskColModal') ? document.getElementById('newTaskColModal').value : 'todo'
   };
   const result = await supabaseInsert('tasks', body);
   if (result && result[0]) { STATE.tasks.unshift(result[0]); closeModal(); renderKanban(); showToast('✅ Task added!'); }
@@ -2009,14 +2025,14 @@ async function submitNewTaskModal() {
 }
 
 async function submitUploadDoc() {
-  const name = document.getElementById('uploadDocName')?.value.trim();
+  const name = document.getElementById('uploadDocName') ? document.getElementById('uploadDocName').value.trim() : '';
   if (!name) { showToast('Document name required'); return; }
-  const typeVal = document.getElementById('uploadDocType')?.value || 'PDF';
+  const typeVal = document.getElementById('uploadDocType') ? document.getElementById('uploadDocType').value : 'PDF';
   const iconMap = { PDF: '📕', Excel: '📗', Word: '📘', Image: '🖼️' };
   const body = {
     name, doc_type: typeVal, icon: iconMap[typeVal] || '📄',
-    client_name: document.getElementById('uploadDocClient')?.value || 'Internal',
-    file_size: document.getElementById('uploadDocSize')?.value.trim() || 'Unknown'
+    client_name: document.getElementById('uploadDocClient') ? document.getElementById('uploadDocClient').value : 'Internal',
+    file_size: document.getElementById('uploadDocSize') ? document.getElementById('uploadDocSize').value.trim() : 'Unknown'
   };
   const result = await supabaseInsert('documents', body);
   if (result && result[0]) { STATE.documents.unshift(result[0]); closeModal(); renderDocuments(); showToast('✅ Document uploaded!'); }
@@ -2024,10 +2040,14 @@ async function submitUploadDoc() {
 }
 
 async function submitNewEvent() {
-  const title = document.getElementById('newEventTitle')?.value.trim();
-  const dateVal = document.getElementById('newEventDate')?.value;
+  const title = document.getElementById('newEventTitle') ? document.getElementById('newEventTitle').value.trim() : '';
+  const dateVal = document.getElementById('newEventDate') ? document.getElementById('newEventDate').value : '';
   if (!title || !dateVal) { showToast('Please fill all fields'); return; }
-  const body = { title, event_type: document.getElementById('newEventType')?.value, event_date: dateVal };
+  const body = {
+    title,
+    event_type: document.getElementById('newEventType') ? document.getElementById('newEventType').value : 'Internal',
+    event_date: dateVal
+  };
   const result = await supabaseInsert('calendar_events', body);
   if (result && result[0]) {
     STATE.calendarEvents.push(result[0]);
@@ -2066,12 +2086,12 @@ function loadUserInfo() {
     ? user.user_metadata.full_name
     : (user.email ? user.email.split('@')[0] : 'User');
   const initial = name.charAt(0).toUpperCase();
-  
+
   const initEl = document.getElementById('userInitial');
   const nameEl = document.getElementById('userDisplayName');
   if (initEl) initEl.textContent = initial;
   if (nameEl) nameEl.textContent = name;
-  
+
   const welcomeEl = document.getElementById('welcomeUserName');
   if (welcomeEl) welcomeEl.textContent = name;
 }
@@ -2123,8 +2143,8 @@ function handleSearch(query) {
   clearTimeout(window._searchTimeout);
   window._searchTimeout = setTimeout(() => {
     const q = query.toLowerCase();
-    const clients = STATE.clients.filter(c => (c.name||'').toLowerCase().includes(q)).length;
-    const tasks = STATE.tasks.filter(t => (t.title||'').toLowerCase().includes(q)).length;
+    const clients = STATE.clients.filter(c => (c.name || '').toLowerCase().includes(q)).length;
+    const tasks = STATE.tasks.filter(t => (t.title || '').toLowerCase().includes(q)).length;
     const msg = [];
     if (clients) msg.push(clients + ' client(s)');
     if (tasks) msg.push(tasks + ' task(s)');
@@ -2155,7 +2175,8 @@ function attachGlobalListeners() {
   document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      document.getElementById('globalSearch')?.focus();
+      const gs = document.getElementById('globalSearch');
+      if (gs) gs.focus();
     }
     if (e.key === 'Escape') {
       closeModal();
@@ -2187,16 +2208,16 @@ function openNotifications() {
   const notifList = document.getElementById('notifList');
   if (!notifList) return;
   const notifs = [];
-  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => {
+  STATE.gstReturns.filter(g => g.status === 'Pending').slice(0, 2).forEach(g => {
     notifs.push({ icon: '📊', text: 'GSTR pending: ' + g.client_name + ' — ' + g.return_type, time: 'Pending' });
   });
-  STATE.dscRecords.filter(d=>(d.days_left||99)<=30).forEach(d => {
+  STATE.dscRecords.filter(d => (d.days_left || 99) <= 30).forEach(d => {
     notifs.push({ icon: '⚠️', text: 'DSC expiring: ' + d.client_name + ' in ' + d.days_left + ' days', time: 'Alert' });
   });
-  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => {
+  STATE.tasks.filter(t => t.column_name === 'todo' && (t.tags || []).includes('High')).slice(0, 2).forEach(t => {
     notifs.push({ icon: '🔴', text: 'High priority: ' + t.title, time: 'Task' });
   });
-  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅', text:'No new notifications', time:''}]).map(n => `
+  notifList.innerHTML = (notifs.length ? notifs : [{ icon: '✅', text: 'No new notifications', time: '' }]).map(n => `
     <div class="notif-item">
       <div class="notif-icon">${n.icon}</div>
       <div><div class="notif-text">${escapeHtml(n.text)}</div><div class="notif-time">${escapeHtml(n.time)}</div></div>
@@ -2219,11 +2240,11 @@ function closeNotifications() {
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatAmount(num) {
@@ -2235,14 +2256,13 @@ function formatAmount(num) {
 
 function statusBadge(status) {
   const map = {
-    'Active':'badge-success','Inactive':'badge-danger','Pending':'badge-warning',
-    'Filed':'badge-success','Overdue':'badge-danger','In Progress':'badge-info',
-    'In Review':'badge-purple','Completed':'badge-success','Expiring Soon':'badge-warning','Expired':'badge-danger'
+    'Active': 'badge-success', 'Inactive': 'badge-danger', 'Pending': 'badge-warning',
+    'Filed': 'badge-success', 'Overdue': 'badge-danger', 'In Progress': 'badge-info',
+    'In Review': 'badge-purple', 'Completed': 'badge-success', 'Expiring Soon': 'badge-warning', 'Expired': 'badge-danger'
   };
-  return `<span class="badge ${map[status]||'badge-info'}">${escapeHtml(status)}</span>`;
+  return `<span class="badge ${map[status] || 'badge-info'}">${escapeHtml(status)}</span>`;
 }
 
 /* =========================================================
    END OF app_enhanced.js — WITCORP Enterprise Edition
-   Full Features: Vault + Enhanced Team Chat + All Compliance Tools
-   ===================
+   ========================================================= */
