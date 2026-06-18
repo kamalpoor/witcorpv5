@@ -3,10 +3,8 @@
    Supabase Auth | Google OAuth PKCE | Email/Password | Forgot Password
    Fully debugged and tested
    ============================================================= */
-
-const SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
-
+var SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
 /* =========================================================
    AUTH API HELPER
    ========================================================= */
