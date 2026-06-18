@@ -350,7 +350,20 @@ function initPresence() {
 }
 
 async function setPresenceOnline(email) {
-  await supabaseInsert('user_presence', { email, is_online: true, last_seen: new Date().toISOString() }).catch(() => {});
+  await fetch(`${SUPABASE_URL}/rest/v1/user_presence`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({ 
+      email, 
+      is_online: true, 
+      last_seen: new Date().toISOString() 
+    })
+  }).catch(() => {});
 }
 
 async function renderTeamContacts() {
