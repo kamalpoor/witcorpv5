@@ -116,20 +116,13 @@ body {
   overflow: visible;
 }
 .logo-name {
-  color: #FFD700;
-  font-weight: 900;
-  font-size: 15px;
-  letter-spacing: .4px;
+  color: #f5d060;
+  font-weight: 700;
+  font-size: 14px;
   line-height: 1.15;
+  letter-spacing: .2px;
 
-  white-space: normal;
-  overflow: visible;
-  text-overflow: unset;
-
-  text-shadow:
-    0 0 5px rgba(255,215,0,0.9),
-    0 0 10px rgba(255,215,0,0.7),
-    0 0 18px rgba(255,215,0,0.5);
+  text-shadow: none;
 }
 .logo-sub { color: rgba(255,255,255,.5); font-size: 10.5px; }
 
