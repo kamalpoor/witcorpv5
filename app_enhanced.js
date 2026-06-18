@@ -2272,6 +2272,57 @@ function statusBadge(status) {
   };
   return `<span class="badge ${map[status] || 'badge-info'}">${escapeHtml(status)}</span>`;
 }
+let selectedMessage=null;
+function openMessageMenu(e,id,isOwn){
+
+e.preventDefault();
+
+selectedMessage=id;
+
+const menu=document.getElementById("messageMenu");
+
+menu.style.display="block";
+
+menu.style.left=e.pageX+"px";
+
+menu.style.top=e.pageY+"px";
+
+document.getElementById("editMenu").style.display=isOwn?"block":"none";
+
+}
+document.addEventListener("click",function(){
+
+document.getElementById("messageMenu").style.display="none";
+
+});
+function editSelected(){
+
+const msg=STATE.teamMessages.find(x=>x.id==selectedMessage);
+
+editMessage(msg.id,msg.message);
+
+}
+function deleteSelected(){
+
+deleteMessage(selectedMessage);
+
+}
+function replySelected(){
+
+const msg=STATE.teamMessages.find(x=>x.id==selectedMessage);
+
+replyToMessage(msg.id,msg.message.substring(0,20));
+
+}
+function copySelected(){
+
+const msg=STATE.teamMessages.find(x=>x.id==selectedMessage);
+
+navigator.clipboard.writeText(msg.message);
+
+showToast("Copied");
+
+}
 
 /* =========================================================
    END OF app_enhanced.js — WITCORP Enterprise Edition
