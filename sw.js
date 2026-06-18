@@ -9,10 +9,10 @@ const CACHE_NAME = 'witcorp-v3';
 const STATIC_ASSETS = [
   './',
   './splash.html',
-  './login.html',
+  './login_fixed.html',
   './index.html',
   './app_enhanced.js'
-  './auth.js',
+  './auth_fixed.js',
   './style.css',
   './logo.png',
   './manifest.json'
