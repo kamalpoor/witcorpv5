@@ -1,7 +1,6 @@
 /* =============================================================
-   WITCORP AUTH SYSTEM — auth.js
-   Supabase Auth | Google OAuth | Email/Password | Forgot Password
-   All bugs fixed | Complete functions | No missing handlers
+   WITCORP AUTH SYSTEM — auth.js  (FIXED v2)
+   Supabase Auth | Google OAuth PKCE | Email/Password | Forgot Password
    ============================================================= */
 
 var SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
@@ -45,7 +44,10 @@ async function getSession() {
       }
     });
     if (!res.ok) { clearSession(); return null; }
-    return await res.json();
+    var user = await res.json();
+    /* Also save latest user data so profile modal can read it */
+    try { localStorage.setItem('witcorp-user', JSON.stringify(user)); } catch(e) {}
+    return user;
   } catch (e) {
     clearSession();
     return null;
@@ -54,9 +56,13 @@ async function getSession() {
 
 function saveSession(session) {
   try {
-    localStorage.setItem('witcorp-access-token', session.access_token);
-    localStorage.setItem('witcorp-refresh-token', session.refresh_token || '');
-    localStorage.setItem('witcorp-user', JSON.stringify(session.user || {}));
+    if (session.access_token)  localStorage.setItem('witcorp-access-token',  session.access_token);
+    if (session.refresh_token) localStorage.setItem('witcorp-refresh-token', session.refresh_token);
+    /* session.user may come directly or nested */
+    var u = session.user || session;
+    if (u && (u.email || u.id)) {
+      localStorage.setItem('witcorp-user', JSON.stringify(u));
+    }
   } catch (e) {
     console.error('saveSession error:', e);
   }
@@ -68,6 +74,17 @@ function clearSession() {
     localStorage.removeItem('witcorp-refresh-token');
     localStorage.removeItem('witcorp-user');
   } catch (e) {}
+}
+
+/* =========================================================
+   GET CURRENT USER (from localStorage, fast)
+   ========================================================= */
+
+function getCurrentUser() {
+  try {
+    var raw = localStorage.getItem('witcorp-user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
 }
 
 /* =========================================================
@@ -95,7 +112,7 @@ async function loginWithEmail(email, password) {
 
 function loginWithGoogle() {
   var redirectTo = encodeURIComponent('https://kamalpoor.github.io/witcorpv5/');
-  var url = 'https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
+  var url = SUPABASE_URL + '/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
   try {
     window.location.assign(url);
   } catch(e) {
@@ -104,16 +121,17 @@ function loginWithGoogle() {
 }
 
 /* =========================================================
-   HANDLE OAUTH CALLBACK (tokens in URL hash)
+   HANDLE OAUTH CALLBACK — FIXED (was using await in non-async)
+   Returns a Promise<boolean>
    ========================================================= */
 
-function handleOAuthCallback() {
+async function handleOAuthCallback() {
 
-  // New OAuth flow (?code=...)
+  /* ── NEW PKCE flow: ?code=... ── */
   var searchParams = new URLSearchParams(window.location.search);
   var code = searchParams.get('code');
 
- if (code) {
+  if (code) {
     try {
       var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=pkce', {
         method: 'POST',
@@ -126,30 +144,28 @@ function handleOAuthCallback() {
       var data = await res.json();
       if (res.ok && data.access_token) {
         saveSession(data);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
         return true;
       }
     } catch(e) {
-      console.error('Code exchange failed:', e);
+      console.error('PKCE code exchange failed:', e);
     }
     return false;
   }
-  // Old hash flow (#access_token=...)
+
+  /* ── OLD implicit flow: #access_token=... ── */
   var hash = window.location.hash;
   if (!hash) return false;
 
   var params = new URLSearchParams(hash.replace('#', ''));
-
-  var access_token = params.get('access_token');
+  var access_token  = params.get('access_token');
   var refresh_token = params.get('refresh_token');
-  var error = params.get('error');
-  var error_description = params.get('error_description');
+  var error         = params.get('error');
 
   if (error) {
-    console.error('OAuth error:', error, error_description);
+    console.error('OAuth error:', error, params.get('error_description'));
     return false;
   }
-
   if (!access_token) return false;
 
   try {
@@ -160,27 +176,42 @@ function handleOAuthCallback() {
       atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
     );
 
+    /* Build user object from JWT payload */
+    var user = {
+      id:    payload.sub   || '',
+      email: payload.email || '',
+      user_metadata: payload.user_metadata || {}
+    };
+
     saveSession({
-      access_token: access_token,
+      access_token:  access_token,
       refresh_token: refresh_token || '',
-      user: {
-        id: payload.sub || '',
-        email: payload.email || '',
-        user_metadata: payload.user_metadata || {}
-      }
+      user:          user
     });
+
+    /* Fetch full user profile from Supabase to get name etc. */
+    try {
+      var uRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + access_token
+        }
+      });
+      if (uRes.ok) {
+        var fullUser = await uRes.json();
+        localStorage.setItem('witcorp-user', JSON.stringify(fullUser));
+      }
+    } catch(ue) { /* non-fatal */ }
 
   } catch (e) {
     console.error('Token parse error:', e);
     return false;
   }
 
-  try {
-    window.history.replaceState({}, document.title, window.location.pathname);
-  } catch (e) {}
-
+  try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
   return true;
 }
+
 /* =========================================================
    TOKEN REFRESH
    ========================================================= */
@@ -300,12 +331,16 @@ async function logout() {
    ========================================================= */
 
 async function requireAuth() {
-  if (handleOAuthCallback()) { redirectToDashboard(); return; }
+  /* Check OAuth callback first */
+  var isCallback = await handleOAuthCallback();
+  if (isCallback) { redirectToDashboard(); return; }
+
   var urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('type') === 'recovery') {
     window.location.href = 'login.html?type=recovery';
     return;
   }
+
   var user = await getSession();
   if (!user) {
     var refreshed = await refreshToken();
@@ -315,6 +350,252 @@ async function requireAuth() {
 
 function redirectToDashboard() {
   window.location.replace('index.html');
+}
+
+/* =========================================================
+   GET DISPLAY NAME — resolves in priority order
+   1. profiles table (full_name)
+   2. user_metadata.full_name / name
+   3. email prefix
+   ========================================================= */
+
+async function getUserDisplayName() {
+  var user = getCurrentUser();
+  if (!user) return 'User';
+
+  /* Try profiles table */
+  var token = null;
+  try { token = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+  if (token && user.id) {
+    try {
+      var res = await fetch(
+        SUPABASE_URL + '/rest/v1/profiles?id=eq.' + user.id + '&select=full_name,avatar_initial',
+        {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      if (res.ok) {
+        var rows = await res.json();
+        if (rows && rows[0] && rows[0].full_name) {
+          return rows[0].full_name;
+        }
+      }
+    } catch(e) {}
+  }
+
+  /* Fallback: user_metadata */
+  var meta = user.user_metadata || {};
+  if (meta.full_name) return meta.full_name;
+  if (meta.name)      return meta.name;
+
+  /* Fallback: email prefix */
+  if (user.email) return user.email.split('@')[0];
+
+  return 'User';
+}
+
+/* =========================================================
+   OPEN PROFILE MODAL (call this from index.html)
+   ========================================================= */
+
+async function openProfileModal() {
+  var user = getCurrentUser();
+
+  /* Refresh user data from server */
+  var token = null;
+  try { token = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+  if (token) {
+    try {
+      var res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token }
+      });
+      if (res.ok) {
+        user = await res.json();
+        try { localStorage.setItem('witcorp-user', JSON.stringify(user)); } catch(e) {}
+      }
+    } catch(e) {}
+  }
+
+  /* Resolve display name */
+  var displayName = await getUserDisplayName();
+  var email = (user && user.email) ? user.email : 'Not available';
+  var uid   = (user && user.id)    ? user.id    : 'N/A';
+
+  /* Count clients (if table exists) */
+  var clientCount = 'Loading…';
+  if (token) {
+    try {
+      var cRes = await fetch(SUPABASE_URL + '/rest/v1/clients?select=id', {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + token,
+          'Prefer': 'count=exact',
+          'Range': '0-0'
+        }
+      });
+      var contentRange = cRes.headers.get('Content-Range');
+      if (contentRange) {
+        var total = contentRange.split('/')[1];
+        clientCount = total !== '*' ? total : '—';
+      } else {
+        clientCount = '—';
+      }
+    } catch(e) { clientCount = '—'; }
+  }
+
+  /* Avatar initial */
+  var initial = displayName.charAt(0).toUpperCase() || 'U';
+
+  /* Build / update modal */
+  var existing = document.getElementById('witcorp-profile-modal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'witcorp-profile-modal';
+  modal.style.cssText = [
+    'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center',
+    'background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);animation:fadeInBg 0.2s ease'
+  ].join(';');
+
+  modal.innerHTML = `
+    <style>
+      @keyframes fadeInBg { from{opacity:0} to{opacity:1} }
+      @keyframes slideUp  { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+      #witcorp-profile-modal .pm-card {
+        background:#1e293b;border:1px solid #334155;border-radius:20px;
+        padding:32px 28px;width:100%;max-width:420px;margin:16px;
+        box-shadow:0 24px 64px rgba(0,0,0,0.45);
+        animation:slideUp 0.25s ease;font-family:'Inter',sans-serif;color:#f1f5f9;
+      }
+      #witcorp-profile-modal .pm-header {
+        display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;
+      }
+      #witcorp-profile-modal .pm-title {
+        font-size:16px;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:8px;
+      }
+      #witcorp-profile-modal .pm-close {
+        background:none;border:1px solid #334155;border-radius:8px;color:#94a3b8;
+        width:32px;height:32px;cursor:pointer;font-size:16px;line-height:1;
+        display:flex;align-items:center;justify-content:center;transition:all 0.15s;
+      }
+      #witcorp-profile-modal .pm-close:hover { border-color:#6366f1;color:#f1f5f9; }
+      #witcorp-profile-modal .pm-avatar {
+        width:72px;height:72px;border-radius:50%;
+        background:linear-gradient(135deg,#6366f1,#4f46e5);
+        display:flex;align-items:center;justify-content:center;
+        font-size:28px;font-weight:800;color:#fff;margin:0 auto 12px;
+        box-shadow:0 0 0 4px rgba(99,102,241,0.2);
+      }
+      #witcorp-profile-modal .pm-name {
+        text-align:center;font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:4px;
+      }
+      #witcorp-profile-modal .pm-org {
+        text-align:center;font-size:12px;color:#94a3b8;margin-bottom:24px;
+      }
+      #witcorp-profile-modal .pm-field-label {
+        font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;
+        letter-spacing:0.6px;margin-bottom:6px;
+      }
+      #witcorp-profile-modal .pm-field-value {
+        background:#0f172a;border:1.5px solid #334155;border-radius:10px;
+        padding:10px 14px;font-size:14px;color:#f1f5f9;margin-bottom:16px;
+        word-break:break-all;
+      }
+      #witcorp-profile-modal .pm-logout {
+        width:100%;padding:12px;background:transparent;
+        border:1.5px solid #ef4444;border-radius:10px;color:#ef4444;
+        font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;
+        display:flex;align-items:center;justify-content:center;gap:8px;
+        transition:all 0.2s;margin-top:4px;
+      }
+      #witcorp-profile-modal .pm-logout:hover {
+        background:rgba(239,68,68,0.1);
+      }
+    </style>
+    <div class="pm-card">
+      <div class="pm-header">
+        <div class="pm-title">👤 My Profile</div>
+        <button class="pm-close" onclick="closeProfileModal()">✕</button>
+      </div>
+      <div class="pm-avatar">${initial}</div>
+      <div class="pm-name">${_escHtml(displayName)}</div>
+      <div class="pm-org">WITCORP India Advisors LLP</div>
+
+      <div class="pm-field-label">Email Address</div>
+      <div class="pm-field-value">${_escHtml(email)}</div>
+
+      <div class="pm-field-label">User ID</div>
+      <div class="pm-field-value" style="font-size:12px;color:#64748b;">${_escHtml(uid)}</div>
+
+      <div class="pm-field-label">Total Clients</div>
+      <div class="pm-field-value" id="pm-client-count">${_escHtml(String(clientCount))}</div>
+
+      <button class="pm-logout" onclick="logout()">🚪 Logout</button>
+    </div>
+  `;
+
+  /* Close on backdrop click */
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeProfileModal();
+  });
+
+  document.body.appendChild(modal);
+}
+
+function closeProfileModal() {
+  var m = document.getElementById('witcorp-profile-modal');
+  if (m) m.remove();
+}
+
+function _escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* =========================================================
+   POPULATE TOPBAR USER INFO (call after DOM ready in index.html)
+   ========================================================= */
+
+async function populateTopbarUser() {
+  var displayName = await getUserDisplayName();
+  var user = getCurrentUser();
+  var initial = displayName.charAt(0).toUpperCase() || 'U';
+
+  /* Update any element with id="topbar-username" */
+  var nameEl = document.getElementById('topbar-username');
+  if (nameEl) nameEl.textContent = displayName;
+
+  /* Update any avatar element with id="topbar-avatar" */
+  var avatarEl = document.getElementById('topbar-avatar');
+  if (avatarEl) {
+    /* If it's an img tag with no valid src, replace with initial */
+    if (user && user.user_metadata && user.user_metadata.avatar_url) {
+      if (avatarEl.tagName === 'IMG') {
+        avatarEl.src = user.user_metadata.avatar_url;
+      } else {
+        avatarEl.textContent = initial;
+      }
+    } else {
+      if (avatarEl.tagName !== 'IMG') avatarEl.textContent = initial;
+    }
+  }
+
+  /* Also update any element with class "user-initial-badge" */
+  document.querySelectorAll('.user-initial-badge').forEach(function(el) {
+    el.textContent = initial;
+  });
+
+  /* Update elements with class "user-display-name" */
+  document.querySelectorAll('.user-display-name').forEach(function(el) {
+    el.textContent = displayName;
+  });
 }
 
 /* =========================================================
