@@ -113,19 +113,27 @@ function handleOAuthCallback() {
   var searchParams = new URLSearchParams(window.location.search);
   var code = searchParams.get('code');
 
-  if (code) {
-    console.log('OAuth code received:', code);
-
-    // Code mil gaya, login successful maan lo
-    // Agar Supabase JS client use kar rahe ho to yahan exchange karna chahiye
-    // Filhal dashboard bhej dete hain
+ if (code) {
     try {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch(e) {}
-
-    return true;
+      var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=pkce', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ auth_code: code })
+      });
+      var data = await res.json();
+      if (res.ok && data.access_token) {
+        saveSession(data);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return true;
+      }
+    } catch(e) {
+      console.error('Code exchange failed:', e);
+    }
+    return false;
   }
-
   // Old hash flow (#access_token=...)
   var hash = window.location.hash;
   if (!hash) return false;
