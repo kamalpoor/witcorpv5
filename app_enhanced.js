@@ -438,7 +438,9 @@ async function renderTeamMessages() {
     const canEdit = isOwn && !m.is_deleted;
     const replyMsg = m.reply_to && messages.find(msg => msg.id === m.reply_to);
     return `
-      <div class="chat-msg ${isOwn ? 'user' : ''}" data-msg-id="${m.id}">
+      <div class="chat-msg ${isOwn ? 'user' : ''}"
+     data-msg-id="${m.id}"
+     oncontextmenu="openMessageMenu(event,${m.id},${isOwn})">
         <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
         <div class="msg-content">
           ${replyMsg ? `<div class="msg-reply">
@@ -451,11 +453,6 @@ async function renderTeamMessages() {
           <div style="font-size:10.5px;opacity:.6;margin-top:4px">
             ${new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}
           </div>
-          ${canEdit ? `<div style="display:flex;gap:4px;margin-top:4px;font-size:11px">
-            <button class="chat-msg-btn" onclick="replyToMessage(${m.id},'${escapeHtml(m.message.substring(0,20))}')">↩️ Reply</button>
-            <button class="chat-msg-btn" onclick="editMessage(${m.id},'${escapeHtml(m.message.replace(/'/g, '&#39;'))}')">✏️ Edit</button>
-            <button class="chat-msg-btn" onclick="deleteMessage(${m.id})">🗑️ Delete</button>
-          </div>` : ''}
         </div>
       </div>
     `;
