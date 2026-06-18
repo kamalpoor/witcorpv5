@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#6366f1" />
   <meta name="description" content="WITCORP India Advisors LLP — Secure Login" />
   <title>Login — Witcorp India Advisors LLP</title>
-  <link rel="icon" href="logo.png" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='80' font-weight='bold' text-anchor='middle' dy='.3em'>W</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -49,33 +49,24 @@
 
     .auth-wrapper { width: 100%; max-width: 440px; }
 
-    /* LOGO */
     .auth-logo { text-align: center; margin-bottom: 28px; }
 
     .auth-logo-icon {
       width: 68px; height: 68px; border-radius: 22px;
-      overflow: visible; margin: 0 auto 14px;
+      overflow: hidden; margin: 0 auto 14px;
       display: flex; align-items: center; justify-content: center;
       padding: 3px;
-      background: conic-gradient(#f0a500, #f5d060, #ffe082, #f0a500, #c47f00, #f0a500);
-      animation: spinBorder 3s linear infinite;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.25);
     }
 
-    @keyframes spinBorder { to { transform: rotate(360deg); } }
-
-    .auth-logo-icon img {
-      width: 62px; height: 62px; object-fit: cover;
-      border-radius: 18px; display: block; background: #1e293b;
-    }
-
-    .logo-fallback-text {
-      font-size: 32px; font-weight: 900; color: #fff; display: none;
+    .auth-logo-icon svg {
+      width: 62px; height: 62px; 
     }
 
     .auth-logo-name { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; color: var(--text); }
     .auth-logo-sub  { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
-    /* CARD */
     .auth-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 20px; padding: 32px 28px;
@@ -205,19 +196,6 @@
       margin-top: 24px; line-height: 1.5;
     }
 
-    /* Loading overlay for OAuth redirect check */
-    #auth-loading-overlay {
-      position: fixed; inset: 0; background: var(--bg);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 9999; transition: opacity 0.3s;
-    }
-    #auth-loading-overlay.hidden { opacity: 0; pointer-events: none; }
-    .auth-loading-spinner {
-      width: 32px; height: 32px; border: 3px solid rgba(99,102,241,0.2);
-      border-top-color: #6366f1; border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
     @media (max-width: 480px) {
       body { padding: 12px; align-items: flex-start; padding-top: 40px; }
       .auth-card { padding: 24px 18px; border-radius: 16px; }
@@ -229,18 +207,15 @@
 </head>
 <body>
 
-<!-- Loading overlay shown while we check OAuth callback / existing session -->
-<div id="auth-loading-overlay">
-  <div class="auth-loading-spinner"></div>
-</div>
-
-<div class="auth-wrapper" id="authWrapper" style="display:none;">
+<div class="auth-wrapper">
 
   <!-- LOGO -->
   <div class="auth-logo">
-    <div class="auth-logo-icon" id="logoIconWrap">
-      <img src="logo.png" alt="WITCORP" id="loginLogoImg" />
-      <span class="logo-fallback-text" id="logoFallback">W</span>
+    <div class="auth-logo-icon">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" rx="20" fill="none"/>
+        <text x="50" y="60" font-size="70" font-weight="800" text-anchor="middle" fill="white">W</text>
+      </svg>
     </div>
     <div class="auth-logo-name">Witcorp India Advisors LLP</div>
     <div class="auth-logo-sub">Chartered Accountants &amp; Tax Consultants</div>
@@ -349,193 +324,339 @@
       <button class="btn-primary" type="button" onclick="doReset()">Update Password</button>
     </div>
 
-  </div><!-- /auth-card -->
+  </div>
 
   <div class="auth-footer">
     © 2026 WITCORP India Advisors LLP &nbsp;·&nbsp; 🔒 Secure &amp; Encrypted
   </div>
 
-</div><!-- /auth-wrapper -->
-
-<!-- Load auth.js FIRST so functions are available -->
-<script src="auth.js"></script>
+</div>
 
 <script>
-  /* ── Logo fallback ── */
-  (function () {
-    var img = document.getElementById('loginLogoImg');
-    var fallback = document.getElementById('logoFallback');
-    if (img && fallback) {
-      img.onerror = function () {
-        img.style.display = 'none';
-        fallback.style.display = 'block';
-      };
+// ===== SUPABASE CONFIG =====
+const SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+
+// ===== AUTH REQUEST =====
+async function authRequest(endpoint, body) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/' + endpoint, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    return { ok: res.ok, data: data };
+  } catch (e) {
+    console.error('authRequest error:', e);
+    return { ok: false, data: { error_description: 'Network error. Please try again.' } };
+  }
+}
+
+// ===== SESSION =====
+function getCurrentUser() {
+  try {
+    const raw = localStorage.getItem('witcorp-user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function saveSession(session) {
+  try {
+    if (session.access_token) localStorage.setItem('witcorp-access-token', session.access_token);
+    if (session.refresh_token) localStorage.setItem('witcorp-refresh-token', session.refresh_token);
+    const u = session.user || session;
+    if (u && (u.email || u.id)) {
+      localStorage.setItem('witcorp-user', JSON.stringify(u));
     }
-  })();
+  } catch (e) { console.error('saveSession error:', e); }
+}
 
-  /* ── MAIN INIT — async so we can await handleOAuthCallback ── */
-  document.addEventListener('DOMContentLoaded', async function () {
-    var overlay = document.getElementById('auth-loading-overlay');
-    var wrapper = document.getElementById('authWrapper');
+function clearSession() {
+  try {
+    localStorage.removeItem('witcorp-access-token');
+    localStorage.removeItem('witcorp-refresh-token');
+    localStorage.removeItem('witcorp-user');
+  } catch (e) {}
+}
 
-    function showPage() {
-      if (overlay) { overlay.classList.add('hidden'); setTimeout(function(){ overlay.style.display='none'; }, 350); }
-      if (wrapper) wrapper.style.display = 'block';
-    }
+// ===== LOGIN WITH EMAIL =====
+async function loginWithEmail(email, password) {
+  showAuthLoader(true);
+  hideAuthError();
+  const result = await authRequest('token?grant_type=password', { email: email, password: password });
+  showAuthLoader(false);
+  if (!result.ok) {
+    const msg = (result.data && (result.data.error_description || result.data.msg || result.data.error)) || 'Login failed. Check your credentials.';
+    showAuthError(msg);
+    return;
+  }
+  saveSession(result.data);
+  window.location.replace('index.html');
+}
 
-    /* 1. Check for OAuth callback (PKCE ?code= or hash #access_token=) */
-    try {
-      var isCallback = await handleOAuthCallback();
-      if (isCallback) {
-        redirectToDashboard();
-        return;
-      }
-    } catch(e) {
-      console.error('OAuth callback error:', e);
-    }
+// ===== GOOGLE LOGIN =====
+function loginWithGoogle() {
+  const redirectTo = encodeURIComponent('https://kamalpoor.github.io/witcorpv5/');
+  const url = SUPABASE_URL + '/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
+  window.location.assign(url);
+}
 
-    /* 2. Check for password recovery link */
-    var params = new URLSearchParams(window.location.search);
-    if (params.get('type') === 'recovery') {
-      /* Extract token from hash if present */
-      var hash = window.location.hash;
-      if (hash) {
-        var hp = new URLSearchParams(hash.replace('#', ''));
-        var recToken = hp.get('access_token');
-        if (recToken) {
-          try { localStorage.setItem('witcorp-access-token', recToken); } catch (e) {}
-          try { window.history.replaceState({}, '', window.location.pathname + '?type=recovery'); } catch (e) {}
-        }
-      }
-      showPage();
-      showSection('sectionReset');
+// ===== FORGOT PASSWORD =====
+async function sendPasswordReset(email) {
+  if (!email || !email.includes('@')) {
+    showForgotError('Please enter a valid email address.');
+    return;
+  }
+  showForgotLoader(true);
+  hideForgotMessages();
+
+  const redirectTo = 'https://kamalpoor.github.io/witcorpv5/login.html?type=recovery';
+  const result = await authRequest('recover', {
+    email: email,
+    gotrue_meta_security: {},
+    redirect_to: redirectTo
+  });
+  showForgotLoader(false);
+
+  if (!result.ok) {
+    const msg = (result.data && (result.data.error_description || result.data.msg || result.data.error)) || 'Could not send reset email. Try again.';
+    showForgotError(msg);
+    return;
+  }
+  showForgotSuccess();
+}
+
+// ===== UPDATE PASSWORD =====
+async function updatePassword(newPassword) {
+  let token = null;
+  try { token = localStorage.getItem('witcorp-access-token'); } catch (e) {}
+  if (!token) {
+    showResetError('Session expired. Please request a new reset link.');
+    return;
+  }
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showResetError(data.error_description || data.msg || 'Password update failed.');
       return;
     }
+    showResetSuccess();
+  } catch (e) {
+    showResetError('Network error. Please try again.');
+  }
+}
 
-    /* 3. Already logged in? Verify token with server */
-    try {
-      var token = localStorage.getItem('witcorp-access-token');
-      if (token) {
-        var res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-          headers: {
-            'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
-            'Authorization': 'Bearer ' + token
-          }
-        });
-        if (res.ok) {
-          var userData = await res.json();
-          try { localStorage.setItem('witcorp-user', JSON.stringify(userData)); } catch(e) {}
-          redirectToDashboard();
-          return;
-        } else {
-          localStorage.clear();
-        }
-      }
-    } catch (e) {
-      try { localStorage.clear(); } catch(e2) {}
-    }
+// ===== UI HELPERS =====
+function showAuthLoader(show) {
+  const btn = document.getElementById('loginBtn');
+  if (!btn) return;
+  btn.disabled = show;
+  btn.innerHTML = show ? '<span class="auth-spinner"></span> Signing in...' : 'Sign In →';
+}
 
-    /* 4. Show login form */
-    showPage();
-    var emailEl = document.getElementById('loginEmail');
-    if (emailEl) setTimeout(function () { emailEl.focus(); }, 150);
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideAuthError() {
+  const el = document.getElementById('authError');
+  if (el) el.style.display = 'none';
+}
+
+function showForgotLoader(show) {
+  const btn = document.getElementById('forgotBtn');
+  if (!btn) return;
+  btn.disabled = show;
+  btn.innerHTML = show ? '<span class="auth-spinner"></span> Sending...' : 'Send Reset Email';
+}
+
+function showForgotError(msg) {
+  const el = document.getElementById('forgotError');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  const s = document.getElementById('forgotSuccess');
+  if (s) s.style.display = 'none';
+}
+
+function showForgotSuccess() {
+  const el = document.getElementById('forgotSuccess');
+  if (el) el.style.display = 'block';
+  const e = document.getElementById('forgotError');
+  if (e) e.style.display = 'none';
+  const btn = document.getElementById('forgotBtn');
+  if (btn) { btn.textContent = '✓ Email Sent!'; btn.disabled = true; }
+}
+
+function hideForgotMessages() {
+  const e = document.getElementById('forgotError');
+  const s = document.getElementById('forgotSuccess');
+  if (e) e.style.display = 'none';
+  if (s) s.style.display = 'none';
+}
+
+function showResetError(msg) {
+  const el = document.getElementById('resetError');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  const s = document.getElementById('resetSuccess');
+  if (s) s.style.display = 'none';
+}
+
+function showResetSuccess() {
+  const el = document.getElementById('resetSuccess');
+  if (el) el.style.display = 'block';
+  const e = document.getElementById('resetError');
+  if (e) e.style.display = 'none';
+  setTimeout(() => { window.location.replace('index.html'); }, 2000);
+}
+
+// ===== SECTION SWITCHER =====
+function showSection(id) {
+  document.querySelectorAll('.auth-section').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+
+  ['authError','forgotError','forgotSuccess','resetError','resetSuccess'].forEach(elId => {
+    const el = document.getElementById(elId);
+    if (el) el.style.display = 'none';
   });
 
-  /* ── Section switcher ── */
-  function showSection(id) {
-    document.querySelectorAll('.auth-section').forEach(function (s) {
-      s.classList.remove('active');
-    });
-    var target = document.getElementById(id);
-    if (target) target.classList.add('active');
+  if (id === 'sectionForgot') {
+    const btn = document.getElementById('forgotBtn');
+    if (btn) { btn.textContent = 'Send Reset Email'; btn.disabled = false; }
+    const fe = document.getElementById('forgotEmail');
+    if (fe) setTimeout(() => fe.focus(), 50);
+  }
+  if (id === 'sectionLogin') {
+    const le = document.getElementById('loginEmail');
+    if (le) setTimeout(() => le.focus(), 50);
+  }
+}
 
-    ['authError','forgotError','forgotSuccess','resetError','resetSuccess'].forEach(function (elId) {
-      var el = document.getElementById(elId);
-      if (el) el.style.display = 'none';
-    });
+// ===== FORM HANDLERS =====
+function doLogin() {
+  const email = (document.getElementById('loginEmail').value || '').trim();
+  const password = document.getElementById('loginPassword').value || '';
+  const errEl = document.getElementById('authError');
+  if (errEl) errEl.style.display = 'none';
 
-    if (id === 'sectionForgot') {
-      var btn = document.getElementById('forgotBtn');
-      if (btn) { btn.textContent = 'Send Reset Email'; btn.disabled = false; }
-      var fe = document.getElementById('forgotEmail');
-      if (fe) setTimeout(function () { fe.focus(); }, 50);
+  if (!email) { showAuthError('Please enter your email address.'); document.getElementById('loginEmail').focus(); return; }
+  if (!email.includes('@')) { showAuthError('Please enter a valid email address.'); document.getElementById('loginEmail').focus(); return; }
+  if (!password) { showAuthError('Please enter your password.'); document.getElementById('loginPassword').focus(); return; }
+
+  loginWithEmail(email, password);
+}
+
+function doForgot() {
+  const email = (document.getElementById('forgotEmail').value || '').trim();
+  if (!email) { showForgotError('Please enter your email address.'); return; }
+  sendPasswordReset(email);
+}
+
+function doReset() {
+  const pass = document.getElementById('newPassword').value || '';
+  const confirm = document.getElementById('confirmPassword').value || '';
+  const re = document.getElementById('resetError');
+  if (re) re.style.display = 'none';
+
+  if (pass.length < 8) { showResetError('Password must be at least 8 characters.'); document.getElementById('newPassword').focus(); return; }
+  if (pass !== confirm) { showResetError('Passwords do not match. Please try again.'); document.getElementById('confirmPassword').focus(); return; }
+
+  updatePassword(pass);
+}
+
+function togglePassword(inputId, btn) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+  else { el.type = 'password'; btn.textContent = '👁️'; }
+}
+
+function checkStrength(val) {
+  const fill = document.getElementById('strengthFill');
+  const label = document.getElementById('strengthLabel');
+  if (!fill) return;
+
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+
+  fill.style.width = Math.min(score * 20, 100) + '%';
+
+  const levels = [
+    { max:1, color:'#ef4444', text:'Weak' },
+    { max:2, color:'#f97316', text:'Fair' },
+    { max:3, color:'#eab308', text:'Good' },
+    { max:4, color:'#10b981', text:'Strong' },
+    { max:5, color:'#22c55e', text:'Very strong' }
+  ];
+  const level = levels[Math.min(score, levels.length) - 1] || levels[0];
+
+  if (!val) { fill.style.width = '0%'; if (label) label.textContent = ''; return; }
+  fill.style.background = level.color;
+  if (label) { label.textContent = level.text; label.style.color = level.color; }
+}
+
+// ===== INIT ON PAGE LOAD =====
+document.addEventListener('DOMContentLoaded', async () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('type') === 'recovery') {
+    const hash = window.location.hash;
+    if (hash) {
+      const hp = new URLSearchParams(hash.replace('#', ''));
+      const recToken = hp.get('access_token');
+      if (recToken) {
+        try { localStorage.setItem('witcorp-access-token', recToken); } catch (e) {}
+      }
     }
-    if (id === 'sectionLogin') {
-      var le = document.getElementById('loginEmail');
-      if (le) setTimeout(function () { le.focus(); }, 50);
+    showSection('sectionReset');
+    return;
+  }
+
+  // Check if already logged in
+  try {
+    const token = localStorage.getItem('witcorp-access-token');
+    if (token) {
+      const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        try { localStorage.setItem('witcorp-user', JSON.stringify(userData)); } catch(e) {}
+        window.location.replace('index.html');
+        return;
+      } else {
+        clearSession();
+      }
     }
-  }
+  } catch (e) { clearSession(); }
 
-  /* ── Login ── */
-  function doLogin() {
-    var email    = (document.getElementById('loginEmail').value    || '').trim();
-    var password =  document.getElementById('loginPassword').value || '';
-    var errEl    =  document.getElementById('authError');
-    if (errEl) errEl.style.display = 'none';
-
-    if (!email)               { showAuthError('Please enter your email address.');  document.getElementById('loginEmail').focus();    return; }
-    if (!email.includes('@')) { showAuthError('Please enter a valid email address.'); document.getElementById('loginEmail').focus();   return; }
-    if (!password)            { showAuthError('Please enter your password.');        document.getElementById('loginPassword').focus(); return; }
-
-    loginWithEmail(email, password);
-  }
-
-  /* ── Forgot ── */
-  function doForgot() {
-    var email = (document.getElementById('forgotEmail').value || '').trim();
-    if (!email) { showForgotError('Please enter your email address.'); return; }
-    sendPasswordReset(email);
-  }
-
-  /* ── Reset ── */
-  function doReset() {
-    var pass    = document.getElementById('newPassword').value    || '';
-    var confirm = document.getElementById('confirmPassword').value || '';
-    var re = document.getElementById('resetError');
-    if (re) re.style.display = 'none';
-
-    if (pass.length < 8)   { showResetError('Password must be at least 8 characters.'); document.getElementById('newPassword').focus();    return; }
-    if (pass !== confirm)  { showResetError('Passwords do not match. Please try again.'); document.getElementById('confirmPassword').focus(); return; }
-
-    updatePassword(pass);
-  }
-
-  /* ── Password toggle ── */
-  function togglePassword(inputId, btn) {
-    var el = document.getElementById(inputId);
-    if (!el) return;
-    if (el.type === 'password') { el.type = 'text';     btn.textContent = '🙈'; }
-    else                        { el.type = 'password'; btn.textContent = '👁️'; }
-  }
-
-  /* ── Password strength ── */
-  function checkStrength(val) {
-    var fill  = document.getElementById('strengthFill');
-    var label = document.getElementById('strengthLabel');
-    if (!fill) return;
-
-    var score = 0;
-    if (val.length >= 8)           score++;
-    if (val.length >= 12)          score++;
-    if (/[A-Z]/.test(val))         score++;
-    if (/[0-9]/.test(val))         score++;
-    if (/[^A-Za-z0-9]/.test(val)) score++;
-
-    fill.style.width = Math.min(score * 20, 100) + '%';
-
-    var levels = [
-      { max:1, color:'#ef4444', text:'Weak' },
-      { max:2, color:'#f97316', text:'Fair' },
-      { max:3, color:'#eab308', text:'Good' },
-      { max:4, color:'#10b981', text:'Strong' },
-      { max:5, color:'#22c55e', text:'Very strong' }
-    ];
-    var level = levels[Math.min(score, levels.length) - 1] || levels[0];
-
-    if (!val) { fill.style.width = '0%'; if (label) label.textContent = ''; return; }
-    fill.style.background = level.color;
-    if (label) { label.textContent = level.text; label.style.color = level.color; }
-  }
+  document.getElementById('loginEmail').focus();
+});
 </script>
 
 </body>
