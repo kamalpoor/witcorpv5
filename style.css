@@ -1732,6 +1732,49 @@ font-size:14px;
 background:#2f3b43;
 
 }
+.msgBubble{
+
+position:relative;
+
+}
+
+.msgArrow{
+
+position:absolute;
+
+right:5px;
+
+top:5px;
+
+width:18px;
+
+height:18px;
+
+border-radius:50%;
+
+background:rgba(0,0,0,.25);
+
+font-size:12px;
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+cursor:pointer;
+
+opacity:0;
+
+transition:.2s;
+
+}
+
+.msgBubble:hover .msgArrow{
+
+opacity:1;
+
+}
 /* =============================================================
    END OF style.css — WITCORP | Complete | All Bugs Fixed
    ============================================================= */
