@@ -1,6 +1,6 @@
 /* =============================================================
-   WITCORP DASHBOARD - app.js
-   Supabase Connected | No Dummy Data | 30 Themes | FIXED
+   WITCORP DASHBOARD - app_enhanced.js
+   Enterprise Edition with Vault + Enhanced Team Chat
    ============================================================= */
 
 /* =========================================================
@@ -69,9 +69,13 @@ const STATE = {
   pagination: { clients: { page: 1, perPage: 10 } },
   filters: { clients: { search: '', status: '', type: '' } },
   activeChatContact: null,
+  vaultSelectedFolder: 'General',
   clients: [], gstReturns: [], rocFilings: [], itrFilings: [],
   tdsReturns: [], audits: [], dscRecords: [], accountingEntries: [],
-  tasks: [], documents: [], calendarEvents: []
+  tasks: [], documents: [], calendarEvents: [],
+  vaultCredentials: [], vaultFolders: [],
+  teamMessages: [], userPresence: {},
+  typingIndicators: {}
 };
 
 /* =========================================================
@@ -171,39 +175,352 @@ function initTheme() {
   document.documentElement.style.setProperty('--primary-glow', primary + '22');
 }
 
-function openThemePicker() {
-  const bgActive = STATE.activeTheme.bg;
-  const sbActive = STATE.activeTheme.sidebar;
-  const bgHtml = BG_THEMES.map(t => `
-    <div class="theme-bg-card ${t.id === bgActive ? 'active' : ''}" data-id="${t.id}" onclick="applyBgTheme('${t.id}');updateThemePickerActive()">
-      <div class="theme-preview" style="background:${t.gradient}"></div>
-      <div class="theme-card-name">${t.name}</div>
+/* =========================================================
+   4. VAULT SYSTEM (SECURE PASSWORD MANAGER)
+   ========================================================= */
+
+const VAULT_FOLDERS = ['General', 'GST', 'MCA', 'TDS', 'ITR', 'Banking', 'Clients', 'Other'];
+
+async function loadVaultData() {
+  const creds = await supabase('vault_credentials', { order: 'folder.asc,created_at.desc' });
+  STATE.vaultCredentials = Array.isArray(creds) ? creds : [];
+}
+
+function renderVaultFolders() {
+  const sidebar = document.getElementById('vaultFolderList');
+  if (!sidebar) return;
+  const uniqueFolders = ['General', ...new Set(STATE.vaultCredentials.map(c => c.folder || 'General'))];
+  sidebar.innerHTML = uniqueFolders.map(folder => `
+    <div class="vault-folder ${STATE.vaultSelectedFolder === folder ? 'active' : ''}" onclick="selectVaultFolder('${folder}')">
+      <span style="font-size:16px;margin-right:8px">📁</span>
+      <span>${escapeHtml(folder)}</span>
+      <span class="folder-count">${STATE.vaultCredentials.filter(c => (c.folder || 'General') === folder).length}</span>
     </div>
   `).join('');
-  const sbHtml = SIDEBAR_THEMES.map(t => `
-    <div class="theme-sidebar-card ${t.id === sbActive ? 'active' : ''}" data-id="${t.id}" onclick="applySidebarTheme('${t.id}');updateThemePickerActive()">
-      <div class="theme-preview" style="background:${t.gradient}"></div>
-      <div class="theme-card-name">${t.name}</div>
+}
+
+function selectVaultFolder(folder) {
+  STATE.vaultSelectedFolder = folder;
+  renderVaultFolders();
+  renderVaultCredentials();
+}
+
+function renderVaultCredentials() {
+  const container = document.getElementById('vaultCredentialsList');
+  if (!container) return;
+  const filtered = STATE.vaultCredentials.filter(c => (c.folder || 'General') === STATE.vaultSelectedFolder);
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔓</div><div class="empty-state-text">No credentials in this folder</div><div class="empty-state-sub">Click + Add Credential to get started</div></div>';
+    return;
+  }
+  container.innerHTML = filtered.map(cred => `
+    <div class="vault-card">
+      <div class="vault-card-header">
+        <div class="vault-card-title">${escapeHtml(cred.label)}</div>
+        <div class="vault-card-actions">
+          <button class="vault-btn" title="View" onclick="viewVaultItem(${cred.id})">👁️</button>
+          <button class="vault-btn" title="Edit" onclick="editVaultItem(${cred.id})">✏️</button>
+          <button class="vault-btn" title="Delete" onclick="deleteVaultItem(${cred.id})">🗑️</button>
+        </div>
+      </div>
+      <div class="vault-card-meta">
+        ${cred.url ? `<div><strong>URL:</strong> ${escapeHtml(cred.url.substring(0, 40))}${cred.url.length > 40 ? '...' : ''}</div>` : ''}
+        ${cred.username ? `<div><strong>Username:</strong> ${escapeHtml(cred.username)}</div>` : ''}
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Added ${new Date(cred.created_at).toLocaleDateString()}</div>
+      </div>
     </div>
   `).join('');
-  openModalWithContent('🎨 Background Themes', `
-    <div class="theme-picker-section">
-      <div class="theme-picker-label">Background Themes</div>
-      <div class="theme-picker-grid">${bgHtml}</div>
-      <div class="theme-picker-label" style="margin-top:24px">Sidebar Themes</div>
-      <div class="theme-picker-grid sidebar-theme-grid">${sbHtml}</div>
-    </div>
+}
+
+function viewVaultItem(id) {
+  const cred = STATE.vaultCredentials.find(c => c.id === id);
+  if (!cred) return;
+  openModalWithContent(`🔐 View Credential — ${escapeHtml(cred.label)}`, `
+    <div class="form-group"><label>Label</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.label)}</div></div>
+    <div class="form-group"><label>URL</label><div class="form-control" style="background:var(--bg);word-break:break-all">${escapeHtml(cred.url || '-')}</div></div>
+    <div class="form-group"><label>Username</label><div style="display:flex;gap:8px">
+      <div class="form-control" style="background:var(--bg);flex:1">${escapeHtml(cred.username || '-')}</div>
+      ${cred.username ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard('${escapeHtml(cred.username)}','Username copied!')">📋 Copy</button>` : ''}
+    </div></div>
+    <div class="form-group"><label>Password</label><div style="display:flex;gap:8px">
+      <input type="password" id="vaultPasswordView" class="form-control" style="flex:1;background:var(--bg)" value="${escapeHtml(cred.password || '')}" readonly />
+      <button class="btn-outline" style="padding:8px 12px" onclick="togglePasswordView('vaultPasswordView')">👁️ Show</button>
+      ${cred.password ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard('${escapeHtml(cred.password)}','Password copied!')">📋 Copy</button>` : ''}
+    </div></div>
+    ${cred.notes ? `<div class="form-group"><label>Notes</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.notes)}</div></div>` : ''}
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
 
-function updateThemePickerActive() {
-  document.querySelectorAll('.theme-bg-card').forEach(c => c.classList.toggle('active', c.dataset.id === STATE.activeTheme.bg));
-  document.querySelectorAll('.theme-sidebar-card').forEach(c => c.classList.toggle('active', c.dataset.id === STATE.activeTheme.sidebar));
+function editVaultItem(id) {
+  const cred = STATE.vaultCredentials.find(c => c.id === id);
+  if (!cred) return;
+  openModalWithContent(`✏️ Edit Credential — ${escapeHtml(cred.label)}`, `
+    <div class="form-group"><label>Label</label><input type="text" class="form-control" id="editVaultLabel" value="${escapeHtml(cred.label)}" /></div>
+    <div class="form-group"><label>Folder</label>
+      <select class="form-control" id="editVaultFolder">
+        ${VAULT_FOLDERS.map(f => `<option ${(cred.folder || 'General') === f ? 'selected' : ''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>URL</label><input type="text" class="form-control" id="editVaultUrl" value="${escapeHtml(cred.url || '')}" placeholder="https://..." /></div>
+    <div class="form-group"><label>Username</label><input type="text" class="form-control" id="editVaultUsername" value="${escapeHtml(cred.username || '')}" /></div>
+    <div class="form-group"><label>Password</label><input type="password" class="form-control" id="editVaultPassword" value="${escapeHtml(cred.password || '')}" /></div>
+    <div class="form-group"><label>Notes</label><textarea class="form-control" id="editVaultNotes" rows="2">${escapeHtml(cred.notes || '')}</textarea></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveVaultEdit(${id})">💾 Save Changes</button>
+  `);
+}
+
+async function saveVaultEdit(id) {
+  const label = document.getElementById('editVaultLabel')?.value.trim();
+  if (!label) { showToast('Label is required'); return; }
+  const updated = {
+    label,
+    folder: document.getElementById('editVaultFolder')?.value || 'General',
+    url: document.getElementById('editVaultUrl')?.value.trim() || '',
+    username: document.getElementById('editVaultUsername')?.value.trim() || '',
+    password: document.getElementById('editVaultPassword')?.value || '',
+    notes: document.getElementById('editVaultNotes')?.value.trim() || ''
+  };
+  const ok = await supabaseUpdate('vault_credentials', id, updated);
+  if (ok) {
+    const idx = STATE.vaultCredentials.findIndex(c => c.id === id);
+    if (idx !== -1) STATE.vaultCredentials[idx] = { ...STATE.vaultCredentials[idx], ...updated };
+    closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('✅ Credential updated!');
+  } else { showToast('❌ Update failed'); }
+}
+
+async function deleteVaultItem(id) {
+  const cred = STATE.vaultCredentials.find(c => c.id === id);
+  if (!cred) return;
+  if (confirm(`Delete credential "${cred.label}"? This cannot be undone.`)) {
+    const ok = await supabaseDelete('vault_credentials', id);
+    if (ok) {
+      STATE.vaultCredentials = STATE.vaultCredentials.filter(c => c.id !== id);
+      renderVaultFolders(); renderVaultCredentials(); showToast('🗑️ Credential deleted');
+    }
+  }
+}
+
+function togglePasswordView(inputId) {
+  const input = document.getElementById(inputId);
+  if (input) {
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    event.target.textContent = isPassword ? '🙈 Hide' : '👁️ Show';
+  }
+}
+
+function copyToClipboard(text, message) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(message || '📋 Copied!');
+  }).catch(() => {
+    showToast('❌ Copy failed');
+  });
 }
 
 /* =========================================================
-   4. TEAM CHAT
+   5. ENHANCED TEAM CHAT
    ========================================================= */
+
+const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','😑','😐','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤑','🤐','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾'];
+
+function initPresence() {
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  if (myEmail) {
+    setPresenceOnline(myEmail);
+    setInterval(() => setPresenceOnline(myEmail), 30000);
+  }
+}
+
+async function setPresenceOnline(email) {
+  await supabaseInsert('user_presence', { email, is_online: true, last_seen: new Date().toISOString() }).catch(() => {});
+}
+
+async function renderTeamContacts() {
+  const el = document.getElementById('chatContacts');
+  if (!el) return;
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const profiles = await supabase('profiles', { order: 'full_name.asc' });
+  const others = (profiles || []).filter(p => p.email !== myEmail);
+
+  if (!others.length) {
+    el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet.</div>`;
+    return;
+  }
+
+  el.innerHTML = others.map(p => {
+    const name = p.full_name || p.email.split('@')[0];
+    const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
+    const isActive = p.email === STATE.activeChatContact;
+    const isOnline = STATE.userPresence[p.email]?.is_online || false;
+    return `
+      <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
+        <div style="position:relative;width:38px;height:38px;flex-shrink:0">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">
+            ${initial}
+          </div>
+          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${isOnline ? '#10b981' : '#9ca3af'};border:2px solid var(--surface)"></div>
+        </div>
+        <div style="flex:1;overflow:hidden;margin-left:10px">
+          <div style="font-weight:600;font-size:13.5px">${escapeHtml(name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${isOnline ? '● Online' : 'Offline'}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function switchChatContact(email, name) {
+  STATE.activeChatContact = email;
+  const nameEl = document.getElementById('activeChatName');
+  if (nameEl) nameEl.textContent = name || email.split('@')[0];
+  const statusEl = document.getElementById('onlineStatus');
+  const indicator = document.getElementById('onlineIndicator');
+  const isOnline = STATE.userPresence[email]?.is_online || false;
+  if (statusEl) statusEl.textContent = isOnline ? 'Online' : 'Offline';
+  if (indicator) {
+    indicator.style.color = isOnline ? '#10b981' : '#9ca3af';
+    indicator.textContent = '●';
+  }
+  renderTeamContacts();
+  renderTeamMessages();
+}
+
+async function renderTeamMessages() {
+  const el = document.getElementById('teamMessages');
+  if (!el) return;
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const contactEmail = STATE.activeChatContact;
+  if (!contactEmail) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>';
+    return;
+  }
+  const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(myEmail)},receiver_email.eq.${encodeURIComponent(contactEmail)}),and(sender_email.eq.${encodeURIComponent(contactEmail)},receiver_email.eq.${encodeURIComponent(myEmail)}))&order=created_at.asc`;
+  const res = await fetch(url, {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+  });
+  const messages = res.ok ? await res.json() : [];
+  STATE.teamMessages = messages;
+  el.innerHTML = messages.length ? messages.map(m => {
+    const isOwn = m.sender_email === myEmail;
+    const canEdit = isOwn && !m.is_deleted;
+    const replyMsg = m.reply_to && messages.find(msg => msg.id === m.reply_to);
+    return `
+      <div class="chat-msg ${isOwn ? 'user' : ''}" data-msg-id="${m.id}">
+        <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
+        <div class="msg-content">
+          ${replyMsg ? `<div class="msg-reply" onclick="event.stopPropagation()">
+            <div style="font-size:11px;color:var(--text-muted)">↳ Reply to ${escapeHtml(replyMsg.message.substring(0, 40))}...</div>
+          </div>` : ''}
+          <div style="background:${isOwn ? 'var(--primary)' : 'var(--surface2)'};color:${isOwn ? '#fff' : 'var(--text)'};padding:8px 12px;border-radius:12px;word-break:break-word">
+            ${escapeHtml(m.message)}
+            ${m.is_edited ? '<div style="font-size:10px;opacity:.7;margin-top:4px">edited</div>' : ''}
+          </div>
+          <div style="font-size:10.5px;opacity:.6;margin-top:4px">
+            ${new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}
+          </div>
+          ${canEdit ? `<div style="display:flex;gap:4px;margin-top:4px;font-size:11px">
+            <button class="chat-msg-btn" onclick="replyToMessage(${m.id},'${escapeHtml(m.message.substring(0,20))}')">↩️ Reply</button>
+            <button class="chat-msg-btn" onclick="editMessage(${m.id},'${escapeHtml(m.message.replace(/'/g, '&#39;'))}')">✏️ Edit</button>
+            <button class="chat-msg-btn" onclick="deleteMessage(${m.id})">🗑️ Delete</button>
+          </div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function handleChatKeypress(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendTeamMessage();
+  }
+}
+
+function notifyTyping() {
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const contactEmail = STATE.activeChatContact;
+  if (!myEmail || !contactEmail) return;
+  supabaseInsert('typing_indicators', { sender_email: myEmail, receiver_email: contactEmail });
+  clearTimeout(window.typingTimeout);
+  window.typingTimeout = setTimeout(() => {
+    supabaseDelete('typing_indicators', STATE.activeChatContact);
+  }, 3000);
+}
+
+async function sendTeamMessage() {
+  const input = document.getElementById('teamChatInput');
+  const text = input?.value.trim();
+  if (!text) return;
+  const userRaw = localStorage.getItem('witcorp-user');
+  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const contactEmail = STATE.activeChatContact;
+  if (!contactEmail) { showToast('Select a contact first'); return; }
+  input.value = '';
+  await supabaseInsert('team_messages', { sender_email: myEmail, receiver_email: contactEmail, message: text, message_type: 'text' });
+  await renderTeamMessages();
+  await renderTeamContacts();
+}
+
+function replyToMessage(msgId, preview) {
+  const input = document.getElementById('teamChatInput');
+  if (input) {
+    input.placeholder = `Replying to: ${preview}...`;
+    input.dataset.replyTo = msgId;
+    input.focus();
+  }
+}
+
+function editMessage(msgId, originalText) {
+  openModalWithContent('✏️ Edit Message', `
+    <div class="form-group"><label>Edit your message</label><textarea class="form-control" id="editMsgText" rows="3">${originalText}</textarea></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveEditMessage(${msgId})">💾 Save</button>
+  `);
+}
+
+async function saveEditMessage(msgId) {
+  const newText = document.getElementById('editMsgText')?.value.trim();
+  if (!newText) { showToast('Message cannot be empty'); return; }
+  const ok = await supabaseUpdate('team_messages', msgId, { message: newText, is_edited: true });
+  if (ok) {
+    closeModal(); renderTeamMessages(); showToast('✅ Message edited');
+  }
+}
+
+async function deleteMessage(msgId) {
+  if (confirm('Delete this message? This cannot be undone.')) {
+    const ok = await supabaseUpdate('team_messages', msgId, { is_deleted: true, message: '[Message deleted]' });
+    if (ok) {
+      renderTeamMessages(); showToast('🗑️ Message deleted');
+    }
+  }
+}
+
+function openEmojiPicker() {
+  const modal = document.getElementById('emojiPickerModal');
+  const grid = document.getElementById('emojiGrid');
+  if (modal) {
+    modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
+    if (grid && modal.style.display === 'block') {
+      grid.innerHTML = EMOJI_LIST.map(emoji => `
+        <button style="padding:8px;font-size:20px;border:none;background:transparent;cursor:pointer;border-radius:6px;transition:.2s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'" onclick="insertEmoji('${emoji}');this.closest('#emojiPickerModal').style.display='none'">${emoji}</button>
+      `).join('');
+    }
+  }
+}
+
+function insertEmoji(emoji) {
+  const input = document.getElementById('teamChatInput');
+  if (input) {
+    input.value += emoji;
+    input.focus();
+  }
+}
 
 function startNewChat() {
   const emailInput = document.getElementById('newChatEmail');
@@ -223,92 +540,22 @@ function startNewChat() {
   showToast('Starting chat with ' + email);
 }
 
-const TEAM_CONTACTS = [];
-
 /* =========================================================
-   5. AI RESPONSES
+   6. INITIALIZATION & LOADING
    ========================================================= */
-
-function getAIResponse(query) {
-  const q = query.toLowerCase().trim();
-  const { clients, gstReturns, tasks, tdsReturns } = STATE;
-
-  if (q.includes('gst') && (q.includes('pending') || q.includes('show'))) {
-    const pending = gstReturns.filter(g => g.status === 'Pending' || g.status === 'Overdue');
-    if (!pending.length) return 'No pending GST returns right now! 🎉';
-    let txt = `${pending.length} GST returns need attention:<br><br>`;
-    pending.forEach(g => {
-      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'var(--danger)':'var(--warning)'}">${g.status}</span><br>`;
-    });
-    return txt;
-  }
-  if (q.includes('task') || q.includes('pending')) {
-    const p = tasks.filter(t => t.column_name !== 'done');
-    if (!p.length) return 'No pending tasks! Everything is done. 🎉';
-    let txt = `${p.length} tasks pending:<br><br>`;
-    p.slice(0, 6).forEach(t => {
-      txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name === 'todo' ? 'To Do' : 'In Progress'}, due ${t.due_date || 'TBD'}<br>`;
-    });
-    return txt;
-  }
-  if (q.includes('tds')) {
-    const filed = tdsReturns.filter(t => t.status === 'Filed').length;
-    const pend = tdsReturns.filter(t => t.status === 'Pending').length;
-    return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`;
-  }
-  if (q.includes('client')) {
-    const active = clients.filter(c => c.status === 'Active').length;
-    return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c=>c.status==='Pending').length}</strong>`;
-  }
-  if (q.includes('upcoming') || q.includes('due') || q.includes('compliance')) {
-    return `Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!`;
-  }
-  const defaults = [
-    'I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!',
-    'Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.',
-    'Namaste! Try: "pending tasks", "GST due this week", "TDS filing status"'
-  ];
-  return defaults[Math.floor(Math.random() * defaults.length)];
-}
-
-/* =========================================================
-   6. INITIALIZATION - MOBILE RIGHT PANEL FIX
-   ========================================================= */
-
-function toggleRightPanel() {
-  const panel = document.getElementById('rightPanel');
-  if (panel) {
-    panel.classList.toggle('show-mobile');
-  }
-}
-
-function initRightPanelMobile() {
-  const btn = document.getElementById('toggleRightPanel');
-  const handleResize = () => {
-    if (window.innerWidth <= 1200) {
-      if (btn) btn.style.display = 'flex';
-    } else {
-      if (btn) btn.style.display = 'none';
-      const panel = document.getElementById('rightPanel');
-      if (panel) panel.classList.remove('show-mobile');
-    }
-  };
-  handleResize();
-  window.addEventListener('resize', handleResize);
-}
-
-document.addEventListener('DOMContentLoaded', initRightPanelMobile);
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadUserInfo();
   initTheme();
   setCurrentDate();
   attachGlobalListeners();
+  initPresence();
   renderTeamContacts();
   renderTeamMessages();
 
   showPageLoader(true);
   await loadAllData();
+  await loadVaultData();
   showPageLoader(false);
 
   updateDashboardStats();
@@ -327,9 +574,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderDueDates();
   renderActivity();
   renderBarChart();
+  renderVaultFolders();
+  renderVaultCredentials();
   
-  // Populate GST client dropdown
   populateGSTClientDropdown();
+
+  // Real-time updates every 5 seconds
+  setInterval(async () => {
+    await renderTeamContacts();
+  }, 5000);
 });
 
 function showPageLoader(show) {
@@ -392,6 +645,7 @@ function navigate(page) {
   closeNotifications();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (page === 'reports') setTimeout(renderBarChart, 100);
+  if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
 }
 
 /* =========================================================
@@ -413,6 +667,30 @@ function closeSidebar() {
   if (sidebar) sidebar.classList.remove('open');
   if (overlay) overlay.classList.remove('show');
 }
+
+function toggleRightPanel() {
+  const panel = document.getElementById('rightPanel');
+  if (panel) {
+    panel.classList.toggle('show-mobile');
+  }
+}
+
+function initRightPanelMobile() {
+  const btn = document.getElementById('toggleRightPanel');
+  const handleResize = () => {
+    if (window.innerWidth <= 1200) {
+      if (btn) btn.style.display = 'flex';
+    } else {
+      if (btn) btn.style.display = 'none';
+      const panel = document.getElementById('rightPanel');
+      if (panel) panel.classList.remove('show-mobile');
+    }
+  };
+  handleResize();
+  window.addEventListener('resize', handleResize);
+}
+
+document.addEventListener('DOMContentLoaded', initRightPanelMobile);
 
 /* =========================================================
    9. DATE
@@ -1267,6 +1545,48 @@ function generateReport() { showToast('✅ Report generated!'); }
    21. AI ASSISTANT
    ========================================================= */
 
+function getAIResponse(query) {
+  const q = query.toLowerCase().trim();
+  const { clients, gstReturns, tasks, tdsReturns } = STATE;
+
+  if (q.includes('gst') && (q.includes('pending') || q.includes('show'))) {
+    const pending = gstReturns.filter(g => g.status === 'Pending' || g.status === 'Overdue');
+    if (!pending.length) return 'No pending GST returns right now! 🎉';
+    let txt = `${pending.length} GST returns need attention:<br><br>`;
+    pending.forEach(g => {
+      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'var(--danger)':'var(--warning)'}">${g.status}</span><br>`;
+    });
+    return txt;
+  }
+  if (q.includes('task') || q.includes('pending')) {
+    const p = tasks.filter(t => t.column_name !== 'done');
+    if (!p.length) return 'No pending tasks! Everything is done. 🎉';
+    let txt = `${p.length} tasks pending:<br><br>`;
+    p.slice(0, 6).forEach(t => {
+      txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name === 'todo' ? 'To Do' : 'In Progress'}, due ${t.due_date || 'TBD'}<br>`;
+    });
+    return txt;
+  }
+  if (q.includes('tds')) {
+    const filed = tdsReturns.filter(t => t.status === 'Filed').length;
+    const pend = tdsReturns.filter(t => t.status === 'Pending').length;
+    return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`;
+  }
+  if (q.includes('client')) {
+    const active = clients.filter(c => c.status === 'Active').length;
+    return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c=>c.status==='Pending').length}</strong>`;
+  }
+  if (q.includes('upcoming') || q.includes('due') || q.includes('compliance')) {
+    return `Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!`;
+  }
+  const defaults = [
+    'I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!',
+    'Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.',
+    'Namaste! Try: "pending tasks", "GST due this week", "TDS filing status"'
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
+}
+
 function sendAIMessage(presetMsg) {
   const input = document.getElementById('aiInput');
   const msg = presetMsg || input?.value.trim();
@@ -1463,139 +1783,7 @@ function renderActivity() {
 }
 
 /* =========================================================
-   25. TEAM CHAT
-   ========================================================= */
-
-async function renderTeamContacts() {
-  const el = document.getElementById('chatContacts');
-  if (!el) return;
-
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-
-  const profiles = await supabase('profiles', { order: 'full_name.asc' });
-  const others = (profiles || []).filter(p => p.email !== myEmail);
-
-  if (!others.length) {
-    el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">
-      No team members yet.
-    </div>`;
-    return;
-  }
-
-  el.innerHTML = others.map(p => {
-    const name = p.full_name || p.email.split('@')[0];
-    const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
-    const isActive = p.email === STATE.activeChatContact;
-    return `
-      <div class="contact-item ${isActive ? 'active' : ''}"
-           onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
-        <div style="width:38px;height:38px;border-radius:50%;
-                    background:linear-gradient(135deg,var(--primary),#4f46e5);
-                    display:flex;align-items:center;justify-content:center;
-                    color:#fff;font-weight:700;font-size:15px;flex-shrink:0">
-          ${initial}
-        </div>
-        <div style="flex:1;overflow:hidden;margin-left:10px">
-          <div style="font-weight:600;font-size:13.5px">${escapeHtml(name)}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(p.email)}</div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function switchChatContact(email, name) {
-  STATE.activeChatContact = email;
-  const nameEl = document.getElementById('activeChatName');
-  if (nameEl) nameEl.textContent = name || email.split('@')[0];
-  const avatarEl = document.querySelector('.chat-avatar-sm');
-  if (avatarEl) avatarEl.textContent = name ? name.charAt(0).toUpperCase() : '?';
-  renderTeamContacts();
-  renderTeamMessages();
-}
-
-async function renderTeamMessages() {
-  const el = document.getElementById('teamMessages');
-  if (!el) return;
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-  const contactEmail = STATE.activeChatContact;
-  if (!contactEmail) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>';
-    return;
-  }
-  const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(myEmail)},receiver_email.eq.${encodeURIComponent(contactEmail)}),and(sender_email.eq.${encodeURIComponent(contactEmail)},receiver_email.eq.${encodeURIComponent(myEmail)}))&order=created_at.asc`;
-  const res = await fetch(url, {
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-  });
-  const messages = res.ok ? await res.json() : [];
-  el.innerHTML = messages.length ? messages.map(m => `
-    <div class="chat-msg ${m.sender_email === myEmail ? 'user' : ''}">
-      <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
-      <div class="msg-content">
-        ${escapeHtml(m.message)}
-        <div style="font-size:10.5px;opacity:.6;margin-top:4px">
-          ${new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}
-        </div>
-      </div>
-    </div>
-  `).join('') : '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
-  el.scrollTop = el.scrollHeight;
-}
-
-async function sendTeamMessage() {
-  const input = document.getElementById('teamChatInput');
-  const text = input?.value.trim();
-  if (!text) return;
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-  const contactEmail = STATE.activeChatContact;
-  if (!contactEmail) { showToast('Select a contact first'); return; }
-  input.value = '';
-  await supabaseInsert('team_messages', { sender_email: myEmail, receiver_email: contactEmail, message: text });
-  await renderTeamMessages();
-  await renderTeamContacts();
-}
-
-/* =========================================================
-   26. NOTIFICATIONS
-   ========================================================= */
-
-function openNotifications() {
-  const panel = document.getElementById('notifPanel');
-  STATE.notifOpen = !STATE.notifOpen;
-  if (panel) panel.classList.toggle('show', STATE.notifOpen);
-  const notifList = document.getElementById('notifList');
-  if (!notifList) return;
-  const notifs = [];
-  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => {
-    notifs.push({ icon: '📊', text: 'GSTR pending: ' + g.client_name + ' — ' + g.return_type, time: 'Pending' });
-  });
-  STATE.dscRecords.filter(d=>(d.days_left||99)<=30).forEach(d => {
-    notifs.push({ icon: '⚠️', text: 'DSC expiring: ' + d.client_name + ' in ' + d.days_left + ' days', time: 'Alert' });
-  });
-  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => {
-    notifs.push({ icon: '🔴', text: 'High priority: ' + t.title, time: 'Task' });
-  });
-  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅', text:'No new notifications', time:''}]).map(n => `
-    <div class="notif-item">
-      <div class="notif-icon">${n.icon}</div>
-      <div><div class="notif-text">${escapeHtml(n.text)}</div><div class="notif-time">${escapeHtml(n.time)}</div></div>
-    </div>
-  `).join('');
-  const dot = document.querySelector('.notif-dot');
-  if (dot) dot.textContent = notifs.length || '0';
-}
-
-function closeNotifications() {
-  const panel = document.getElementById('notifPanel');
-  if (panel) panel.classList.remove('show');
-  STATE.notifOpen = false;
-}
-
-/* =========================================================
-   27. MODALS
+   25. MODALS
    ========================================================= */
 
 function openModal(type) {
@@ -1648,6 +1836,29 @@ function openModal(type) {
       `
     },
     newDSC: { title: '✍️ New DSC', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
+    addVaultItem: {
+      title: '🔐 Add New Credential',
+      body: `
+        <div class="form-group"><label>Label *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Gmail, AWS, Banking" /></div>
+        <div class="form-group"><label>Folder</label>
+          <select class="form-control" id="vaultFolder">
+            ${VAULT_FOLDERS.map(f => `<option>${f}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>URL</label><input type="text" class="form-control" id="vaultUrl" placeholder="https://..." /></div>
+        <div class="form-group"><label>Username</label><input type="text" class="form-control" id="vaultUsername" /></div>
+        <div class="form-group"><label>Password</label><input type="password" class="form-control" id="vaultPassword" /></div>
+        <div class="form-group"><label>Notes</label><textarea class="form-control" id="vaultNotes" rows="2" placeholder="Additional notes..."></textarea></div>
+        <button class="btn-primary" style="width:100%" onclick="submitVaultItem()">🔐 Save Credential</button>
+      `
+    },
+    createVaultFolder: {
+      title: '📁 Create New Folder',
+      body: `
+        <div class="form-group"><label>Folder Name</label><input type="text" class="form-control" id="newFolderName" placeholder="e.g. Clients" /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitCreateFolder()">Create Folder</button>
+      `
+    },
     newEntry: { title: '🧮 Journal Entry', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">🧮</div><p style="margin:12px 0">Use the Accounting Hub form</p><button class="btn-primary" onclick="closeModal();navigate('accounting')">Go to Accounting Hub</button></div>` },
     newTask: {
       title: '✅ Add New Task',
@@ -1756,6 +1967,31 @@ async function submitNewAudit() {
   else { showToast('❌ Audit scheduling failed'); }
 }
 
+async function submitVaultItem() {
+  const label = document.getElementById('vaultLabel')?.value.trim();
+  if (!label) { showToast('Label is required'); return; }
+  const body = {
+    label,
+    folder: document.getElementById('vaultFolder')?.value || 'General',
+    url: document.getElementById('vaultUrl')?.value.trim() || '',
+    username: document.getElementById('vaultUsername')?.value.trim() || '',
+    password: document.getElementById('vaultPassword')?.value || '',
+    notes: document.getElementById('vaultNotes')?.value.trim() || ''
+  };
+  const result = await supabaseInsert('vault_credentials', body);
+  if (result && result[0]) {
+    STATE.vaultCredentials.unshift(result[0]);
+    closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('🔐 Credential saved!');
+  } else { showToast('❌ Failed to save credential'); }
+}
+
+async function submitCreateFolder() {
+  const folderName = document.getElementById('newFolderName')?.value.trim();
+  if (!folderName) { showToast('Folder name required'); return; }
+  STATE.vaultSelectedFolder = folderName;
+  closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('📁 Folder created!');
+}
+
 async function submitNewTaskModal() {
   const title = document.getElementById('newTaskTitleModal')?.value.trim();
   if (!title) { showToast('Task title required'); return; }
@@ -1800,7 +2036,7 @@ async function submitNewEvent() {
 }
 
 /* =========================================================
-   28. QUICK ACTION
+   26. QUICK ACTION
    ========================================================= */
 
 function openQuickAction() {
@@ -1812,14 +2048,14 @@ function openQuickAction() {
       <button class="qa-btn" onclick="closeModal();navigate('tds')"><span class="qa-btn-icon">🧾</span><span class="qa-btn-label">File TDS Return</span></button>
       <button class="qa-btn" onclick="closeModal();openModal('newAudit')"><span class="qa-btn-icon">🛡️</span><span class="qa-btn-label">Schedule Audit</span></button>
       <button class="qa-btn" onclick="closeModal();openModal('newTask')"><span class="qa-btn-icon">✅</span><span class="qa-btn-label">Add Task</span></button>
-      <button class="qa-btn" onclick="closeModal();navigate('dsc')"><span class="qa-btn-icon">✍️</span><span class="qa-btn-label">Request DSC</span></button>
+      <button class="qa-btn" onclick="closeModal();navigate('vault')"><span class="qa-btn-icon">🔐</span><span class="qa-btn-label">Open Vault</span></button>
       <button class="qa-btn" onclick="closeModal();openModal('newEvent')"><span class="qa-btn-icon">📅</span><span class="qa-btn-label">Add Event</span></button>
     </div>
   `);
 }
 
 /* =========================================================
-   29. PROFILE & LOGOUT
+   27. PROFILE & LOGOUT
    ========================================================= */
 
 function loadUserInfo() {
@@ -1879,7 +2115,7 @@ async function logout() {
 }
 
 /* =========================================================
-   30. GLOBAL SEARCH
+   28. GLOBAL SEARCH
    ========================================================= */
 
 function handleSearch(query) {
@@ -1897,7 +2133,7 @@ function handleSearch(query) {
 }
 
 /* =========================================================
-   31. TOAST
+   29. TOAST
    ========================================================= */
 
 let toastTimeout = null;
@@ -1912,7 +2148,7 @@ function showToast(message) {
 }
 
 /* =========================================================
-   32. KEYBOARD & GLOBAL LISTENERS
+   30. KEYBOARD & GLOBAL LISTENERS
    ========================================================= */
 
 function attachGlobalListeners() {
@@ -1941,7 +2177,43 @@ function attachGlobalListeners() {
 }
 
 /* =========================================================
-   33. UTILITY
+   31. NOTIFICATIONS
+   ========================================================= */
+
+function openNotifications() {
+  const panel = document.getElementById('notifPanel');
+  STATE.notifOpen = !STATE.notifOpen;
+  if (panel) panel.classList.toggle('show', STATE.notifOpen);
+  const notifList = document.getElementById('notifList');
+  if (!notifList) return;
+  const notifs = [];
+  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => {
+    notifs.push({ icon: '📊', text: 'GSTR pending: ' + g.client_name + ' — ' + g.return_type, time: 'Pending' });
+  });
+  STATE.dscRecords.filter(d=>(d.days_left||99)<=30).forEach(d => {
+    notifs.push({ icon: '⚠️', text: 'DSC expiring: ' + d.client_name + ' in ' + d.days_left + ' days', time: 'Alert' });
+  });
+  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => {
+    notifs.push({ icon: '🔴', text: 'High priority: ' + t.title, time: 'Task' });
+  });
+  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅', text:'No new notifications', time:''}]).map(n => `
+    <div class="notif-item">
+      <div class="notif-icon">${n.icon}</div>
+      <div><div class="notif-text">${escapeHtml(n.text)}</div><div class="notif-time">${escapeHtml(n.time)}</div></div>
+    </div>
+  `).join('');
+  const dot = document.querySelector('.notif-dot');
+  if (dot) dot.textContent = notifs.length || '0';
+}
+
+function closeNotifications() {
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('show');
+  STATE.notifOpen = false;
+}
+
+/* =========================================================
+   32. UTILITY
    ========================================================= */
 
 function escapeHtml(str) {
@@ -1971,5 +2243,6 @@ function statusBadge(status) {
 }
 
 /* =========================================================
-   END OF app.js — WITCORP | All Bugs Fixed | Complete Code
+   END OF app_enhanced.js — WITCORP Enterprise Edition
+   Full Features: Vault + Enhanced Team Chat + All Compliance Tools
    ===================
