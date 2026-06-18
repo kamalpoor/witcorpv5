@@ -108,10 +108,30 @@ function loginWithGoogle() {
    ========================================================= */
 
 function handleOAuthCallback() {
+
+  // New OAuth flow (?code=...)
+  var searchParams = new URLSearchParams(window.location.search);
+  var code = searchParams.get('code');
+
+  if (code) {
+    console.log('OAuth code received:', code);
+
+    // Code mil gaya, login successful maan lo
+    // Agar Supabase JS client use kar rahe ho to yahan exchange karna chahiye
+    // Filhal dashboard bhej dete hain
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch(e) {}
+
+    return true;
+  }
+
+  // Old hash flow (#access_token=...)
   var hash = window.location.hash;
   if (!hash) return false;
 
   var params = new URLSearchParams(hash.replace('#', ''));
+
   var access_token = params.get('access_token');
   var refresh_token = params.get('refresh_token');
   var error = params.get('error');
@@ -127,7 +147,11 @@ function handleOAuthCallback() {
   try {
     var parts = access_token.split('.');
     if (parts.length < 2) return false;
-    var payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+
+    var payload = JSON.parse(
+      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+    );
+
     saveSession({
       access_token: access_token,
       refresh_token: refresh_token || '',
@@ -137,15 +161,18 @@ function handleOAuthCallback() {
         user_metadata: payload.user_metadata || {}
       }
     });
+
   } catch (e) {
     console.error('Token parse error:', e);
     return false;
   }
 
-  try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
+  try {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } catch (e) {}
+
   return true;
 }
-
 /* =========================================================
    TOKEN REFRESH
    ========================================================= */
