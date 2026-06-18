@@ -1,6 +1,6 @@
 /* =============================================================
    WITCORP DASHBOARD - app_enhanced.js
-   Enterprise Edition with Vault + Enhanced Team Chat
+   Enterprise Edition — Fixed Dark Mode + WhatsApp Arrow Menu
    ============================================================= */
 
 /* =========================================================
@@ -91,59 +91,80 @@ const STATE = {
   tasks: [], documents: [], calendarEvents: [],
   vaultCredentials: [], vaultFolders: [],
   teamMessages: [], userPresence: {},
-  typingIndicators: {}
+  typingIndicators: {},
+  selectedMessageId: null,
+  replyToId: null
 };
 
 /* =========================================================
-   3. THEME SYSTEM
+   3. DARK MODE — FIXED
+   ========================================================= */
+
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('force-dark');
+  localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
+
+  // Update ALL dark mode toggle buttons
+  document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function (btn) {
+    btn.textContent = isDark ? '☀️' : '🌙';
+  });
+
+  // Apply CSS variable overrides for dark mode
+  if (isDark) {
+    document.documentElement.style.setProperty('--bg', '#0f172a');
+    document.documentElement.style.setProperty('--surface', '#1e293b');
+    document.documentElement.style.setProperty('--surface2', '#1e293b');
+    document.documentElement.style.setProperty('--text', '#f1f5f9');
+    document.documentElement.style.setProperty('--text-muted', '#94a3b8');
+    document.documentElement.style.setProperty('--border', '#334155');
+  } else {
+    // Restore saved bg theme
+    const savedBg = localStorage.getItem('witcorp-bg-theme') || 'default';
+    applyBgTheme(savedBg);
+  }
+}
+
+function initDarkMode() {
+  const savedDark = localStorage.getItem('witcorp-dark-mode');
+  if (savedDark === '1') {
+    document.body.classList.add('force-dark');
+    document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function (btn) {
+      btn.textContent = '☀️';
+    });
+    document.documentElement.style.setProperty('--bg', '#0f172a');
+    document.documentElement.style.setProperty('--surface', '#1e293b');
+    document.documentElement.style.setProperty('--surface2', '#1e293b');
+    document.documentElement.style.setProperty('--text', '#f1f5f9');
+    document.documentElement.style.setProperty('--text-muted', '#94a3b8');
+    document.documentElement.style.setProperty('--border', '#334155');
+  }
+}
+
+/* =========================================================
+   4. THEME SYSTEM
    ========================================================= */
 
 const BG_THEMES = [
-  { id: 'default',       name: 'Light Mode',      gradient: 'linear-gradient(135deg,#f8fafc,#e2e8f0)',    bg: '#f1f5f9',  surface: '#ffffff', text: '#0f172a',  textMuted: '#64748b', border: '#e2e8f0' },
-  { id: 'dark-mode',     name: 'Dark Mode',        gradient: 'linear-gradient(135deg,#0f172a,#1e293b)',    bg: '#0f172a',  surface: '#1e293b', text: '#f1f5f9',  textMuted: '#94a3b8', border: '#334155' },
-  { id: 'midnight',      name: 'Midnight',         gradient: 'linear-gradient(135deg,#020617,#0f172a)',    bg: '#020617',  surface: '#0f172a', text: '#f8fafc',  textMuted: '#94a3b8', border: '#1e293b' },
-  { id: 'ocean-blue',    name: 'Ocean Blue',       gradient: 'linear-gradient(135deg,#0ea5e9,#2563eb)',    bg: '#eff6ff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#3b82f6', border: '#bfdbfe' },
-  { id: 'purple-dream',  name: 'Purple Dream',     gradient: 'linear-gradient(135deg,#a855f7,#7c3aed)',    bg: '#faf5ff',  surface: '#ffffff', text: '#3b0764',  textMuted: '#7c3aed', border: '#e9d5ff' },
-  { id: 'green-nature',  name: 'Green Nature',     gradient: 'linear-gradient(135deg,#10b981,#047857)',    bg: '#f0fdf4',  surface: '#ffffff', text: '#052e16',  textMuted: '#059669', border: '#bbf7d0' },
-  { id: 'raspberry',     name: 'Raspberry Beret',  gradient: 'linear-gradient(135deg,#f472b6,#ec4899)',    bg: '#fdf2f8',  surface: '#ffffff', text: '#500724',  textMuted: '#db2777', border: '#fbcfe8' },
-  { id: 'chill-vibes',   name: 'Chill Vibes',      gradient: 'linear-gradient(135deg,#0d9488,#0f766e)',    bg: '#f0fdfa',  surface: '#ffffff', text: '#042f2e',  textMuted: '#0d9488', border: '#99f6e4' },
-  { id: 'damini',        name: 'Damini',           gradient: 'linear-gradient(135deg,#e879f9,#93c5fd)',    bg: '#fdf4ff',  surface: '#ffffff', text: '#3b0764',  textMuted: '#a855f7', border: '#e9d5ff' },
-  { id: 'forest-floor',  name: 'Forest Floor',     gradient: 'linear-gradient(135deg,#365314,#78350f)',    bg: '#fefce8',  surface: '#ffffff', text: '#1a2e05',  textMuted: '#65a30d', border: '#d9f99d' },
-  { id: 'mint-chip',     name: 'Mint Chip',        gradient: 'linear-gradient(135deg,#4ade80,#38bdf8)',    bg: '#f0fdf4',  surface: '#ffffff', text: '#052e16',  textMuted: '#16a34a', border: '#bbf7d0' },
-  { id: 'sea-glass',     name: 'Sea Glass',        gradient: 'linear-gradient(135deg,#bae6fd,#e9d5ff)',    bg: '#f8faff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#7c3aed', border: '#e0e7ff' },
-  { id: 'lemon-lime',    name: 'Lemon Lime',       gradient: 'linear-gradient(135deg,#facc15,#4ade80)',    bg: '#fefce8',  surface: '#ffffff', text: '#422006',  textMuted: '#ca8a04', border: '#fef08a' },
-  { id: 'navy-pro',      name: 'Navy Pro',         gradient: 'linear-gradient(135deg,#1e3a5f,#1e40af)',    bg: '#eff6ff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#2563eb', border: '#bfdbfe' },
-  { id: 'original-blue', name: 'Original Blue',    gradient: 'linear-gradient(135deg,#1e3a8a,#312e81)',    bg: '#eef2ff',  surface: '#ffffff', text: '#1e1b4b',  textMuted: '#4f46e5', border: '#c7d2fe' },
-  { id: 'sunset',        name: 'Sunset',           gradient: 'linear-gradient(135deg,#f97316,#ef4444)',    bg: '#fff7ed',  surface: '#ffffff', text: '#431407',  textMuted: '#ea580c', border: '#fed7aa' },
-  { id: 'aurora',        name: 'Aurora',           gradient: 'linear-gradient(135deg,#06b6d4,#a855f7)',    bg: '#f0fdff',  surface: '#ffffff', text: '#083344',  textMuted: '#0891b2', border: '#a5f3fc' },
-  { id: 'rose-gold',     name: 'Rose Gold',        gradient: 'linear-gradient(135deg,#fda4af,#f9a8d4)',    bg: '#fff1f2',  surface: '#ffffff', text: '#4c0519',  textMuted: '#e11d48', border: '#fecdd3' },
-  { id: 'slate-pro',     name: 'Slate Pro',        gradient: 'linear-gradient(135deg,#475569,#334155)',    bg: '#f8fafc',  surface: '#ffffff', text: '#0f172a',  textMuted: '#475569', border: '#cbd5e1' },
-  { id: 'deep-space',    name: 'Deep Space',       gradient: 'linear-gradient(135deg,#0c0a09,#1c1917)',    bg: '#0c0a09',  surface: '#1c1917', text: '#fafaf9',  textMuted: '#a8a29e', border: '#292524' },
-  { id: 'amber-glow',    name: 'Amber Glow',       gradient: 'linear-gradient(135deg,#f59e0b,#d97706)',    bg: '#fffbeb',  surface: '#ffffff', text: '#451a03',  textMuted: '#b45309', border: '#fde68a' },
-  { id: 'crimson',       name: 'Crimson',          gradient: 'linear-gradient(135deg,#dc2626,#b91c1c)',    bg: '#fef2f2',  surface: '#ffffff', text: '#450a0a',  textMuted: '#dc2626', border: '#fecaca' },
-  { id: 'teal-depths',   name: 'Teal Depths',      gradient: 'linear-gradient(135deg,#115e59,#134e4a)',    bg: '#f0fdfa',  surface: '#ffffff', text: '#042f2e',  textMuted: '#0d9488', border: '#99f6e4' },
-  { id: 'lavender',      name: 'Lavender Fields',  gradient: 'linear-gradient(135deg,#c084fc,#a78bfa)',    bg: '#faf5ff',  surface: '#ffffff', text: '#3b0764',  textMuted: '#9333ea', border: '#ddd6fe' },
-  { id: 'carbon',        name: 'Carbon',           gradient: 'linear-gradient(135deg,#18181b,#27272a)',    bg: '#18181b',  surface: '#27272a', text: '#fafafa',  textMuted: '#a1a1aa', border: '#3f3f46' },
-  { id: 'nordic',        name: 'Nordic Frost',     gradient: 'linear-gradient(135deg,#dbeafe,#ede9fe)',    bg: '#f8faff',  surface: '#ffffff', text: '#1e3a5f',  textMuted: '#4f46e5', border: '#c7d2fe' },
-  { id: 'earth',         name: 'Earth Tones',      gradient: 'linear-gradient(135deg,#92400e,#78350f)',    bg: '#fef3c7',  surface: '#fffbeb', text: '#422006',  textMuted: '#92400e', border: '#fde68a' },
-  { id: 'neon-night',    name: 'Neon Night',       gradient: 'linear-gradient(135deg,#0f0f23,#1a0533)',    bg: '#0f0f23',  surface: '#1a1a3e', text: '#e0e0ff',  textMuted: '#818cf8', border: '#2d2b69' },
-  { id: 'sakura',        name: 'Sakura',           gradient: 'linear-gradient(135deg,#fbcfe8,#fda4af)',    bg: '#fdf2f8',  surface: '#ffffff', text: '#500724',  textMuted: '#db2777', border: '#fbcfe8' },
-  { id: 'cyber-teal',    name: 'Cyber Teal',       gradient: 'linear-gradient(135deg,#14b8a6,#06b6d4)',    bg: '#f0fdfa',  surface: '#ffffff', text: '#042f2e',  textMuted: '#0d9488', border: '#99f6e4' },
+  { id: 'default', name: 'Light Mode', bg: '#f1f5f9', surface: '#ffffff', text: '#0f172a', textMuted: '#64748b', border: '#e2e8f0' },
+  { id: 'dark-mode', name: 'Dark Mode', bg: '#0f172a', surface: '#1e293b', text: '#f1f5f9', textMuted: '#94a3b8', border: '#334155' },
+  { id: 'midnight', name: 'Midnight', bg: '#020617', surface: '#0f172a', text: '#f8fafc', textMuted: '#94a3b8', border: '#1e293b' },
+  { id: 'ocean-blue', name: 'Ocean Blue', bg: '#eff6ff', surface: '#ffffff', text: '#1e3a5f', textMuted: '#3b82f6', border: '#bfdbfe' },
+  { id: 'purple-dream', name: 'Purple Dream', bg: '#faf5ff', surface: '#ffffff', text: '#3b0764', textMuted: '#7c3aed', border: '#e9d5ff' },
+  { id: 'green-nature', name: 'Green Nature', bg: '#f0fdf4', surface: '#ffffff', text: '#052e16', textMuted: '#059669', border: '#bbf7d0' },
+  { id: 'sunset', name: 'Sunset', bg: '#fff7ed', surface: '#ffffff', text: '#431407', textMuted: '#ea580c', border: '#fed7aa' },
+  { id: 'rose-gold', name: 'Rose Gold', bg: '#fff1f2', surface: '#ffffff', text: '#4c0519', textMuted: '#e11d48', border: '#fecdd3' },
+  { id: 'carbon', name: 'Carbon', bg: '#18181b', surface: '#27272a', text: '#fafafa', textMuted: '#a1a1aa', border: '#3f3f46' },
+  { id: 'amber-glow', name: 'Amber Glow', bg: '#fffbeb', surface: '#ffffff', text: '#451a03', textMuted: '#b45309', border: '#fde68a' },
 ];
 
 const SIDEBAR_THEMES = [
-  { id: 'dark-sidebar',   name: 'Classic Dark',    gradient: 'linear-gradient(135deg,#1e1b4b,#312e81)', bg: '#1e1b4b' },
-  { id: 'black-sidebar',  name: 'Pure Black',      gradient: 'linear-gradient(135deg,#0a0a0a,#171717)', bg: '#0a0a0a' },
-  { id: 'slate-sidebar',  name: 'Slate',           gradient: 'linear-gradient(135deg,#0f172a,#1e293b)', bg: '#0f172a' },
-  { id: 'violet-sidebar', name: 'Violet',          gradient: 'linear-gradient(135deg,#4c1d95,#5b21b6)', bg: '#4c1d95' },
-  { id: 'blue-sidebar',   name: 'Ocean',           gradient: 'linear-gradient(135deg,#1e3a5f,#1e40af)', bg: '#1e3a5f' },
-  { id: 'emerald-sidebar',name: 'Emerald',         gradient: 'linear-gradient(135deg,#052e16,#064e3b)', bg: '#052e16' },
-  { id: 'rose-sidebar',   name: 'Rose',            gradient: 'linear-gradient(135deg,#4c0519,#881337)', bg: '#4c0519' },
-  { id: 'amber-sidebar',  name: 'Amber',           gradient: 'linear-gradient(135deg,#451a03,#78350f)', bg: '#451a03' },
-  { id: 'teal-sidebar',   name: 'Teal',            gradient: 'linear-gradient(135deg,#042f2e,#134e4a)', bg: '#042f2e' },
-  { id: 'carbon-sidebar', name: 'Carbon',          gradient: 'linear-gradient(135deg,#18181b,#27272a)', bg: '#18181b' },
-  { id: 'neon-sidebar',   name: 'Neon Night',      gradient: 'linear-gradient(135deg,#0f0f23,#1a0533)', bg: '#0f0f23' },
-  { id: 'sakura-sidebar', name: 'Sakura',          gradient: 'linear-gradient(135deg,#500724,#881337)', bg: '#500724' },
+  { id: 'dark-sidebar', name: 'Classic Dark', bg: '#1e1b4b' },
+  { id: 'black-sidebar', name: 'Pure Black', bg: '#0a0a0a' },
+  { id: 'slate-sidebar', name: 'Slate', bg: '#0f172a' },
+  { id: 'violet-sidebar', name: 'Violet', bg: '#4c1d95' },
+  { id: 'blue-sidebar', name: 'Ocean', bg: '#1e3a5f' },
+  { id: 'emerald-sidebar', name: 'Emerald', bg: '#052e16' },
+  { id: 'carbon-sidebar', name: 'Carbon', bg: '#18181b' },
 ];
 
 function applyBgTheme(themeId) {
@@ -165,25 +186,39 @@ function applySidebarTheme(themeId) {
   document.documentElement.style.setProperty('--sidebar-bg', theme.bg);
   STATE.activeTheme.sidebar = themeId;
   localStorage.setItem('witcorp-sidebar-theme', themeId);
-  document.querySelectorAll('.theme-sidebar-card').forEach(c => c.classList.toggle('active', c.dataset.id === themeId));
+}
+
+function setTheme(themeName) {
+  var themes = [
+    'theme-violet', 'theme-blue', 'theme-emerald', 'theme-rose',
+    'theme-amber', 'theme-cyan', 'theme-dark', 'theme-midnight',
+    'theme-forest', 'theme-sunset', 'theme-sakura', 'theme-gold'
+  ];
+  themes.forEach(function (t) { document.body.classList.remove(t); });
+  document.body.classList.add(themeName);
+  localStorage.setItem('witcorp-body-theme', themeName);
+  document.querySelectorAll('.swatch').forEach(function (s) {
+    s.classList.toggle('active', s.dataset.theme === themeName);
+  });
 }
 
 function initTheme() {
   const savedBg = localStorage.getItem('witcorp-bg-theme') || 'default';
   const savedSidebar = localStorage.getItem('witcorp-sidebar-theme') || 'dark-sidebar';
+  const savedBodyTheme = localStorage.getItem('witcorp-body-theme');
+
   applyBgTheme(savedBg);
   applySidebarTheme(savedSidebar);
+
+  if (savedBodyTheme) {
+    setTheme(savedBodyTheme);
+  }
+
   const primaryMap = {
     'default': '#6366f1', 'dark-mode': '#818cf8', 'midnight': '#a78bfa',
     'ocean-blue': '#3b82f6', 'purple-dream': '#a855f7', 'green-nature': '#10b981',
-    'raspberry': '#ec4899', 'chill-vibes': '#0d9488', 'damini': '#e879f9',
-    'forest-floor': '#65a30d', 'mint-chip': '#10b981', 'sea-glass': '#7c3aed',
-    'lemon-lime': '#ca8a04', 'navy-pro': '#3b82f6', 'original-blue': '#6366f1',
-    'sunset': '#f97316', 'aurora': '#06b6d4', 'rose-gold': '#f43f5e',
-    'slate-pro': '#475569', 'deep-space': '#8b5cf6', 'amber-glow': '#f59e0b',
-    'crimson': '#dc2626', 'teal-depths': '#0d9488', 'lavender': '#9333ea',
-    'carbon': '#6366f1', 'nordic': '#4f46e5', 'earth': '#92400e',
-    'neon-night': '#818cf8', 'sakura': '#ec4899', 'cyber-teal': '#14b8a6'
+    'sunset': '#f97316', 'rose-gold': '#f43f5e', 'carbon': '#6366f1',
+    'amber-glow': '#f59e0b'
   };
   const primary = primaryMap[savedBg] || '#6366f1';
   document.documentElement.style.setProperty('--primary', primary);
@@ -192,7 +227,7 @@ function initTheme() {
 }
 
 /* =========================================================
-   4. VAULT SYSTEM
+   5. VAULT SYSTEM
    ========================================================= */
 
 const VAULT_FOLDERS = ['General', 'GST', 'MCA', 'TDS', 'ITR', 'Banking', 'Clients', 'Other'];
@@ -335,10 +370,165 @@ function copyToClipboard(text, message) {
 }
 
 /* =========================================================
-   5. ENHANCED TEAM CHAT
+   6. WHATSAPP-STYLE MESSAGE CONTEXT MENU
    ========================================================= */
 
-const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','😑','😐','😶','😏','😒','🙄','😬','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤑','🤗','🤭','🤫','🤔','🤨','😮','🤐','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'];
+// Create the floating menu DOM once
+function ensureMessageMenu() {
+  let menu = document.getElementById('waContextMenu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'waContextMenu';
+    menu.style.cssText = `
+      display:none;
+      position:fixed;
+      background:var(--surface,#fff);
+      border:1px solid var(--border,#e2e8f0);
+      border-radius:12px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.18);
+      z-index:9999;
+      min-width:160px;
+      overflow:hidden;
+      animation:fadeInMenu 0.12s ease;
+    `;
+    menu.innerHTML = `
+      <button class="wa-menu-item" id="waReplyBtn" onclick="waMenuAction('reply')">
+        <span>↩️</span> Reply
+      </button>
+      <button class="wa-menu-item" id="waCopyBtn" onclick="waMenuAction('copy')">
+        <span>📋</span> Copy
+      </button>
+      <button class="wa-menu-item" id="waEditBtn" onclick="waMenuAction('edit')">
+        <span>✏️</span> Edit
+      </button>
+      <button class="wa-menu-item wa-menu-danger" id="waDeleteBtn" onclick="waMenuAction('delete')">
+        <span>🗑️</span> Delete
+      </button>
+    `;
+    document.body.appendChild(menu);
+  }
+  return menu;
+}
+
+function showMsgArrowMenu(e, msgId, isOwn) {
+  e.preventDefault();
+  e.stopPropagation();
+  STATE.selectedMessageId = msgId;
+
+  const menu = ensureMessageMenu();
+  const editBtn = document.getElementById('waEditBtn');
+  const deleteBtn = document.getElementById('waDeleteBtn');
+  if (editBtn) editBtn.style.display = isOwn ? 'flex' : 'none';
+  if (deleteBtn) deleteBtn.style.display = isOwn ? 'flex' : 'none';
+
+  // Position near the arrow button
+  const rect = e.target.getBoundingClientRect();
+  let left = rect.left - 170;
+  let top = rect.top - 10;
+
+  // Keep inside viewport
+  if (left < 8) left = rect.right + 8;
+  if (top + 180 > window.innerHeight) top = window.innerHeight - 190;
+
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.display = 'block';
+}
+
+function waMenuAction(action) {
+  const menu = document.getElementById('waContextMenu');
+  if (menu) menu.style.display = 'none';
+
+  const msgId = STATE.selectedMessageId;
+  if (!msgId) return;
+  const msg = STATE.teamMessages.find(x => x.id === msgId);
+  if (!msg) return;
+
+  if (action === 'reply') {
+    STATE.replyToId = msgId;
+    const input = document.getElementById('teamChatInput');
+    if (input) {
+      input.placeholder = `↩ Replying: ${msg.message.substring(0, 30)}...`;
+      input.dataset.replyTo = msgId;
+      input.focus();
+    }
+    // Show reply preview bar
+    showReplyBar(msg.message);
+  } else if (action === 'copy') {
+    navigator.clipboard.writeText(msg.message).then(() => showToast('📋 Copied!'));
+  } else if (action === 'edit') {
+    editMessage(msgId, msg.message);
+  } else if (action === 'delete') {
+    deleteMessage(msgId);
+  }
+}
+
+function showReplyBar(text) {
+  let bar = document.getElementById('replyPreviewBar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'replyPreviewBar';
+    bar.style.cssText = `
+      padding:8px 14px;
+      background:var(--bg,#f8fafc);
+      border-left:3px solid var(--primary,#6366f1);
+      font-size:12px;
+      color:var(--text-muted,#64748b);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    `;
+    const chatBar = document.querySelector('.chat-input-bar');
+    if (chatBar) chatBar.parentNode.insertBefore(bar, chatBar);
+  }
+  bar.innerHTML = `
+    <span>↩ <strong>Replying to:</strong> ${escapeHtml(text.substring(0, 40))}${text.length > 40 ? '...' : ''}</span>
+    <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:var(--text-muted)">✕</button>
+  `;
+  bar.style.display = 'flex';
+}
+
+function cancelReply() {
+  STATE.replyToId = null;
+  const input = document.getElementById('teamChatInput');
+  if (input) {
+    input.placeholder = 'Type a message...';
+    delete input.dataset.replyTo;
+  }
+  const bar = document.getElementById('replyPreviewBar');
+  if (bar) bar.style.display = 'none';
+}
+
+// Close menu on outside click
+document.addEventListener('click', function (e) {
+  const menu = document.getElementById('waContextMenu');
+  if (menu && !menu.contains(e.target) && !e.target.classList.contains('msgArrow')) {
+    menu.style.display = 'none';
+  }
+  const notifPanel = document.getElementById('notifPanel');
+  if (notifPanel && notifPanel.classList.contains('show')) {
+    if (!notifPanel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) {
+      closeNotifications();
+    }
+  }
+  const modalOverlay = document.getElementById('modalOverlay');
+  if (modalOverlay && modalOverlay.classList.contains('show')) {
+    if (e.target === modalOverlay) closeModal();
+  }
+});
+
+/* =========================================================
+   7. TEAM CHAT
+   ========================================================= */
+
+const EMOJI_LIST = [
+  '😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','🙃','😉','😌','😍','🥰',
+  '😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','😑','😐','😶','😏','😒','🙄',
+  '😬','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤑','🤗','🤭','🤫','🤔','🤨','😮',
+  '🤐','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞',
+  '😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👻','🤖'
+];
 
 function initPresence() {
   const userRaw = localStorage.getItem('witcorp-user');
@@ -358,11 +548,7 @@ async function setPresenceOnline(email) {
       'Content-Type': 'application/json',
       'Prefer': 'resolution=merge-duplicates'
     },
-    body: JSON.stringify({ 
-      email, 
-      is_online: true, 
-      last_seen: new Date().toISOString() 
-    })
+    body: JSON.stringify({ email, is_online: true, last_seen: new Date().toISOString() })
   }).catch(() => {});
 }
 
@@ -378,7 +564,6 @@ async function renderTeamContacts() {
     el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet.</div>`;
     return;
   }
-
   el.innerHTML = others.map(p => {
     const name = p.full_name || p.email.split('@')[0];
     const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
@@ -409,10 +594,8 @@ function switchChatContact(email, name) {
   const indicator = document.getElementById('onlineIndicator');
   const isOnline = STATE.userPresence[email] ? STATE.userPresence[email].is_online : false;
   if (statusEl) statusEl.textContent = isOnline ? 'Online' : 'Offline';
-  if (indicator) {
-    indicator.style.color = isOnline ? '#10b981' : '#9ca3af';
-    indicator.textContent = '●';
-  }
+  if (indicator) { indicator.style.color = isOnline ? '#10b981' : '#9ca3af'; indicator.textContent = '●'; }
+  cancelReply();
   renderTeamContacts();
   renderTeamMessages();
 }
@@ -433,40 +616,79 @@ async function renderTeamMessages() {
   });
   const messages = res.ok ? await res.json() : [];
   STATE.teamMessages = messages;
-  el.innerHTML = messages.length ? messages.map(m => {
+
+  if (!messages.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
+    return;
+  }
+
+  el.innerHTML = messages.map(m => {
     const isOwn = m.sender_email === myEmail;
-    const canEdit = isOwn && !m.is_deleted;
     const replyMsg = m.reply_to && messages.find(msg => msg.id === m.reply_to);
+    const timeStr = new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const senderInitial = m.sender_email.charAt(0).toUpperCase();
+
     return `
-      <div class="chat-msg ${isOwn ? 'user' : ''}"
-     data-msg-id="${m.id}"
-     oncontextmenu="openMessageMenu(event,${m.id},${isOwn})">
-        <div class="msg-avatar">${m.sender_email.charAt(0).toUpperCase()}</div>
+      <div class="chat-msg ${isOwn ? 'user' : ''}" data-msg-id="${m.id}">
+        ${!isOwn ? `<div class="msg-avatar">${senderInitial}</div>` : ''}
         <div class="msg-content">
-          ${replyMsg ? `<div class="msg-reply">
-            <div style="font-size:11px;color:var(--text-muted)">↳ Reply to ${escapeHtml(replyMsg.message.substring(0, 40))}...</div>
-          </div>` : ''}
-          <div class="msgBubble"
-         style="background:${isOwn ? 'var(--primary)' : 'var(--surface2)'};
-         color:${isOwn ? '#fff' : 'var(--text)'};
-         padding:8px 12px;
-         border-radius:12px;
-         word-break:break-word;
-         position:relative;">
+          ${replyMsg ? `
+            <div class="msg-reply-preview">
+              <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:2px">↩ Reply</div>
+              <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(replyMsg.message.substring(0, 50))}${replyMsg.message.length > 50 ? '...' : ''}</div>
+            </div>
+          ` : ''}
+          <div class="msgBubble" style="
+            background:${isOwn ? 'var(--primary,#6366f1)' : 'var(--surface,#f1f5f9)'};
+            color:${isOwn ? '#fff' : 'var(--text,#0f172a)'};
+            padding:8px 36px 8px 12px;
+            border-radius:${isOwn ? '14px 14px 4px 14px' : '14px 14px 14px 4px'};
+            word-break:break-word;
+            position:relative;
+            display:inline-block;
+            max-width:100%;
+            min-width:60px;
+          ">
             ${escapeHtml(m.message)}
-            <span class="msgArrow"
-          onclick="showMsgMenu(event,${m.id},${isOwn})">
-          ⌄
-           </span>
-            ${m.is_edited ? '<div style="font-size:10px;opacity:.7;margin-top:4px">edited</div>' : ''}
+            ${m.is_edited ? '<div style="font-size:10px;opacity:0.6;margin-top:2px">edited</div>' : ''}
+            <button class="msgArrow" onclick="showMsgArrowMenu(event, ${m.id}, ${isOwn})" style="
+              position:absolute;
+              top:50%;
+              right:6px;
+              transform:translateY(-50%);
+              background:none;
+              border:none;
+              cursor:pointer;
+              font-size:14px;
+              padding:2px 4px;
+              border-radius:50%;
+              opacity:0;
+              transition:opacity 0.15s;
+              color:${isOwn ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'};
+              line-height:1;
+            " title="More">▾</button>
           </div>
-          <div style="font-size:10.5px;opacity:.6;margin-top:4px">
-            ${new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}
+          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn ? 'right' : 'left'}">
+            ${timeStr}
           </div>
         </div>
+        ${isOwn ? `<div class="msg-avatar">${senderInitial}</div>` : ''}
       </div>
     `;
-  }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
+  }).join('');
+
+  // Show arrow on hover over bubble
+  el.querySelectorAll('.msgBubble').forEach(bubble => {
+    bubble.addEventListener('mouseenter', () => {
+      const arrow = bubble.querySelector('.msgArrow');
+      if (arrow) arrow.style.opacity = '1';
+    });
+    bubble.addEventListener('mouseleave', () => {
+      const arrow = bubble.querySelector('.msgArrow');
+      if (arrow) arrow.style.opacity = '0';
+    });
+  });
+
   el.scrollTop = el.scrollHeight;
 }
 
@@ -497,24 +719,37 @@ async function sendTeamMessage() {
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
   const contactEmail = STATE.activeChatContact;
   if (!contactEmail) { showToast('Select a contact first'); return; }
+
+  const msgBody = {
+    sender_email: myEmail,
+    receiver_email: contactEmail,
+    message: text,
+    message_type: 'text'
+  };
+  if (STATE.replyToId) msgBody.reply_to = STATE.replyToId;
+
   input.value = '';
-  await supabaseInsert('team_messages', { sender_email: myEmail, receiver_email: contactEmail, message: text, message_type: 'text' });
+  cancelReply();
+
+  await supabaseInsert('team_messages', msgBody);
   await renderTeamMessages();
   await renderTeamContacts();
 }
 
 function replyToMessage(msgId, preview) {
+  STATE.replyToId = msgId;
   const input = document.getElementById('teamChatInput');
   if (input) {
-    input.placeholder = `Replying to: ${preview}...`;
+    input.placeholder = `↩ Replying: ${preview}...`;
     input.dataset.replyTo = msgId;
     input.focus();
   }
+  showReplyBar(preview);
 }
 
 function editMessage(msgId, originalText) {
   openModalWithContent('✏️ Edit Message', `
-    <div class="form-group"><label>Edit your message</label><textarea class="form-control" id="editMsgText" rows="3">${originalText}</textarea></div>
+    <div class="form-group"><label>Edit your message</label><textarea class="form-control" id="editMsgText" rows="3">${escapeHtml(originalText)}</textarea></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveEditMessage(${msgId})">💾 Save</button>
   `);
 }
@@ -523,17 +758,13 @@ async function saveEditMessage(msgId) {
   const newText = document.getElementById('editMsgText') ? document.getElementById('editMsgText').value.trim() : '';
   if (!newText) { showToast('Message cannot be empty'); return; }
   const ok = await supabaseUpdate('team_messages', msgId, { message: newText, is_edited: true });
-  if (ok) {
-    closeModal(); renderTeamMessages(); showToast('✅ Message edited');
-  }
+  if (ok) { closeModal(); renderTeamMessages(); showToast('✅ Message edited'); }
 }
 
 async function deleteMessage(msgId) {
   if (confirm('Delete this message? This cannot be undone.')) {
     const ok = await supabaseUpdate('team_messages', msgId, { is_deleted: true, message: '[Message deleted]' });
-    if (ok) {
-      renderTeamMessages(); showToast('🗑️ Message deleted');
-    }
+    if (ok) { renderTeamMessages(); showToast('🗑️ Message deleted'); }
   }
 }
 
@@ -544,7 +775,10 @@ function openEmojiPicker() {
     modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
     if (grid && modal.style.display === 'block') {
       grid.innerHTML = EMOJI_LIST.map(emoji => `
-        <button style="padding:8px;font-size:20px;border:none;background:transparent;cursor:pointer;border-radius:6px;transition:.2s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'" onclick="insertEmoji('${emoji}');this.closest('#emojiPickerModal').style.display='none'">${emoji}</button>
+        <button style="padding:8px;font-size:20px;border:none;background:transparent;cursor:pointer;border-radius:6px;transition:.2s"
+          onmouseover="this.style.background='var(--bg)'"
+          onmouseout="this.style.background='transparent'"
+          onclick="insertEmoji('${emoji}');this.closest('#emojiPickerModal').style.display='none'">${emoji}</button>
       `).join('');
     }
   }
@@ -552,40 +786,33 @@ function openEmojiPicker() {
 
 function insertEmoji(emoji) {
   const input = document.getElementById('teamChatInput');
-  if (input) {
-    input.value += emoji;
-    input.focus();
-  }
+  if (input) { input.value += emoji; input.focus(); }
 }
 
 function startNewChat() {
   const emailInput = document.getElementById('newChatEmail');
   const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-  if (!email || !email.includes('@')) {
-    showToast('Enter a valid email address');
-    return;
-  }
+  if (!email || !email.includes('@')) { showToast('Enter a valid email address'); return; }
   const userRaw = localStorage.getItem('witcorp-user');
   const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-  if (email === myEmail) {
-    showToast('Cannot message yourself!');
-    return;
-  }
+  if (email === myEmail) { showToast('Cannot message yourself!'); return; }
   emailInput.value = '';
   switchChatContact(email, email.split('@')[0]);
   showToast('Starting chat with ' + email);
 }
 
 /* =========================================================
-   6. INITIALIZATION & LOADING
+   8. INITIALIZATION
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadUserInfo();
   initTheme();
+  initDarkMode();
   setCurrentDate();
   attachGlobalListeners();
   initPresence();
+  injectWAMenuStyles();
   renderTeamContacts();
   renderTeamMessages();
 
@@ -612,13 +839,72 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderBarChart();
   renderVaultFolders();
   renderVaultCredentials();
-
   populateGSTClientDropdown();
 
   setInterval(async () => {
     await renderTeamContacts();
+    if (STATE.activeChatContact) await renderTeamMessages();
   }, 5000);
 });
+
+// Inject styles for WA menu + message arrow
+function injectWAMenuStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeInMenu {
+      from { opacity:0; transform:scale(0.93) translateY(-4px); }
+      to   { opacity:1; transform:scale(1)    translateY(0);    }
+    }
+    .wa-menu-item {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      width:100%;
+      padding:10px 16px;
+      background:none;
+      border:none;
+      cursor:pointer;
+      font-size:13.5px;
+      font-weight:500;
+      color:var(--text,#0f172a);
+      text-align:left;
+      transition:background 0.12s;
+    }
+    .wa-menu-item:hover {
+      background:var(--bg,#f1f5f9);
+    }
+    .wa-menu-danger {
+      color:#ef4444 !important;
+    }
+    .msgArrow {
+      user-select:none;
+      -webkit-user-select:none;
+    }
+    .msgBubble:hover .msgArrow {
+      opacity:1 !important;
+    }
+    .msg-reply-preview {
+      background:rgba(0,0,0,0.06);
+      border-left:3px solid var(--primary,#6366f1);
+      border-radius:6px;
+      padding:5px 8px;
+      margin-bottom:5px;
+    }
+    #replyPreviewBar {
+      border-top:1px solid var(--border,#e2e8f0);
+    }
+    /* Dark mode override */
+    body.force-dark {
+      --bg: #0f172a !important;
+      --surface: #1e293b !important;
+      --surface2: #1e293b !important;
+      --text: #f1f5f9 !important;
+      --text-muted: #94a3b8 !important;
+      --border: #334155 !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 function showPageLoader(show) {
   let loader = document.getElementById('pageLoader');
@@ -665,7 +951,7 @@ async function loadAllData() {
 }
 
 /* =========================================================
-   7. NAVIGATION
+   9. NAVIGATION
    ========================================================= */
 
 function navigate(page) {
@@ -684,7 +970,7 @@ function navigate(page) {
 }
 
 /* =========================================================
-   8. SIDEBAR TOGGLE
+   10. SIDEBAR
    ========================================================= */
 
 function toggleSidebar() {
@@ -705,9 +991,7 @@ function closeSidebar() {
 
 function toggleRightPanel() {
   const panel = document.getElementById('rightPanel');
-  if (panel) {
-    panel.classList.toggle('show-mobile');
-  }
+  if (panel) panel.classList.toggle('show-mobile');
 }
 
 function initRightPanelMobile() {
@@ -724,24 +1008,23 @@ function initRightPanelMobile() {
   handleResize();
   window.addEventListener('resize', handleResize);
 }
-
 document.addEventListener('DOMContentLoaded', initRightPanelMobile);
 
 /* =========================================================
-   9. DATE
+   11. DATE
    ========================================================= */
 
 function setCurrentDate() {
   const el = document.getElementById('currentDate');
   if (!el) return;
   const now = new Date();
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   el.textContent = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${days[now.getDay()]}`;
 }
 
 /* =========================================================
-   10. DASHBOARD STATS
+   12. DASHBOARD STATS
    ========================================================= */
 
 function updateDashboardStats() {
@@ -840,12 +1123,12 @@ function updateDashboardStats() {
   if (donutChart && STATE.tasks.length) {
     const doneP = done / STATE.tasks.length * 100;
     const ipP = inprog / STATE.tasks.length * 100;
-    donutChart.style.background = `conic-gradient(var(--success) 0% ${doneP}%, var(--info) ${doneP}% ${doneP + ipP}%, var(--warning) ${doneP + ipP}% 100%)`;
+    donutChart.style.background = `conic-gradient(var(--success,#10b981) 0% ${doneP}%, var(--info,#3b82f6) ${doneP}% ${doneP + ipP}%, var(--warning,#f59e0b) ${doneP + ipP}% 100%)`;
   }
 }
 
 /* =========================================================
-   11. CLIENT MANAGEMENT
+   13. CLIENT MANAGEMENT
    ========================================================= */
 
 function getFilteredClients() {
@@ -885,7 +1168,7 @@ function renderClientTable() {
         <td>
           <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="viewClient(${c.id})">View</button>
           <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editClient(${c.id})">Edit</button>
-          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteClientConfirm(${c.id})">Delete</button>
+          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger,#ef4444);color:var(--danger,#ef4444)" onclick="deleteClientConfirm(${c.id})">Delete</button>
         </td>
       </tr>
     `).join('');
@@ -992,7 +1275,7 @@ function deleteClientConfirm(id) {
       <div style="color:var(--text-muted);font-size:13px;margin-bottom:20px">This action is permanent and cannot be undone.</div>
       <div style="display:flex;gap:10px">
         <button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>
-        <button class="btn-primary" style="flex:1;background:var(--danger)" onclick="deleteClientConfirmed(${id})">Delete</button>
+        <button class="btn-primary" style="flex:1;background:#ef4444" onclick="deleteClientConfirmed(${id})">Delete</button>
       </div>
     </div>
   `);
@@ -1007,7 +1290,7 @@ async function deleteClientConfirmed(id) {
 }
 
 /* =========================================================
-   12. GST DASHBOARD
+   14. GST DASHBOARD
    ========================================================= */
 
 function populateGSTClientDropdown() {
@@ -1032,7 +1315,7 @@ function renderGSTPage() {
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             ${statusBadge(g.status)}
-            <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteGSTReturn(${g.id})">✕</button>
+            <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteGSTReturn(${g.id})">✕</button>
           </div>
         </div>
       `).join('');
@@ -1080,7 +1363,7 @@ async function deleteGSTReturn(id) {
 }
 
 /* =========================================================
-   13. ROC FILINGS
+   15. ROC FILINGS
    ========================================================= */
 
 function renderROCTable() {
@@ -1099,7 +1382,7 @@ function renderROCTable() {
       <td>${statusBadge(r.status)}</td>
       <td>
         <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
-        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteROC(${r.id})">Delete</button>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteROC(${r.id})">Delete</button>
       </td>
     </tr>
   `).join('');
@@ -1137,7 +1420,7 @@ async function deleteROC(id) {
 }
 
 /* =========================================================
-   14. INCOME TAX
+   16. INCOME TAX
    ========================================================= */
 
 function renderITRList() {
@@ -1155,7 +1438,7 @@ function renderITRList() {
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         ${statusBadge(itr.status)}
-        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteITR(${itr.id})">✕</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteITR(${itr.id})">✕</button>
       </div>
     </div>
   `).join('');
@@ -1188,7 +1471,7 @@ async function deleteITR(id) {
 }
 
 /* =========================================================
-   15. TDS RETURNS
+   17. TDS RETURNS
    ========================================================= */
 
 function renderTDSTable() {
@@ -1207,7 +1490,7 @@ function renderTDSTable() {
       <td>₹ ${formatAmount(t.amount || 0)}</td>
       <td>
         ${statusBadge(t.status)}
-        <button class="btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px;border-color:var(--danger);color:var(--danger)" onclick="deleteTDS(${t.id})">✕</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px;border-color:#ef4444;color:#ef4444" onclick="deleteTDS(${t.id})">✕</button>
       </td>
     </tr>
   `).join('');
@@ -1239,7 +1522,7 @@ async function deleteTDS(id) {
 }
 
 /* =========================================================
-   16. AUDIT & ASSURANCE
+   18. AUDIT & ASSURANCE
    ========================================================= */
 
 function renderAuditTable() {
@@ -1259,7 +1542,7 @@ function renderAuditTable() {
       <td>${statusBadge(a.status)}</td>
       <td>
         <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
-        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger);color:var(--danger)" onclick="deleteAudit(${a.id})">Delete</button>
+        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteAudit(${a.id})">Delete</button>
       </td>
     </tr>
   `).join('');
@@ -1297,7 +1580,7 @@ async function deleteAudit(id) {
 }
 
 /* =========================================================
-   17. DSC & ESIGN
+   19. DSC & ESIGN
    ========================================================= */
 
 function renderDSCAlerts() {
@@ -1310,18 +1593,18 @@ function renderDSCAlerts() {
   el.innerHTML = STATE.dscRecords.map(d => {
     const daysLeft = d.days_left || 999;
     return `
-    <div class="dsc-alert-item">
-      <div class="activity-dot ${daysLeft <= 7 ? 'orange' : 'blue'}">⚠️</div>
-      <div style="flex:1">
-        <div class="gst-item-name">${escapeHtml(d.client_name)}</div>
-        <div class="gst-item-sub">${escapeHtml(d.purpose || '-')} • Expires ${escapeHtml(d.expiry_date || '-')}</div>
+      <div class="dsc-alert-item">
+        <div class="activity-dot ${daysLeft <= 7 ? 'orange' : 'blue'}">⚠️</div>
+        <div style="flex:1">
+          <div class="gst-item-name">${escapeHtml(d.client_name)}</div>
+          <div class="gst-item-sub">${escapeHtml(d.purpose || '-')} • Expires ${escapeHtml(d.expiry_date || '-')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge ${daysLeft <= 7 ? 'badge-danger' : 'badge-warning'}">${daysLeft}d left</span>
+          <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteDSC(${d.id})">✕</button>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span class="badge ${daysLeft <= 7 ? 'badge-danger' : 'badge-warning'}">${daysLeft}d left</span>
-        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteDSC(${d.id})">✕</button>
-      </div>
-    </div>
-  `;
+    `;
   }).join('');
   updateDashboardStats();
 }
@@ -1357,7 +1640,7 @@ async function deleteDSC(id) {
 }
 
 /* =========================================================
-   18. ACCOUNTING HUB
+   20. ACCOUNTING HUB
    ========================================================= */
 
 function renderAccountingList() {
@@ -1375,7 +1658,7 @@ function renderAccountingList() {
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="acc-amount ${t.entry_type}">${t.entry_type === 'credit' ? '+' : '-'} ₹ ${formatAmount(t.amount || 0)}</div>
-        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteAccEntry(${t.id})">✕</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteAccEntry(${t.id})">✕</button>
       </div>
     </div>
   `).join('');
@@ -1411,7 +1694,7 @@ async function deleteAccEntry(id) {
 }
 
 /* =========================================================
-   19. TASK MANAGER (KANBAN)
+   21. TASK MANAGER (KANBAN)
    ========================================================= */
 
 function renderKanban() {
@@ -1497,7 +1780,7 @@ function openTaskDetail(id) {
     <div class="form-group"><label>Title</label><input type="text" class="form-control" id="editTaskTitle" value="${escapeHtml(task.title)}" /></div>
     <div class="form-group"><label>Assignee</label>
       <select class="form-control" id="taskAssigneeSel">
-        ${['Kamlesh','Punit','Shankar','Ganga','Damini'].map(a => `<option ${task.assignee === a ? 'selected' : ''}>${a}</option>`).join('')}
+        ${['Kamlesh', 'Punit', 'Shankar', 'Ganga', 'Damini'].map(a => `<option ${task.assignee === a ? 'selected' : ''}>${a}</option>`).join('')}
       </select>
     </div>
     <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="editTaskDue" value="${escapeHtml(task.due_date || '')}" /></div>
@@ -1510,7 +1793,7 @@ function openTaskDetail(id) {
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn-primary" style="flex:1" onclick="updateTask(${task.id})">💾 Save</button>
-      <button class="btn-outline" style="flex:1;border-color:var(--danger);color:var(--danger)" onclick="deleteTask(${task.id})">🗑️ Delete</button>
+      <button class="btn-outline" style="flex:1;border-color:#ef4444;color:#ef4444" onclick="deleteTask(${task.id})">🗑️ Delete</button>
     </div>
   `);
 }
@@ -1538,7 +1821,7 @@ async function deleteTask(id) {
 }
 
 /* =========================================================
-   20. REPORTS
+   22. REPORTS
    ========================================================= */
 
 function renderBarChart() {
@@ -1578,7 +1861,7 @@ function exportReport() { showToast('📥 Preparing export...'); }
 function generateReport() { showToast('✅ Report generated!'); }
 
 /* =========================================================
-   21. AI ASSISTANT
+   23. AI ASSISTANT
    ========================================================= */
 
 function getAIResponse(query) {
@@ -1590,7 +1873,7 @@ function getAIResponse(query) {
     if (!pending.length) return 'No pending GST returns right now! 🎉';
     let txt = `${pending.length} GST returns need attention:<br><br>`;
     pending.forEach(g => {
-      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status === 'Overdue' ? 'var(--danger)' : 'var(--warning)'}">${g.status}</span><br>`;
+      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status === 'Overdue' ? '#ef4444' : '#f59e0b'}">${g.status}</span><br>`;
     });
     return txt;
   }
@@ -1629,9 +1912,14 @@ function sendAIMessage(presetMsg) {
   if (!msg) return;
   const chatEl = document.getElementById('chatMessages');
   if (!chatEl) return;
+  const userRaw = localStorage.getItem('witcorp-user');
+  const user = userRaw ? JSON.parse(userRaw) : {};
+  const name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email ? user.email.split('@')[0] : 'U');
+  const initial = name.charAt(0).toUpperCase();
+
   chatEl.insertAdjacentHTML('beforeend', `
     <div class="chat-msg user">
-      <div class="msg-avatar">K</div>
+      <div class="msg-avatar">${initial}</div>
       <div class="msg-content">${escapeHtml(msg)}</div>
     </div>
   `);
@@ -1651,7 +1939,7 @@ function aiChip(text) { navigate('ai'); setTimeout(() => sendAIMessage(text), 20
 function openAI() { navigate('ai'); }
 
 /* =========================================================
-   22. DOCUMENTS
+   24. DOCUMENTS
    ========================================================= */
 
 function renderDocuments() {
@@ -1666,7 +1954,7 @@ function renderDocuments() {
       <div class="doc-icon">${d.icon || '📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
       <div class="doc-meta">${escapeHtml(d.client_name || '')} • ${escapeHtml(d.file_size || '')}</div>
-      <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:var(--danger);color:var(--danger)" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
+      <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
     </div>
   `).join('');
 }
@@ -1677,10 +1965,10 @@ async function deleteDoc(id) {
 }
 
 /* =========================================================
-   23. CALENDAR
+   25. CALENDAR
    ========================================================= */
 
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function renderCalendar() {
   const { month, year } = STATE.calendar;
@@ -1754,7 +2042,7 @@ function renderEventList() {
       <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type || '')}</div></div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
-        <button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="deleteEvent(${e.id})">✕</button>
+        <button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteEvent(${e.id})">✕</button>
       </div>
     </div>
   `).join('') : '<div class="empty-state"><div class="empty-state-text">No events</div></div>';
@@ -1769,7 +2057,7 @@ async function deleteEvent(id) {
 }
 
 /* =========================================================
-   24. RIGHT PANEL
+   26. RIGHT PANEL
    ========================================================= */
 
 function renderDueDates() {
@@ -1819,7 +2107,7 @@ function renderActivity() {
 }
 
 /* =========================================================
-   25. MODALS
+   27. MODALS
    ========================================================= */
 
 function openModal(type) {
@@ -1877,9 +2165,7 @@ function openModal(type) {
       body: `
         <div class="form-group"><label>Label *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Gmail, AWS, Banking" /></div>
         <div class="form-group"><label>Folder</label>
-          <select class="form-control" id="vaultFolder">
-            ${VAULT_FOLDERS.map(f => `<option>${f}</option>`).join('')}
-          </select>
+          <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f => `<option>${f}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label>URL</label><input type="text" class="form-control" id="vaultUrl" placeholder="https://..." /></div>
         <div class="form-group"><label>Username</label><input type="text" class="form-control" id="vaultUsername" /></div>
@@ -2076,7 +2362,7 @@ async function submitNewEvent() {
 }
 
 /* =========================================================
-   26. QUICK ACTION
+   28. QUICK ACTION
    ========================================================= */
 
 function openQuickAction() {
@@ -2095,7 +2381,7 @@ function openQuickAction() {
 }
 
 /* =========================================================
-   27. PROFILE & LOGOUT
+   29. PROFILE & LOGOUT
    ========================================================= */
 
 function loadUserInfo() {
@@ -2109,10 +2395,12 @@ function loadUserInfo() {
 
   const initEl = document.getElementById('userInitial');
   const nameEl = document.getElementById('userDisplayName');
+  const roleEl = document.getElementById('userDisplayRole');
+  const welcomeEl = document.getElementById('welcomeUserName');
+
   if (initEl) initEl.textContent = initial;
   if (nameEl) nameEl.textContent = name;
-
-  const welcomeEl = document.getElementById('welcomeUserName');
+  if (roleEl) roleEl.textContent = (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'Member';
   if (welcomeEl) welcomeEl.textContent = name;
 }
 
@@ -2126,14 +2414,14 @@ function openProfile() {
   const initial = name.charAt(0).toUpperCase();
   openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
-      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${initial}</div>
+      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary,#6366f1),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${initial}</div>
       <div style="font-weight:700;font-size:16px">${escapeHtml(name)}</div>
       <div style="color:var(--text-muted);font-size:13px">WITCORP India Advisors LLP</div>
     </div>
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(email)}</div></div>
     <div class="form-group"><label>User ID</label><div class="form-control" style="background:var(--bg)">${escapeHtml(user.id || 'N/A')}</div></div>
     <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
-    <button class="btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)" onclick="logout()">🚪 Logout</button>
+    <button class="btn-outline" style="width:100%;margin-top:8px;border-color:#ef4444;color:#ef4444" onclick="logout()">🚪 Logout</button>
   `);
 }
 
@@ -2155,7 +2443,7 @@ async function logout() {
 }
 
 /* =========================================================
-   28. GLOBAL SEARCH
+   30. GLOBAL SEARCH
    ========================================================= */
 
 function handleSearch(query) {
@@ -2173,7 +2461,7 @@ function handleSearch(query) {
 }
 
 /* =========================================================
-   29. TOAST
+   31. TOAST
    ========================================================= */
 
 let toastTimeout = null;
@@ -2188,7 +2476,7 @@ function showToast(message) {
 }
 
 /* =========================================================
-   30. KEYBOARD & GLOBAL LISTENERS
+   32. KEYBOARD & GLOBAL LISTENERS
    ========================================================= */
 
 function attachGlobalListeners() {
@@ -2201,24 +2489,17 @@ function attachGlobalListeners() {
     if (e.key === 'Escape') {
       closeModal();
       closeNotifications();
+      cancelReply();
+      const menu = document.getElementById('waContextMenu');
+      if (menu) menu.style.display = 'none';
       if (window.innerWidth <= 768) closeSidebar();
-    }
-  });
-  document.addEventListener('click', (e) => {
-    const panel = document.getElementById('notifPanel');
-    if (panel && panel.classList.contains('show')) {
-      if (!panel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) closeNotifications();
-    }
-    const modalOverlay = document.getElementById('modalOverlay');
-    if (modalOverlay && modalOverlay.classList.contains('show')) {
-      if (e.target === modalOverlay) closeModal();
     }
   });
   window.addEventListener('resize', () => { if (window.innerWidth > 768) closeSidebar(); });
 }
 
 /* =========================================================
-   31. NOTIFICATIONS
+   33. NOTIFICATIONS
    ========================================================= */
 
 function openNotifications() {
@@ -2254,7 +2535,7 @@ function closeNotifications() {
 }
 
 /* =========================================================
-   32. UTILITY
+   34. UTILITY
    ========================================================= */
 
 function escapeHtml(str) {
@@ -2281,57 +2562,6 @@ function statusBadge(status) {
     'In Review': 'badge-purple', 'Completed': 'badge-success', 'Expiring Soon': 'badge-warning', 'Expired': 'badge-danger'
   };
   return `<span class="badge ${map[status] || 'badge-info'}">${escapeHtml(status)}</span>`;
-}
-let selectedMessage=null;
-function openMessageMenu(e,id,isOwn){
-
-e.preventDefault();
-
-selectedMessage=id;
-
-const menu=document.getElementById("messageMenu");
-
-menu.style.display="block";
-
-menu.style.left=e.pageX+"px";
-
-menu.style.top=e.pageY+"px";
-
-document.getElementById("editMenu").style.display=isOwn?"block":"none";
-
-}
-document.addEventListener("click",function(){
-
-document.getElementById("messageMenu").style.display="none";
-
-});
-function editSelected(){
-
-const msg=STATE.teamMessages.find(x=>x.id==selectedMessage);
-
-editMessage(msg.id,msg.message);
-
-}
-function deleteSelected(){
-
-deleteMessage(selectedMessage);
-
-}
-function replySelected(){
-
-const msg=STATE.teamMessages.find(x=>x.id==selectedMessage);
-
-replyToMessage(msg.id,msg.message.substring(0,20));
-
-}
-function copySelected(){
-
-const msg=STATE.teamMessages.find(x=>x.id==selectedMessage);
-
-navigator.clipboard.writeText(msg.message);
-
-showToast("Copied");
-
 }
 
 /* =========================================================
