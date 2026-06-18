@@ -18,64 +18,68 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>W</text></svg>" />
 
   <!-- ===== AUTH GUARD ===== -->
-<script src="auth.js"></script>
-<script>
-  (async function () {
-    const isCallback = await handleOAuthCallback();  // ✅ await lagao
-    if (isCallback) {
-      window.location.replace('index.html');
-      return;
-    }
-    const token = localStorage.getItem('witcorp-access-token');
-    if (!token) {
-      window.location.replace('login.html');
-      return;
-    }
-    const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-      headers: {
-        'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
-        'Authorization': 'Bearer ' + token
+  <script src="auth.js"></script>
+  <script>
+    (async function () {
+      const isCallback = await handleOAuthCallback();
+      if (isCallback) {
+        window.location.replace('index.html');
+        return;
       }
-    });
-    if (!res.ok) {
-      localStorage.clear();
-      window.location.replace('login.html');
-    }
-  })();
-</script>
+      const token = localStorage.getItem('witcorp-access-token');
+      if (!token) {
+        window.location.replace('login.html');
+        return;
+      }
+      const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
+        headers: {
+          'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      if (!res.ok) {
+        localStorage.clear();
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
 
   <!-- ===== INLINE FIXES ===== -->
   <script>
+    /* ── Dark Mode Toggle (FIXED) ── */
     function toggleDarkMode() {
-  const isDark = document.body.classList.toggle('force-dark');
-  localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
-  document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(btn => {
-    btn.textContent = isDark ? '☀️' : '🌙';
-  });
-}
+      const isDark = document.body.classList.toggle('force-dark');
+      localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
+      document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) {
+        btn.textContent = isDark ? '☀️' : '🌙';
+      });
+    }
 
     function setTheme(themeName) {
-      const themes = [
+      var themes = [
         'theme-violet','theme-blue','theme-emerald','theme-rose',
         'theme-amber','theme-cyan','theme-dark','theme-midnight',
         'theme-forest','theme-sunset','theme-sakura','theme-gold'
       ];
-      themes.forEach(t => document.body.classList.remove(t));
+      themes.forEach(function(t) { document.body.classList.remove(t); });
       document.body.classList.add(themeName);
       localStorage.setItem('witcorp-body-theme', themeName);
-      document.querySelectorAll('.swatch').forEach(s => {
+      document.querySelectorAll('.swatch').forEach(function(s) {
         s.classList.toggle('active', s.dataset.theme === themeName);
       });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const savedDark = localStorage.getItem('witcorp-dark-mode');
+    document.addEventListener('DOMContentLoaded', function() {
+      /* Restore dark mode */
+      var savedDark = localStorage.getItem('witcorp-dark-mode');
       if (savedDark === '1') {
         document.body.classList.add('force-dark');
-        const btn = document.querySelector('[onclick="toggleDarkMode()"]');
-        if (btn) btn.textContent = '☀️';
+        document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) {
+          btn.textContent = '☀️';
+        });
       }
-      const savedTheme = localStorage.getItem('witcorp-body-theme');
+      /* Restore body theme */
+      var savedTheme = localStorage.getItem('witcorp-body-theme');
       if (savedTheme) setTheme(savedTheme);
     });
 
@@ -88,16 +92,16 @@
     }
 
     function loadUserInfoExtended() {
-      const userRaw = localStorage.getItem('witcorp-user');
+      var userRaw = localStorage.getItem('witcorp-user');
       if (!userRaw) return;
-      const user = JSON.parse(userRaw);
-      const meta = user.user_metadata || {};
-      const name = meta.full_name || (user.email ? user.email.split('@')[0] : 'User');
-      const role = meta.role || 'Member';
-      const initial = name.charAt(0).toUpperCase();
-      const initEl = document.getElementById('userInitial');
-      const nameEl = document.getElementById('userDisplayName');
-      const roleEl = document.getElementById('userDisplayRole');
+      var user = JSON.parse(userRaw);
+      var meta = user.user_metadata || {};
+      var name = meta.full_name || (user.email ? user.email.split('@')[0] : 'User');
+      var role = meta.role || 'Member';
+      var initial = name.charAt(0).toUpperCase();
+      var initEl = document.getElementById('userInitial');
+      var nameEl = document.getElementById('userDisplayName');
+      var roleEl = document.getElementById('userDisplayRole');
       if (initEl) initEl.textContent = initial;
       if (nameEl) nameEl.textContent = name;
       if (roleEl) roleEl.textContent = role;
@@ -600,7 +604,7 @@
       </div>
     </section>
 
-    <!-- ===== VAULT (NEW) ===== -->
+    <!-- ===== VAULT ===== -->
     <section class="page" id="page-vault">
       <div class="page-header">
         <div><h1>🔐 Vault</h1><p>Secure password &amp; credentials manager</p></div>
@@ -783,7 +787,7 @@
       </div>
     </section>
 
-    <!-- ===== TEAM CHAT (ENHANCED) ===== -->
+    <!-- ===== TEAM CHAT ===== -->
     <section class="page" id="page-teamchat">
       <div class="page-header">
         <div><h1>💬 Team Chat</h1><p>Real-time team collaboration</p></div>
@@ -823,25 +827,17 @@
         </div>
       </div>
 
-      <!-- Emoji Picker Modal -->
+      <!-- Emoji Picker -->
       <div id="emojiPickerModal" style="display:none;position:fixed;bottom:100px;right:20px;background:var(--surface);border-radius:12px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;width:300px;max-height:300px;overflow-y:auto">
         <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px" id="emojiGrid"></div>
       </div>
     </section>
-    <div id="messageMenu" class="messageMenu">
 
-<div onclick="replySelected()">↩ Reply</div>
+    <!-- WhatsApp-style message context menu (hidden by default) -->
+    <div id="waMessageMenu" class="wa-msg-menu" style="display:none;"></div>
 
-<div onclick="copySelected()">📋 Copy</div>
-
-<div id="editMenu" onclick="editSelected()">✏ Edit</div>
-
-<div onclick="deleteSelected()">🗑 Delete</div>
-
+  </main>
 </div>
-
-  </main><!-- /page-content -->
-</div><!-- /main-wrapper -->
 
 <!-- ========== RIGHT PANEL ========== -->
 <aside class="right-panel" id="rightPanel">
@@ -890,21 +886,16 @@
 <!-- ========== APP SCRIPT ========== -->
 <script src="app_enhanced.js"></script>
 
-<!-- ========== SERVICE WORKER REGISTER ========== -->
+<!-- ========== SERVICE WORKER ========== -->
 <script>
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    window.addEventListener('load', function() {
       navigator.serviceWorker.register('./sw.js')
-        .then((reg) => {
-          console.log('[SW] Registered:', reg.scope);
-        })
-        .catch((err) => {
-          console.warn('[SW] Registration failed:', err);
-        });
+        .then(function(reg) { console.log('[SW] Registered:', reg.scope); })
+        .catch(function(err) { console.warn('[SW] Registration failed:', err); });
     });
   }
 </script>
-<!-- ========== END SW REGISTER ========== -->
 
 </body>
 </html>
