@@ -446,8 +446,18 @@ async function renderTeamMessages() {
           ${replyMsg ? `<div class="msg-reply">
             <div style="font-size:11px;color:var(--text-muted)">↳ Reply to ${escapeHtml(replyMsg.message.substring(0, 40))}...</div>
           </div>` : ''}
-          <div style="background:${isOwn ? 'var(--primary)' : 'var(--surface2)'};color:${isOwn ? '#fff' : 'var(--text)'};padding:8px 12px;border-radius:12px;word-break:break-word">
+          <div class="msgBubble"
+         style="background:${isOwn ? 'var(--primary)' : 'var(--surface2)'};
+         color:${isOwn ? '#fff' : 'var(--text)'};
+         padding:8px 12px;
+         border-radius:12px;
+         word-break:break-word;
+         position:relative;">
             ${escapeHtml(m.message)}
+            <span class="msgArrow"
+          onclick="showMsgMenu(event,${m.id},${isOwn})">
+          ⌄
+           </span>
             ${m.is_edited ? '<div style="font-size:10px;opacity:.7;margin-top:4px">edited</div>' : ''}
           </div>
           <div style="font-size:10.5px;opacity:.6;margin-top:4px">
