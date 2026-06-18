@@ -47,11 +47,12 @@
   <!-- ===== INLINE FIXES ===== -->
   <script>
     function toggleDarkMode() {
-      const isDark = document.body.classList.toggle('force-dark');
-      localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
-      const btn = document.querySelector('[onclick="toggleDarkMode()"]');
-      if (btn) btn.textContent = isDark ? '☀️' : '🌙';
-    }
+  const isDark = document.body.classList.toggle('force-dark');
+  localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
+  document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(btn => {
+    btn.textContent = isDark ? '☀️' : '🌙';
+  });
+}
 
     function setTheme(themeName) {
       const themes = [
