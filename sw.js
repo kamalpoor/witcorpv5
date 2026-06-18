@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   './splash.html',
   './login_fixed.html',
   './index.html',
-  './app_enhanced.js'
+  './app_enhanced.js',
   './auth_fixed.js',
   './style.css',
   './logo.png',
