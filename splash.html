@@ -259,12 +259,20 @@
     var label = document.getElementById('progressLabel');
     var pct = 0;
 
-    /* Safely read localStorage */
-    var token = null;
-    try { token = localStorage.getItem('witcorp-access-token'); } catch (e) {}
+   /* Check OAuth callback first */
+var hash = window.location.hash;
+if (hash) {
+  var params = new URLSearchParams(hash.replace('#', ''));
+  var access_token = params.get('access_token');
+  if (access_token) {
+    window.location.replace('login.html' + window.location.hash);
+    return;
+  }
+}
 
-    /* Determine redirect target */
-    var target = token ? 'index.html' : 'login.html';
+var token = null;
+try { token = localStorage.getItem('witcorp-access-token'); } catch (e) {}
+var target = token ? 'index.html' : 'login.html';
 
     var labels = ['Loading...', 'Authenticating...', 'Almost ready...', 'Welcome!'];
     var labelIdx = 0;
