@@ -1695,6 +1695,43 @@ textarea.form-control { resize: vertical; }
   50%  { filter: hue-rotate(30deg) brightness(1.3); }
   100% { filter: hue-rotate(0deg) brightness(1); }
 }
+.messageMenu{
+
+position:fixed;
+
+display:none;
+
+background:#202c33;
+
+color:white;
+
+min-width:170px;
+
+border-radius:12px;
+
+overflow:hidden;
+
+z-index:999999;
+
+box-shadow:0 3px 12px rgba(0,0,0,.4);
+
+}
+
+.messageMenu div{
+
+padding:12px;
+
+cursor:pointer;
+
+font-size:14px;
+
+}
+
+.messageMenu div:hover{
+
+background:#2f3b43;
+
+}
 /* =============================================================
    END OF style.css — WITCORP | Complete | All Bugs Fixed
    ============================================================= */
