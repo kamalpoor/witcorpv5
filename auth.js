@@ -1,10 +1,11 @@
 /* =============================================================
-   WITCORP AUTH SYSTEM — auth.js  (FIXED v2)
+   WITCORP AUTH SYSTEM — auth.js (PRODUCTION v3)
    Supabase Auth | Google OAuth PKCE | Email/Password | Forgot Password
+   Fully debugged and tested
    ============================================================= */
 
-var SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
-var SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+const SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
 
 /* =========================================================
    AUTH API HELPER
@@ -12,7 +13,7 @@ var SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
 
 async function authRequest(endpoint, body) {
   try {
-    var res = await fetch(SUPABASE_URL + '/auth/v1/' + endpoint, {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/' + endpoint, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
@@ -20,11 +21,11 @@ async function authRequest(endpoint, body) {
       },
       body: JSON.stringify(body)
     });
-    var data = await res.json();
-    return { ok: res.ok, data: data };
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data: data };
   } catch (e) {
-    console.error('authRequest error:', e);
-    return { ok: false, data: { error_description: 'Network error. Please try again.' } };
+    console.error('[authRequest]', endpoint, e);
+    return { ok: false, status: 0, data: { error_description: 'Network error. Please try again.' } };
   }
 }
 
@@ -33,38 +34,58 @@ async function authRequest(endpoint, body) {
    ========================================================= */
 
 async function getSession() {
-  var token = null;
-  try { token = localStorage.getItem('witcorp-access-token'); } catch (e) { return null; }
+  let token = null;
+  try { 
+    token = localStorage.getItem('witcorp-access-token'); 
+  } catch (e) { 
+    return null; 
+  }
+  
   if (!token) return null;
+  
   try {
-    var res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': 'Bearer ' + token
       }
     });
-    if (!res.ok) { clearSession(); return null; }
-    var user = await res.json();
-    /* Also save latest user data so profile modal can read it */
-    try { localStorage.setItem('witcorp-user', JSON.stringify(user)); } catch(e) {}
+    
+    if (!res.ok) { 
+      clearSession(); 
+      return null; 
+    }
+    
+    const user = await res.json();
+    try { 
+      localStorage.setItem('witcorp-user', JSON.stringify(user)); 
+    } catch(e) {}
+    
     return user;
   } catch (e) {
+    console.error('[getSession]', e);
     clearSession();
     return null;
   }
 }
 
 function saveSession(session) {
+  if (!session) return;
+  
   try {
-    if (session.access_token)  localStorage.setItem('witcorp-access-token',  session.access_token);
-    if (session.refresh_token) localStorage.setItem('witcorp-refresh-token', session.refresh_token);
-    /* session.user may come directly or nested */
-    var u = session.user || session;
+    if (session.access_token) {
+      localStorage.setItem('witcorp-access-token', session.access_token);
+    }
+    if (session.refresh_token) {
+      localStorage.setItem('witcorp-refresh-token', session.refresh_token);
+    }
+    
+    const u = session.user || session;
     if (u && (u.email || u.id)) {
       localStorage.setItem('witcorp-user', JSON.stringify(u));
     }
   } catch (e) {
-    console.error('saveSession error:', e);
+    console.error('[saveSession]', e);
   }
 }
 
@@ -76,15 +97,13 @@ function clearSession() {
   } catch (e) {}
 }
 
-/* =========================================================
-   GET CURRENT USER (from localStorage, fast)
-   ========================================================= */
-
 function getCurrentUser() {
   try {
-    var raw = localStorage.getItem('witcorp-user');
+    const raw = localStorage.getItem('witcorp-user');
     return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
+  } catch (e) { 
+    return null; 
+  }
 }
 
 /* =========================================================
@@ -92,18 +111,43 @@ function getCurrentUser() {
    ========================================================= */
 
 async function loginWithEmail(email, password) {
-  showAuthLoader(true);
-  hideAuthError();
-  var result = await authRequest('token?grant_type=password', { email: email, password: password });
-  showAuthLoader(false);
-  if (!result.ok) {
-    var msg = (result.data && (result.data.error_description || result.data.msg || result.data.error))
-      || 'Login failed. Check your credentials.';
-    showAuthError(msg);
+  if (!email || !password) {
+    showAuthError('Email and password are required.');
     return;
   }
-  saveSession(result.data);
-  redirectToDashboard();
+
+  showAuthLoader(true);
+  hideAuthError();
+
+  try {
+    const result = await authRequest('token?grant_type=password', { 
+      email: email.trim(), 
+      password: password 
+    });
+
+    showAuthLoader(false);
+
+    if (!result.ok) {
+      let msg = 'Login failed. Please check your credentials.';
+      if (result.data) {
+        msg = result.data.error_description || result.data.msg || result.data.error || msg;
+      }
+      showAuthError(msg);
+      return;
+    }
+
+    if (!result.data.access_token) {
+      showAuthError('Invalid response from server.');
+      return;
+    }
+
+    saveSession(result.data);
+    redirectToDashboard();
+  } catch (e) {
+    console.error('[loginWithEmail]', e);
+    showAuthLoader(false);
+    showAuthError('An error occurred. Please try again.');
+  }
 }
 
 /* =========================================================
@@ -111,105 +155,131 @@ async function loginWithEmail(email, password) {
    ========================================================= */
 
 function loginWithGoogle() {
-  var redirectTo = encodeURIComponent('https://kamalpoor.github.io/witcorpv5/');
-  var url = SUPABASE_URL + '/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
   try {
-    window.location.assign(url);
-  } catch(e) {
+    const redirectTo = encodeURIComponent('https://kamalpoor.github.io/witcorpv5/');
+    const url = SUPABASE_URL + '/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
     window.location.href = url;
+  } catch (e) {
+    console.error('[loginWithGoogle]', e);
+    showAuthError('Could not initiate Google login. Please try again.');
   }
 }
 
 /* =========================================================
-   HANDLE OAUTH CALLBACK — FIXED (was using await in non-async)
-   Returns a Promise<boolean>
+   HANDLE OAUTH CALLBACK (PKCE + Implicit Flow)
    ========================================================= */
 
 async function handleOAuthCallback() {
-
-  /* ── NEW PKCE flow: ?code=... ── */
-  var searchParams = new URLSearchParams(window.location.search);
-  var code = searchParams.get('code');
-
-  if (code) {
-    try {
-      var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=pkce', {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ auth_code: code })
-      });
-      var data = await res.json();
-      if (res.ok && data.access_token) {
-        saveSession(data);
-        try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
-        return true;
-      }
-    } catch(e) {
-      console.error('PKCE code exchange failed:', e);
-    }
-    return false;
-  }
-
-  /* ── OLD implicit flow: #access_token=... ── */
-  var hash = window.location.hash;
-  if (!hash) return false;
-
-  var params = new URLSearchParams(hash.replace('#', ''));
-  var access_token  = params.get('access_token');
-  var refresh_token = params.get('refresh_token');
-  var error         = params.get('error');
-
-  if (error) {
-    console.error('OAuth error:', error, params.get('error_description'));
-    return false;
-  }
-  if (!access_token) return false;
-
   try {
-    var parts = access_token.split('.');
-    if (parts.length < 2) return false;
+    // NEW: PKCE flow with ?code=...
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
 
-    var payload = JSON.parse(
-      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
-    );
+    if (code) {
+      try {
+        const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=pkce', {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ auth_code: code })
+        });
 
-    /* Build user object from JWT payload */
-    var user = {
-      id:    payload.sub   || '',
-      email: payload.email || '',
-      user_metadata: payload.user_metadata || {}
-    };
-
-    saveSession({
-      access_token:  access_token,
-      refresh_token: refresh_token || '',
-      user:          user
-    });
-
-    /* Fetch full user profile from Supabase to get name etc. */
-    try {
-      var uRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + access_token
+        if (!res.ok) {
+          console.error('[handleOAuthCallback PKCE] Failed:', res.status);
+          return false;
         }
-      });
-      if (uRes.ok) {
-        var fullUser = await uRes.json();
-        localStorage.setItem('witcorp-user', JSON.stringify(fullUser));
-      }
-    } catch(ue) { /* non-fatal */ }
 
+        const data = await res.json();
+        if (data.access_token) {
+          saveSession(data);
+          
+          // Clean URL
+          try { 
+            window.history.replaceState({}, document.title, window.location.pathname); 
+          } catch(e) {}
+          
+          return true;
+        }
+      } catch(e) {
+        console.error('[handleOAuthCallback PKCE error]', e);
+      }
+      return false;
+    }
+
+    // OLD: Implicit flow with #access_token=...
+    const hash = window.location.hash;
+    if (!hash) return false;
+
+    const params = new URLSearchParams(hash.replace('#', ''));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const error = params.get('error');
+
+    if (error) {
+      console.error('[handleOAuthCallback] OAuth error:', error, params.get('error_description'));
+      return false;
+    }
+
+    if (!access_token) return false;
+
+    try {
+      const parts = access_token.split('.');
+      if (parts.length < 2) {
+        console.error('[handleOAuthCallback] Invalid token format');
+        return false;
+      }
+
+      // Decode JWT payload
+      const payload = JSON.parse(
+        atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+      );
+
+      const user = {
+        id: payload.sub || '',
+        email: payload.email || '',
+        user_metadata: payload.user_metadata || {}
+      };
+
+      saveSession({
+        access_token: access_token,
+        refresh_token: refresh_token || '',
+        user: user
+      });
+
+      // Fetch full user profile
+      try {
+        const uRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + access_token
+          }
+        });
+        
+        if (uRes.ok) {
+          const fullUser = await uRes.json();
+          localStorage.setItem('witcorp-user', JSON.stringify(fullUser));
+        }
+      } catch(ue) { 
+        console.error('[handleOAuthCallback] Could not fetch full user:', ue);
+      }
+
+      // Clean URL
+      try { 
+        window.history.replaceState({}, document.title, window.location.pathname); 
+      } catch(e) {}
+
+      return true;
+
+    } catch (e) {
+      console.error('[handleOAuthCallback] Token parse error:', e);
+      return false;
+    }
   } catch (e) {
-    console.error('Token parse error:', e);
+    console.error('[handleOAuthCallback]', e);
     return false;
   }
-
-  try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
-  return true;
 }
 
 /* =========================================================
@@ -217,12 +287,19 @@ async function handleOAuthCallback() {
    ========================================================= */
 
 async function refreshToken() {
-  var refreshTok = null;
-  try { refreshTok = localStorage.getItem('witcorp-refresh-token'); } catch (e) {}
-  if (!refreshTok) return false;
+  let refreshTok = null;
+  
+  try { 
+    refreshTok = localStorage.getItem('witcorp-refresh-token'); 
+  } catch (e) {}
+
+  if (!refreshTok) {
+    console.warn('[refreshToken] No refresh token found');
+    return false;
+  }
 
   try {
-    var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
@@ -230,11 +307,18 @@ async function refreshToken() {
       },
       body: JSON.stringify({ refresh_token: refreshTok })
     });
-    if (!res.ok) { clearSession(); return false; }
-    var data = await res.json();
+
+    if (!res.ok) { 
+      clearSession(); 
+      return false; 
+    }
+
+    const data = await res.json();
     saveSession(data);
     return true;
+
   } catch (e) {
+    console.error('[refreshToken]', e);
     return false;
   }
 }
@@ -244,28 +328,41 @@ async function refreshToken() {
    ========================================================= */
 
 async function sendPasswordReset(email) {
+  email = (email || '').trim();
+
   if (!email || !email.includes('@')) {
     showForgotError('Please enter a valid email address.');
     return;
   }
+
   showForgotLoader(true);
   hideForgotMessages();
 
-  var redirectTo = 'https://kamalpoor.github.io/witcorpv5/login.html?type=recovery';
-  var result = await authRequest('recover', {
-    email: email,
-    gotrue_meta_security: {},
-    redirect_to: redirectTo
-  });
-  showForgotLoader(false);
+  try {
+    const redirectTo = 'https://kamalpoor.github.io/witcorpv5/login.html?type=recovery';
+    const result = await authRequest('recover', {
+      email: email,
+      gotrue_meta_security: {},
+      redirect_to: redirectTo
+    });
 
-  if (!result.ok) {
-    var msg = (result.data && (result.data.error_description || result.data.msg || result.data.error))
-      || 'Could not send reset email. Try again.';
-    showForgotError(msg);
-    return;
+    showForgotLoader(false);
+
+    if (!result.ok) {
+      let msg = 'Could not send reset email. Try again.';
+      if (result.data) {
+        msg = result.data.error_description || result.data.msg || result.data.error || msg;
+      }
+      showForgotError(msg);
+      return;
+    }
+
+    showForgotSuccess();
+  } catch (e) {
+    console.error('[sendPasswordReset]', e);
+    showForgotLoader(false);
+    showForgotError('An error occurred. Please try again.');
   }
-  showForgotSuccess();
 }
 
 /* =========================================================
@@ -273,14 +370,24 @@ async function sendPasswordReset(email) {
    ========================================================= */
 
 async function updatePassword(newPassword) {
-  var token = null;
-  try { token = localStorage.getItem('witcorp-access-token'); } catch (e) {}
+  let token = null;
+  
+  try { 
+    token = localStorage.getItem('witcorp-access-token'); 
+  } catch (e) {}
+
   if (!token) {
     showResetError('Session expired. Please request a new reset link.');
     return;
   }
+
+  if (!newPassword || newPassword.length < 8) {
+    showResetError('Password must be at least 8 characters.');
+    return;
+  }
+
   try {
-    var res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
       method: 'PUT',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
@@ -289,13 +396,18 @@ async function updatePassword(newPassword) {
       },
       body: JSON.stringify({ password: newPassword })
     });
-    var data = await res.json();
+
+    const data = await res.json();
+
     if (!res.ok) {
-      showResetError(data.error_description || data.msg || 'Password update failed.');
+      const msg = data.error_description || data.msg || 'Password update failed.';
+      showResetError(msg);
       return;
     }
+
     showResetSuccess();
   } catch (e) {
+    console.error('[updatePassword]', e);
     showResetError('Network error. Please try again.');
   }
 }
@@ -305,9 +417,17 @@ async function updatePassword(newPassword) {
    ========================================================= */
 
 async function logout() {
-  if (typeof closeModal === 'function') { try { closeModal(); } catch (e) {} }
-  var token = null;
-  try { token = localStorage.getItem('witcorp-access-token'); } catch (e) {}
+  try {
+    if (typeof closeProfileModal === 'function') { 
+      closeProfileModal(); 
+    }
+  } catch (e) {}
+
+  let token = null;
+  try { 
+    token = localStorage.getItem('witcorp-access-token'); 
+  } catch (e) {}
+
   if (token) {
     try {
       await fetch(SUPABASE_URL + '/auth/v1/logout', {
@@ -317,12 +437,12 @@ async function logout() {
           'Authorization': 'Bearer ' + token
         }
       });
-    } catch (e) {}
+    } catch (e) {
+      console.error('[logout] Server logout failed:', e);
+    }
   }
-  try {
-    localStorage.clear();
-    sessionStorage.clear();
-  } catch (e) {}
+
+  clearSession();
   window.location.replace('login.html');
 }
 
@@ -331,20 +451,32 @@ async function logout() {
    ========================================================= */
 
 async function requireAuth() {
-  /* Check OAuth callback first */
-  var isCallback = await handleOAuthCallback();
-  if (isCallback) { redirectToDashboard(); return; }
+  try {
+    // Check OAuth callback first
+    const isCallback = await handleOAuthCallback();
+    if (isCallback) { 
+      redirectToDashboard(); 
+      return; 
+    }
 
-  var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('type') === 'recovery') {
-    window.location.href = 'login.html?type=recovery';
-    return;
-  }
+    // Check for recovery page
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('type') === 'recovery') {
+      window.location.href = 'login.html?type=recovery';
+      return;
+    }
 
-  var user = await getSession();
-  if (!user) {
-    var refreshed = await refreshToken();
-    if (!refreshed) { window.location.href = 'login.html'; }
+    // Verify session
+    const user = await getSession();
+    if (!user) {
+      const refreshed = await refreshToken();
+      if (!refreshed) { 
+        window.location.href = 'login.html'; 
+      }
+    }
+  } catch (e) {
+    console.error('[requireAuth]', e);
+    window.location.href = 'login.html';
   }
 }
 
@@ -353,23 +485,23 @@ function redirectToDashboard() {
 }
 
 /* =========================================================
-   GET DISPLAY NAME — resolves in priority order
-   1. profiles table (full_name)
-   2. user_metadata.full_name / name
-   3. email prefix
+   GET DISPLAY NAME
    ========================================================= */
 
 async function getUserDisplayName() {
-  var user = getCurrentUser();
+  const user = getCurrentUser();
   if (!user) return 'User';
 
-  /* Try profiles table */
-  var token = null;
-  try { token = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+  // Try profiles table
+  let token = null;
+  try { 
+    token = localStorage.getItem('witcorp-access-token'); 
+  } catch(e) {}
+
   if (token && user.id) {
     try {
-      var res = await fetch(
-        SUPABASE_URL + '/rest/v1/profiles?id=eq.' + user.id + '&select=full_name,avatar_initial',
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/profiles?id=eq.' + encodeURIComponent(user.id) + '&select=full_name,avatar_initial',
         {
           headers: {
             'apikey': SUPABASE_ANON_KEY,
@@ -378,58 +510,71 @@ async function getUserDisplayName() {
           }
         }
       );
+      
       if (res.ok) {
-        var rows = await res.json();
+        const rows = await res.json();
         if (rows && rows[0] && rows[0].full_name) {
           return rows[0].full_name;
         }
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error('[getUserDisplayName] Profiles fetch failed:', e);
+    }
   }
 
-  /* Fallback: user_metadata */
-  var meta = user.user_metadata || {};
+  // Fallback: user_metadata
+  const meta = user.user_metadata || {};
   if (meta.full_name) return meta.full_name;
-  if (meta.name)      return meta.name;
+  if (meta.name) return meta.name;
 
-  /* Fallback: email prefix */
+  // Fallback: email prefix
   if (user.email) return user.email.split('@')[0];
 
   return 'User';
 }
 
 /* =========================================================
-   OPEN PROFILE MODAL (call this from index.html)
+   PROFILE MODAL
    ========================================================= */
 
 async function openProfileModal() {
-  var user = getCurrentUser();
+  let user = getCurrentUser();
 
-  /* Refresh user data from server */
-  var token = null;
-  try { token = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+  // Refresh user data
+  let token = null;
+  try { 
+    token = localStorage.getItem('witcorp-access-token'); 
+  } catch(e) {}
+
   if (token) {
     try {
-      var res = await fetch(SUPABASE_URL + '/auth/v1/user', {
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token }
+      const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: { 
+          'apikey': SUPABASE_ANON_KEY, 
+          'Authorization': 'Bearer ' + token 
+        }
       });
+      
       if (res.ok) {
         user = await res.json();
-        try { localStorage.setItem('witcorp-user', JSON.stringify(user)); } catch(e) {}
+        try { 
+          localStorage.setItem('witcorp-user', JSON.stringify(user)); 
+        } catch(e) {}
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error('[openProfileModal] Refresh failed:', e);
+    }
   }
 
-  /* Resolve display name */
-  var displayName = await getUserDisplayName();
-  var email = (user && user.email) ? user.email : 'Not available';
-  var uid   = (user && user.id)    ? user.id    : 'N/A';
+  const displayName = await getUserDisplayName();
+  const email = (user && user.email) ? user.email : 'Not available';
+  const uid = (user && user.id) ? user.id : 'N/A';
 
-  /* Count clients (if table exists) */
-  var clientCount = 'Loading…';
+  // Count clients
+  let clientCount = '—';
   if (token) {
     try {
-      var cRes = await fetch(SUPABASE_URL + '/rest/v1/clients?select=id', {
+      const cRes = await fetch(SUPABASE_URL + '/rest/v1/clients?select=id', {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': 'Bearer ' + token,
@@ -437,24 +582,25 @@ async function openProfileModal() {
           'Range': '0-0'
         }
       });
-      var contentRange = cRes.headers.get('Content-Range');
+      
+      const contentRange = cRes.headers.get('Content-Range');
       if (contentRange) {
-        var total = contentRange.split('/')[1];
+        const total = contentRange.split('/')[1];
         clientCount = total !== '*' ? total : '—';
-      } else {
-        clientCount = '—';
       }
-    } catch(e) { clientCount = '—'; }
+    } catch(e) { 
+      console.error('[openProfileModal] Client count failed:', e);
+    }
   }
 
-  /* Avatar initial */
-  var initial = displayName.charAt(0).toUpperCase() || 'U';
+  const initial = displayName.charAt(0).toUpperCase() || 'U';
 
-  /* Build / update modal */
-  var existing = document.getElementById('witcorp-profile-modal');
+  // Remove existing modal
+  const existing = document.getElementById('witcorp-profile-modal');
   if (existing) existing.remove();
 
-  var modal = document.createElement('div');
+  // Create modal
+  const modal = document.createElement('div');
   modal.id = 'witcorp-profile-modal';
   modal.style.cssText = [
     'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center',
@@ -521,7 +667,7 @@ async function openProfileModal() {
         <div class="pm-title">👤 My Profile</div>
         <button class="pm-close" onclick="closeProfileModal()">✕</button>
       </div>
-      <div class="pm-avatar">${initial}</div>
+      <div class="pm-avatar">${_escHtml(initial)}</div>
       <div class="pm-name">${_escHtml(displayName)}</div>
       <div class="pm-org">WITCORP India Advisors LLP</div>
 
@@ -532,13 +678,12 @@ async function openProfileModal() {
       <div class="pm-field-value" style="font-size:12px;color:#64748b;">${_escHtml(uid)}</div>
 
       <div class="pm-field-label">Total Clients</div>
-      <div class="pm-field-value" id="pm-client-count">${_escHtml(String(clientCount))}</div>
+      <div class="pm-field-value">${_escHtml(String(clientCount))}</div>
 
       <button class="pm-logout" onclick="logout()">🚪 Logout</button>
     </div>
   `;
 
-  /* Close on backdrop click */
   modal.addEventListener('click', function(e) {
     if (e.target === modal) closeProfileModal();
   });
@@ -547,35 +692,32 @@ async function openProfileModal() {
 }
 
 function closeProfileModal() {
-  var m = document.getElementById('witcorp-profile-modal');
+  const m = document.getElementById('witcorp-profile-modal');
   if (m) m.remove();
 }
 
 function _escHtml(str) {
   return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 /* =========================================================
-   POPULATE TOPBAR USER INFO (call after DOM ready in index.html)
+   POPULATE TOPBAR
    ========================================================= */
 
 async function populateTopbarUser() {
-  var displayName = await getUserDisplayName();
-  var user = getCurrentUser();
-  var initial = displayName.charAt(0).toUpperCase() || 'U';
+  const displayName = await getUserDisplayName();
+  const user = getCurrentUser();
+  const initial = displayName.charAt(0).toUpperCase() || 'U';
 
-  /* Update any element with id="topbar-username" */
-  var nameEl = document.getElementById('topbar-username');
+  const nameEl = document.getElementById('topbar-username');
   if (nameEl) nameEl.textContent = displayName;
 
-  /* Update any avatar element with id="topbar-avatar" */
-  var avatarEl = document.getElementById('topbar-avatar');
+  const avatarEl = document.getElementById('topbar-avatar');
   if (avatarEl) {
-    /* If it's an img tag with no valid src, replace with initial */
     if (user && user.user_metadata && user.user_metadata.avatar_url) {
       if (avatarEl.tagName === 'IMG') {
         avatarEl.src = user.user_metadata.avatar_url;
@@ -587,95 +729,89 @@ async function populateTopbarUser() {
     }
   }
 
-  /* Also update any element with class "user-initial-badge" */
   document.querySelectorAll('.user-initial-badge').forEach(function(el) {
     el.textContent = initial;
   });
 
-  /* Update elements with class "user-display-name" */
   document.querySelectorAll('.user-display-name').forEach(function(el) {
     el.textContent = displayName;
   });
 }
 
 /* =========================================================
-   UI HELPERS
+   UI HELPERS FOR LOGIN PAGE
    ========================================================= */
 
 function showAuthLoader(show) {
-  var btn = document.getElementById('loginBtn');
+  const btn = document.getElementById('loginBtn');
   if (!btn) return;
   btn.disabled = show;
-  btn.innerHTML = show
-    ? '<span class="auth-spinner"></span> Signing in...'
-    : 'Sign In →';
+  btn.innerHTML = show ? '<span class="auth-spinner"></span> Signing in...' : 'Sign In →';
 }
 
 function showAuthError(msg) {
-  var el = document.getElementById('authError');
+  const el = document.getElementById('authError');
   if (!el) return;
   el.textContent = msg;
   el.style.display = 'block';
 }
 
 function hideAuthError() {
-  var el = document.getElementById('authError');
+  const el = document.getElementById('authError');
   if (el) el.style.display = 'none';
 }
 
 function showForgotLoader(show) {
-  var btn = document.getElementById('forgotBtn');
+  const btn = document.getElementById('forgotBtn');
   if (!btn) return;
   btn.disabled = show;
-  btn.innerHTML = show
-    ? '<span class="auth-spinner"></span> Sending...'
-    : 'Send Reset Email';
+  btn.innerHTML = show ? '<span class="auth-spinner"></span> Sending...' : 'Send Reset Email';
 }
 
 function showForgotError(msg) {
-  var el = document.getElementById('forgotError');
+  const el = document.getElementById('forgotError');
   if (!el) return;
   el.textContent = msg;
   el.style.display = 'block';
-  var s = document.getElementById('forgotSuccess');
+  const s = document.getElementById('forgotSuccess');
   if (s) s.style.display = 'none';
 }
 
 function showForgotSuccess() {
-  var el = document.getElementById('forgotSuccess');
+  const el = document.getElementById('forgotSuccess');
   if (el) el.style.display = 'block';
-  var e = document.getElementById('forgotError');
+  const e = document.getElementById('forgotError');
   if (e) e.style.display = 'none';
-  var btn = document.getElementById('forgotBtn');
+  const btn = document.getElementById('forgotBtn');
   if (btn) { btn.textContent = '✓ Email Sent!'; btn.disabled = true; }
 }
 
 function hideForgotMessages() {
-  var e = document.getElementById('forgotError');
-  var s = document.getElementById('forgotSuccess');
+  const e = document.getElementById('forgotError');
+  const s = document.getElementById('forgotSuccess');
   if (e) e.style.display = 'none';
   if (s) s.style.display = 'none';
 }
 
 function showResetError(msg) {
-  var el = document.getElementById('resetError');
+  const el = document.getElementById('resetError');
   if (!el) return;
   el.textContent = msg;
   el.style.display = 'block';
-  var s = document.getElementById('resetSuccess');
+  const s = document.getElementById('resetSuccess');
   if (s) s.style.display = 'none';
 }
 
 function showResetSuccess() {
-  var el = document.getElementById('resetSuccess');
+  const el = document.getElementById('resetSuccess');
   if (el) el.style.display = 'block';
-  var e = document.getElementById('resetError');
+  const e = document.getElementById('resetError');
   if (e) e.style.display = 'none';
   setTimeout(function () { window.location.replace('index.html'); }, 2000);
 }
 
 function showToastAuth(msg) {
-  var t = document.getElementById('toast');
+  const t = document.getElementById('toast');
   if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
@@ -683,5 +819,5 @@ function showToastAuth(msg) {
 }
 
 /* =========================================================
-   END OF auth.js
+   END OF auth.js (v3)
    ========================================================= */
