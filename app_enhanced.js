@@ -859,7 +859,12 @@ function setCurrentDate() {
 function formatDateTime(isoString) {
   if (!isoString) return '-';
   const d = new Date(isoString);
-  return d.toLocaleDateString('en-IN') + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const date = d.toLocaleDateString('en-IN');
+  let hours = d.getHours();
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${date} ${hours}:${mins}${ampm}`;
 }
 
 /* =========================================================
