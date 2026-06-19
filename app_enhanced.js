@@ -3051,6 +3051,33 @@ function toggleVaultPass(inputId, btn) {
   input.type = input.type === 'password' ? 'text' : 'password';
   btn.textContent = input.type === 'text' ? '🙈' : '👁️';
 }
+async function refreshDashboard() {
+  showToast('🔄 Refreshing...');
+  showPageLoader(true);
+  await loadAllData();
+  await loadVaultData();
+  showPageLoader(false);
+  updateDashboardStats();
+  renderClientTable();
+  renderGSTPage();
+  renderROCTable();
+  renderITRList();
+  renderTDSTable();
+  renderAuditTable();
+  renderDSCAlerts();
+  renderAccountingList();
+  renderKanban();
+  renderDocuments();
+  renderCalendar();
+  renderEventList();
+  renderDueDates();
+  renderActivity();
+  renderBarChart();
+  renderVaultFolders();
+  renderVaultCredentials();
+  populateAllClientDropdowns();
+  showToast('✅ Data refreshed!');
+}
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v3
    ✅ updated_at sahi variable se har jagah fix kiya
