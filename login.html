@@ -668,16 +668,23 @@ document.addEventListener('DOMContentLoaded', async () => {
           'Authorization': 'Bearer ' + token
         }
       });
-      if (res.ok) {
-        const userData = await res.json();
-        try { localStorage.setItem('witcorp-user', JSON.stringify(userData)); } catch(e) {}
-        window.location.replace('index.html');
-        return;
-      } else {
-        clearSession();
-      }
-    }
-  } catch (e) { clearSession(); }
+     if (res.ok) {
+  const userData = await res.json();
+  try { localStorage.setItem('witcorp-user', JSON.stringify(userData)); } catch(e) {}
+  const profRes = await fetch(
+    SUPABASE_URL + '/rest/v1/profiles?id=eq.' + userData.id + '&select=status',
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token } }
+  );
+  const profData = await profRes.json();
+  if (profData?.[0]?.status === 'approved') {
+    window.location.replace('index.html');
+  } else {
+    clearSession();
+  }
+  return;
+} else {
+  clearSession();
+}
 
   document.getElementById('loginEmail').focus();
 });
