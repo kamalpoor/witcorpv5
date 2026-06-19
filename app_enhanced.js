@@ -234,7 +234,7 @@ function initTheme() {
    6. VAULT SYSTEM
    ========================================================= */
 
-const VAULT_FOLDERS = ['General', 'GST', 'MCA', 'TDS', 'ITR', 'Banking', 'Clients', 'Other'];
+const VAULT_FOLDERS = ['General', 'GST', 'MCA', 'TDS', 'ITR', 'Banking', 'Gmail', 'Clients', 'Other'];
 
 async function loadVaultData() {
   const creds = await supabaseQuery('vault_credentials', { order: 'folder.asc,created_at.desc' });
@@ -268,27 +268,48 @@ function renderVaultCredentials() {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔓</div><div class="empty-state-text">No credentials in this folder</div><div class="empty-state-sub">Click + Add Credential to get started</div></div>';
     return;
   }
-  container.innerHTML = filtered.map(cred => `
-    <div class="vault-card">
-      <div class="vault-card-header">
-        <div class="vault-card-title">${escapeHtml(cred.label)}</div>
-        <div class="vault-card-actions">
-          <button class="vault-btn" title="View" onclick="viewVaultItem(${cred.id})">👁️</button>
-          <button class="vault-btn" title="Edit" onclick="editVaultItem(${cred.id})">✏️</button>
-          <button class="vault-btn" title="Delete" onclick="deleteVaultItem(${cred.id})">🗑️</button>
-        </div>
-      </div>
-      <div class="vault-card-meta">
-        ${cred.url ? `<div><strong>URL:</strong> ${escapeHtml(cred.url.substring(0, 40))}${cred.url.length > 40 ? '...' : ''}</div>` : ''}
-        ${cred.username ? `<div><strong>Username:</strong> ${escapeHtml(cred.username)}</div>` : ''}
-        ${cred.updated_by ? `<div style="font-size:11px;color:var(--text-muted)">Updated by: ${escapeHtml(cred.updated_by)}</div>` : ''}
-        ${cred.updated_at ? `<div style="font-size:11px;color:var(--text-muted)">🕐 ${formatDateTime(cred.updated_at)}</div>` : ''}
-        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Added ${new Date(cred.created_at).toLocaleDateString()}</div>
-      </div>
-    </div>
-  `).join('');
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Client Name</th>
+            <th>Username / Login ID</th>
+            <th>Password</th>
+            <th>Remarks</th>
+            <th>Updated By</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(cred => `
+            <tr>
+              <td><strong>${escapeHtml(cred.label)}</strong></td>
+              <td>
+                <span>${escapeHtml(cred.username || '-')}</span>
+                ${cred.username ? `<button class="btn-outline" style="padding:2px 7px;font-size:11px;margin-left:6px" onclick="copyToClipboard('${escapeHtml(cred.username)}','Username copied!')">📋</button>` : ''}
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input type="password" id="vp_${cred.id}" value="${escapeHtml(cred.password||'')}" readonly style="border:none;background:transparent;color:var(--text);font-size:13px;width:100px;outline:none" />
+                  <button class="btn-outline" style="padding:2px 7px;font-size:11px" onclick="toggleVaultPass('vp_${cred.id}',this)">👁️</button>
+                  ${cred.password ? `<button class="btn-outline" style="padding:2px 7px;font-size:11px" onclick="copyToClipboard('${escapeHtml(cred.password)}','Password copied!')">📋</button>` : ''}
+                </div>
+              </td>
+              <td style="color:var(--text-muted);font-size:12px">${escapeHtml(cred.notes || '-')}</td>
+              <td style="font-size:11px;color:var(--text-muted)">
+                ${escapeHtml(cred.updated_by || '-')}<br>
+                ${cred.updated_at ? formatDateTime(cred.updated_at) : ''}
+              </td>
+              <td>
+                <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editVaultItem(${cred.id})">✏️ Edit</button>
+                <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteVaultItem(${cred.id})">🗑️</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
-
 function viewVaultItem(id) {
   const cred = STATE.vaultCredentials.find(c => c.id === id);
   if (!cred) return;
@@ -314,17 +335,22 @@ function viewVaultItem(id) {
 function editVaultItem(id) {
   const cred = STATE.vaultCredentials.find(c => c.id === id);
   if (!cred) return;
-  openModalWithContent(`✏️ Edit Credential — ${escapeHtml(cred.label)}`, `
-    <div class="form-group"><label>Label</label><input type="text" class="form-control" id="editVaultLabel" value="${escapeHtml(cred.label)}" /></div>
+  openModalWithContent(`✏️ Edit — ${escapeHtml(cred.label)}`, `
+    <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="editVaultLabel" value="${escapeHtml(cred.label)}" /></div>
     <div class="form-group"><label>Folder</label>
       <select class="form-control" id="editVaultFolder">
-        ${VAULT_FOLDERS.map(f => `<option ${(cred.folder || 'General') === f ? 'selected' : ''}>${f}</option>`).join('')}
+        ${VAULT_FOLDERS.map(f => `<option ${(cred.folder||'General')===f?'selected':''}>${f}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>URL</label><input type="text" class="form-control" id="editVaultUrl" value="${escapeHtml(cred.url || '')}" placeholder="https://..." /></div>
-    <div class="form-group"><label>Username</label><input type="text" class="form-control" id="editVaultUsername" value="${escapeHtml(cred.username || '')}" /></div>
-    <div class="form-group"><label>Password</label><input type="password" class="form-control" id="editVaultPassword" value="${escapeHtml(cred.password || '')}" /></div>
-    <div class="form-group"><label>Notes</label><textarea class="form-control" id="editVaultNotes" rows="2">${escapeHtml(cred.notes || '')}</textarea></div>
+    <div class="form-group"><label>Username / Login ID</label><input type="text" class="form-control" id="editVaultUsername" value="${escapeHtml(cred.username||'')}" /></div>
+    <div class="form-group"><label>Password</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" class="form-control" id="editVaultPassword" value="${escapeHtml(cred.password||'')}" style="flex:1" />
+        <button class="btn-outline" style="padding:8px 12px" onclick="togglePasswordView('editVaultPassword')">👁️ Show</button>
+        <button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard(document.getElementById('editVaultPassword').value,'Password copied!')">📋</button>
+      </div>
+    </div>
+    <div class="form-group"><label>Remarks</label><textarea class="form-control" id="editVaultNotes" rows="2">${escapeHtml(cred.notes||'')}</textarea></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveVaultEdit(${id})">💾 Save Changes</button>
   `);
 }
@@ -2200,18 +2226,22 @@ function openModal(type) {
     },
     newDSC: { title:'✍️ New DSC', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
     addVaultItem: {
-      title: '🔐 Add New Credential',
-      body: `
-        <div class="form-group"><label>Label *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Gmail, AWS, Banking" /></div>
-        <div class="form-group"><label>Folder</label>
-          <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f=>`<option>${f}</option>`).join('')}</select>
-        </div>
-        <div class="form-group"><label>URL</label><input type="text" class="form-control" id="vaultUrl" placeholder="https://..." /></div>
-        <div class="form-group"><label>Username</label><input type="text" class="form-control" id="vaultUsername" /></div>
-        <div class="form-group"><label>Password</label><input type="password" class="form-control" id="vaultPassword" /></div>
-        <div class="form-group"><label>Notes</label><textarea class="form-control" id="vaultNotes" rows="2" placeholder="Additional notes..."></textarea></div>
-        <button class="btn-primary" style="width:100%" onclick="submitVaultItem()">🔐 Save Credential</button>`
-    },
+  title: '🔐 Add New Credential',
+  body: `
+    <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Ramesh Kumar, ABC Pvt Ltd" /></div>
+    <div class="form-group"><label>Folder / Category</label>
+      <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f=>`<option>${f}</option>`).join('')}</select>
+    </div>
+    <div class="form-group"><label>Username / Login ID</label><input type="text" class="form-control" id="vaultUsername" placeholder="Enter username or email" /></div>
+    <div class="form-group"><label>Password</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" class="form-control" id="vaultPassword" placeholder="Enter password" style="flex:1" />
+        <button class="btn-outline" style="padding:8px 12px;white-space:nowrap" onclick="togglePasswordView('vaultPassword')">👁️ Show</button>
+      </div>
+    </div>
+    <div class="form-group"><label>Remarks</label><textarea class="form-control" id="vaultNotes" rows="2" placeholder="Optional notes..."></textarea></div>
+    <button class="btn-primary" style="width:100%" onclick="submitVaultItem()">🔐 Save Credential</button>`
+},
     createVaultFolder: {
       title: '📁 Create New Folder',
       body: `
@@ -2315,18 +2345,25 @@ async function submitNewAudit() {
 
 async function submitVaultItem() {
   const label = document.getElementById('vaultLabel')?.value.trim();
-  if (!label) { showToast('Label is required'); return; }
+  if (!label) { showToast('Client name is required'); return; }
   const body = {
     label,
     folder: document.getElementById('vaultFolder')?.value || 'General',
-    url: document.getElementById('vaultUrl')?.value.trim() || '',
+    url: '',
     username: document.getElementById('vaultUsername')?.value.trim() || '',
     password: document.getElementById('vaultPassword')?.value || '',
     notes: document.getElementById('vaultNotes')?.value.trim() || ''
   };
   const result = await supabaseInsert('vault_credentials', body);
-  if (result && result[0]) { STATE.vaultCredentials.unshift(result[0]); closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('🔐 Credential saved!'); }
-  else { showToast('❌ Failed to save credential'); }
+  if (result && result[0]) {
+    STATE.vaultCredentials.unshift(result[0]);
+    // Form reset
+    document.getElementById('vaultLabel').value = '';
+    document.getElementById('vaultUsername').value = '';
+    document.getElementById('vaultPassword').value = '';
+    document.getElementById('vaultNotes').value = '';
+    closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('🔐 Credential saved!');
+  } else { showToast('❌ Failed to save credential'); }
 }
 
 function submitCreateFolder() {
@@ -3007,6 +3044,12 @@ function clearMsgSearch() {
   if (input) input.value = '';
   if (clearBtn) clearBtn.style.display = 'none';
   renderTeamMessages();
+}
+function toggleVaultPass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.textContent = input.type === 'text' ? '🙈' : '👁️';
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v3
