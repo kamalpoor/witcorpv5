@@ -767,7 +767,7 @@ async function loadAllData() {
 
 function populateAllClientDropdowns() {
   const clientOptions = getClientOptionsHtml(true);
-  const dropdownIds = ['gstClientSel','itrClientSel','auditClientSel','tdsClientSel','rocClientSel','dscClientSel'];
+  const dropdownIds = ['gstClientSel','itrClientSel','auditClientSel','tdsClientSel','rocClientSel','dscClientSel','accClientSel'];
   dropdownIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = clientOptions;
