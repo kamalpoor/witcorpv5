@@ -2482,18 +2482,132 @@ async function logout() {
    ========================================================= */
 
 function handleSearch(query) {
-  if (!query || query.trim().length < 2) return;
-  clearTimeout(window._searchTimeout);
-  window._searchTimeout = setTimeout(() => {
-    const q = query.toLowerCase();
-    const clients = STATE.clients.filter(c=>(c.name||'').toLowerCase().includes(q)).length;
-    const tasks = STATE.tasks.filter(t=>(t.title||'').toLowerCase().includes(q)).length;
-    const msg = [];
-    if (clients) msg.push(clients+' client(s)');
-    if (tasks) msg.push(tasks+' task(s)');
-    if (msg.length) showToast('Found: '+msg.join(', '));
-  }, 500);
-}
+  const q = (query || '').trim().toLowerCase();
+  let modal = document.getElementById('searchResultsModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'searchResultsModal';
+    modal.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);width:min(680px,95vw);max-height:75vh;overflow-y:auto;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.25);z-index:9998;display:none;';
+    document.body.appendChild(modal);
+    document.addEventListener('click', function(e) {
+      if (!modal.contains(e.target) && e.target.id !== 'globalSearch') {
+        modal.style.display = 'none';
+      }
+    });
+  }
+  if (!q || q.length < 2) { modal.style.display = 'none'; return; }
+
+  const clients = STATE.clients.filter(c =>
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.pan||'').toLowerCase().includes(q) ||
+    (c.email||'').toLowerCase().includes(q) ||
+    (c.phone||'').toLowerCase().includes(q)
+  );
+  const tasks = STATE.tasks.filter(t =>
+    (t.title||'').toLowerCase().includes(q) ||
+    (t.assignee||'').toLowerCase().includes(q)
+  );
+  const gst = STATE.gstReturns.filter(g =>
+    (g.client_name||'').toLowerCase().includes(q) ||
+    (g.return_type||'').toLowerCase().includes(q) ||
+    (g.gstin||'').toLowerCase().includes(q)
+  );
+  const tds = STATE.tdsReturns.filter(t =>
+    (t.client_name||'').toLowerCase().includes(q) ||
+    (t.tan||'').toLowerCase().includes(q) ||
+    (t.deductor||'').toLowerCase().includes(q)
+  );
+  const itr = STATE.itrFilings.filter(i =>
+    (i.client_name||'').toLowerCase().includes(q) ||
+    (i.form||'').toLowerCase().includes(q)
+  );
+  const roc = STATE.rocFilings.filter(r =>
+    (r.company||'').toLowerCase().includes(q) ||
+    (r.cin||'').toLowerCase().includes(q) ||
+    (r.form||'').toLowerCase().includes(q)
+  );
+  const dsc = STATE.dscRecords.filter(d =>
+    (d.client_name||d.name||'').toLowerCase().includes(q) ||
+    (d.pan||'').toLowerCase().includes(q)
+  );
+  const audits = STATE.audits.filter(a =>
+    (a.client||'').toLowerCase().includes(q) ||
+    (a.audit_type||'').toLowerCase().includes(q)
+  );
+
+  const total = clients.length + tasks.length + gst.length + tds.length + itr.length + roc.length + dsc.length + audits.length;
+
+  if (!total) {
+    modal.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)"><div style="font-size:32px;margin-bottom:8px">🔍</div><div style="font-size:14px">No results found for "<strong>${escapeHtml(query)}</strong>"</div></div>`;
+    modal.style.display = 'block';
+    return;
+  }
+
+  function section(icon, title, items, page, renderFn) {
+    if (!items.length) return '';
+    return `
+      <div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">
+        ${icon} ${title} <span style="background:var(--primary);color:#fff;border-radius:99px;padding:1px 7px;font-size:10px;margin-left:6px">${items.length}</span>
+      </div>
+      ${items.slice(0,4).map(renderFn).join('')}
+      ${items.length > 4 ? `<div style="padding:8px 16px;font-size:12px;color:var(--primary);cursor:pointer" onclick="navigate('${page}');document.getElementById('searchResultsModal').style.display='none'">View all ${items.length} results →</div>` : ''}
+    `;
+  }
+
+  modal.innerHTML = `
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:13px;font-weight:600">Results for "<strong>${escapeHtml(query)}</strong>" — ${total} found</div>
+      <button onclick="document.getElementById('searchResultsModal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-muted)">✕</button>
+    </div>
+
+    ${section('👥','Clients', clients, 'clients', c => `
+      <div class="search-result-item" onclick="navigate('clients');document.getElementById('globalSearch').value='';document.getElementById('searchResultsModal').style.display='none';setTimeout(()=>filterClients('${escapeHtml(c.name)}'),300)">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--primary-glow);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--primary);flex-shrink:0">${(c.name||'?').charAt(0).toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(c.name)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(c.type||'')} ${c.pan?'• PAN: '+c.pan:''} ${c.email?'• '+c.email:''}</div>
+          </div>
+          <span class="badge ${c.status==='Active'?'badge-success':'badge-warning'}" style="font-size:10px">${escapeHtml(c.status||'')}</span>
+        </div>
+      </div>`
+    )}
+
+    ${section('📊','GST Returns', gst, 'gst', g => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('gst');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-size:20px">📊</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(g.client_name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(g.return_type)} • ${escapeHtml(g.period||'')}</div>
+        </div>
+        ${statusBadge(g.status)}
+      </div>`
+    )}
+
+    ${section('🧾','TDS Returns', tds, 'tds', t => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('tds');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-size:20px">🧾</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(t.client_name||t.deductor||'-')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">TAN: ${escapeHtml(t.tan||'-')} • ${escapeHtml(t.quarter||'')}</div>
+        </div>
+        ${statusBadge(t.status)}
+      </div>`
+    )}
+
+    ${section('💰','ITR Filings', itr, 'incometax', i => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('incometax');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-size:20px">💰</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(i.client_name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(i.form)} • AY ${escapeHtml(i.assessment_year||'')}</div>
+        </div>
+        ${statusBadge(i.status)}
+      </div>`
+    )}
+
+    ${section('🏛️','ROC Filings', roc, 'roc', r => `
+      <div
 
 /* =========================================================
    33. TOAST
