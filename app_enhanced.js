@@ -182,11 +182,23 @@ function loadUserInfo() {
   const name = getCurrentUserName();
   const initial = name.charAt(0).toUpperCase();
   const role = (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'Member';
-  const els = { userInitial: initial, userDisplayName: name, userDisplayRole: role, welcomeUserName: name };
-  Object.entries(els).forEach(([id, val]) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-  });
+ const avatarUrl = user.user_metadata?.avatar_url || '';
+const avatarEl = document.getElementById('userInitial');
+if (avatarEl) {
+  if (avatarUrl) {
+    avatarEl.innerHTML = '';
+    avatarEl.style.backgroundImage = `url('${avatarUrl}')`;
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+  } else {
+    avatarEl.textContent = initial;
+  }
+}
+const els = { userDisplayName: name, userDisplayRole: role, welcomeUserName: name };
+Object.entries(els).forEach(([id, val]) => {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+});
 }
 
 /* =========================================================
@@ -2452,7 +2464,7 @@ function openProfile() {
   const initial = name.charAt(0).toUpperCase();
   openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
-      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary,#6366f1),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${initial}</div>
+      <div style="width:72px;height:72px;border-radius:50%;${user.user_metadata?.avatar_url ? `background-image:url('${user.user_metadata.avatar_url}');background-size:cover;background-position:center;` : `background:linear-gradient(135deg,var(--primary,#6366f1),#4f46e5);`}display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${user.user_metadata?.avatar_url ? '' : initial}</div>
       <div style="font-weight:700;font-size:16px">${escapeHtml(name)}</div>
       <div style="color:var(--text-muted);font-size:13px">WITCORP India Advisors LLP</div>
     </div>
