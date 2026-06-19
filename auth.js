@@ -452,26 +452,37 @@ async function requireAuth() {
   try {
     const isCallback = await handleOAuthCallback();
 if (isCallback) {
-  // Google login ke baad bhi approval check karo
-  const cbUser = getCurrentUser();
-  if (!cbUser || !cbUser.id) { window.location.href = 'login.html'; return; }
   let cbToken = null;
   try { cbToken = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+  
+  if (!cbToken) { window.location.href = 'login.html'; return; }
+
+  // Token se fresh user fetch karo
+  const userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + cbToken }
+  });
+
+  if (!userRes.ok) { clearSession(); window.location.href = 'login.html'; return; }
+
+  const cbUser = await userRes.json();
+  try { localStorage.setItem('witcorp-user', JSON.stringify(cbUser)); } catch(e) {}
+
+  // Ab profiles check karo
   const cbRes = await fetch(
     SUPABASE_URL + '/rest/v1/profiles?id=eq.' + cbUser.id + '&select=status',
     { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + cbToken } }
   );
   const cbProfile = await cbRes.json();
   const cbStatus = cbProfile?.[0]?.status;
+
   if (cbStatus === 'approved') {
     redirectToDashboard();
   } else {
     clearSession();
-    window.location.href = 'login.html';
+    window.location.href = 'login.html?error=not_approved';
   }
   return;
 }
-
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('type') === 'recovery') {
       window.location.href = 'login.html?type=recovery';
