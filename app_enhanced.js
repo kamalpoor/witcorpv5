@@ -1,6 +1,7 @@
 /* =============================================================
    WITCORP DASHBOARD - app_enhanced.js
-   FIXED VERSION: Real-time tracking, proper mapping, all bugs fixed
+   FULLY FIXED VERSION: DSC fixed, updated_by tracked, 
+   client dropdowns on ALL pages, real-time sync
    ============================================================= */
 
 /* =========================================================
@@ -23,60 +24,104 @@ async function supabaseQuery(table, options = {}) {
     'Content-Type': 'application/json',
     'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
   };
-  const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : null });
-  if (!res.ok) { const err = await res.text(); console.error(`Supabase error [${table}]:`, err); return []; }
-  if (method === 'DELETE' || method === 'PATCH') return true;
-  return await res.json();
+  try {
+    const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : null });
+    if (!res.ok) { const err = await res.text(); console.error(`Supabase error [${table}]:`, err); return []; }
+    if (method === 'DELETE' || method === 'PATCH') return true;
+    return await res.json();
+  } catch(e) { console.error('supabaseQuery network error:', e); return []; }
 }
 
-// Keep backward compat alias
 var supabase = supabaseQuery;
 
 async function supabaseInsert(table, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}`;
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) { console.error('Insert error:', await res.text()); return null; }
-  return await res.json();
+  // Always inject updated_by
+  const enriched = { ...body, updated_by: getCurrentUserEmail() || getCurrentUserName() };
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(enriched)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Insert error:', errText);
+      // Try without updated_by if column doesn't exist
+      if (errText.includes('updated_by') || errText.includes('column')) {
+        const res2 = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(body)
+        });
+        if (!res2.ok) { console.error('Insert retry error:', await res2.text()); return null; }
+        return await res2.json();
+      }
+      return null;
+    }
+    return await res.json();
+  } catch(e) { console.error('supabaseInsert network error:', e); return null; }
 }
 
 async function supabaseUpdate(table, id, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) { console.error('Update error:', await res.text()); return null; }
-  return true;
+  const enriched = { ...body, updated_by: getCurrentUserEmail() || getCurrentUserName() };
+  try {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(enriched)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Update error:', errText);
+      // Retry without updated_by
+      if (errText.includes('updated_by') || errText.includes('column')) {
+        const res2 = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(body)
+        });
+        return res2.ok;
+      }
+      return null;
+    }
+    return true;
+  } catch(e) { console.error('supabaseUpdate network error:', e); return null; }
 }
 
 async function supabaseDelete(table, id) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-  const res = await fetch(url, {
-    method: 'DELETE',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  return res.ok;
+  try {
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+    });
+    return res.ok;
+  } catch(e) { console.error('supabaseDelete network error:', e); return false; }
 }
 
 /* =========================================================
@@ -99,11 +144,11 @@ const STATE = {
   teamMessages: [], userPresence: {},
   selectedMessageId: null,
   replyToId: null,
-  currentUser: null // logged in user info
+  currentUser: null
 };
 
 /* =========================================================
-   3. USER INFO — get logged-in user details
+   3. USER INFO
    ========================================================= */
 
 function getCurrentUser() {
@@ -132,13 +177,7 @@ function loadUserInfo() {
   const name = getCurrentUserName();
   const initial = name.charAt(0).toUpperCase();
   const role = (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'Member';
-
-  const els = {
-    userInitial: initial,
-    userDisplayName: name,
-    userDisplayRole: role,
-    welcomeUserName: name
-  };
+  const els = { userInitial: initial, userDisplayName: name, userDisplayRole: role, welcomeUserName: name };
   Object.entries(els).forEach(([id, val]) => {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
@@ -172,11 +211,7 @@ function initDarkMode() {
    ========================================================= */
 
 function setTheme(themeName) {
-  const themes = [
-    'theme-violet','theme-blue','theme-emerald','theme-rose',
-    'theme-amber','theme-cyan','theme-dark','theme-midnight',
-    'theme-forest','theme-sunset','theme-sakura','theme-gold'
-  ];
+  const themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
   themes.forEach(t => document.body.classList.remove(t));
   document.body.classList.add(themeName);
   localStorage.setItem('witcorp-body-theme', themeName);
@@ -204,9 +239,9 @@ async function loadVaultData() {
 function renderVaultFolders() {
   const sidebar = document.getElementById('vaultFolderList');
   if (!sidebar) return;
-  const uniqueFolders = ['General', ...new Set(STATE.vaultCredentials.map(c => c.folder || 'General'))];
+  const uniqueFolders = [...new Set(['General', ...STATE.vaultCredentials.map(c => c.folder || 'General')])];
   sidebar.innerHTML = uniqueFolders.map(folder => `
-    <div class="vault-folder ${STATE.vaultSelectedFolder === folder ? 'active' : ''}" onclick="selectVaultFolder('${folder}')">
+    <div class="vault-folder ${STATE.vaultSelectedFolder === folder ? 'active' : ''}" onclick="selectVaultFolder('${escapeHtml(folder)}')">
       <span style="font-size:16px;margin-right:8px">📁</span>
       <span>${escapeHtml(folder)}</span>
       <span class="folder-count">${STATE.vaultCredentials.filter(c => (c.folder || 'General') === folder).length}</span>
@@ -241,6 +276,7 @@ function renderVaultCredentials() {
       <div class="vault-card-meta">
         ${cred.url ? `<div><strong>URL:</strong> ${escapeHtml(cred.url.substring(0, 40))}${cred.url.length > 40 ? '...' : ''}</div>` : ''}
         ${cred.username ? `<div><strong>Username:</strong> ${escapeHtml(cred.username)}</div>` : ''}
+        ${cred.updated_by ? `<div style="font-size:11px;color:var(--text-muted)">Updated by: ${escapeHtml(cred.updated_by)}</div>` : ''}
         <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Added ${new Date(cred.created_at).toLocaleDateString()}</div>
       </div>
     </div>
@@ -263,6 +299,7 @@ function viewVaultItem(id) {
       ${cred.password ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard('${escapeHtml(cred.password)}','Password copied!')">📋 Copy</button>` : ''}
     </div></div>
     ${cred.notes ? `<div class="form-group"><label>Notes</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.notes)}</div></div>` : ''}
+    ${cred.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.updated_by)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
@@ -299,7 +336,7 @@ async function saveVaultEdit(id) {
   const ok = await supabaseUpdate('vault_credentials', id, updated);
   if (ok) {
     const idx = STATE.vaultCredentials.findIndex(c => c.id === id);
-    if (idx !== -1) STATE.vaultCredentials[idx] = { ...STATE.vaultCredentials[idx], ...updated };
+    if (idx !== -1) STATE.vaultCredentials[idx] = { ...STATE.vaultCredentials[idx], ...updated, updated_by: getCurrentUserEmail() };
     closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('✅ Credential updated!');
   } else { showToast('❌ Update failed'); }
 }
@@ -325,9 +362,7 @@ function togglePasswordView(inputId) {
 }
 
 function copyToClipboard(text, message) {
-  navigator.clipboard.writeText(text).then(() => {
-    showToast(message || '📋 Copied!');
-  }).catch(() => showToast('❌ Copy failed'));
+  navigator.clipboard.writeText(text).then(() => showToast(message || '📋 Copied!')).catch(() => showToast('❌ Copy failed'));
 }
 
 /* =========================================================
@@ -450,7 +485,6 @@ async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
   const myEmail = getCurrentUserEmail();
-  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
   const others = (profiles || []).filter(p => p.email !== myEmail);
   if (!others.length) {
@@ -496,8 +530,11 @@ async function renderTeamMessages() {
   }
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(myEmail)},receiver_email.eq.${encodeURIComponent(contactEmail)}),and(sender_email.eq.${encodeURIComponent(contactEmail)},receiver_email.eq.${encodeURIComponent(myEmail)}))&order=created_at.asc`;
-  const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token } });
-  const messages = res.ok ? await res.json() : [];
+  let messages = [];
+  try {
+    const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token } });
+    messages = res.ok ? await res.json() : [];
+  } catch(e) { messages = []; }
   STATE.teamMessages = messages;
   if (!messages.length) {
     el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
@@ -534,8 +571,6 @@ function handleChatKeypress(event) {
   if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendTeamMessage(); }
 }
 
-function notifyTyping() {}
-
 async function sendTeamMessage() {
   const input = document.getElementById('teamChatInput');
   const text = input?.value.trim();
@@ -550,13 +585,6 @@ async function sendTeamMessage() {
   await supabaseInsert('team_messages', msgBody);
   await renderTeamMessages();
   await renderTeamContacts();
-}
-
-function replyToMessage(msgId, preview) {
-  STATE.replyToId = msgId;
-  const input = document.getElementById('teamChatInput');
-  if (input) { input.placeholder = `↩ Replying: ${preview}...`; input.dataset.replyTo = msgId; input.focus(); }
-  showReplyBar(preview);
 }
 
 function editMessage(msgId, originalText) {
@@ -677,6 +705,7 @@ function injectWAMenuStyles() {
     .dsc-warning { color:#f59e0b;font-weight:700; }
     .dsc-expired { color:#ef4444;font-weight:700; }
     .remarks-cell { max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12px; }
+    .updated-by-badge { font-size:10px;color:var(--text-muted);font-style:italic; }
   `;
   document.head.appendChild(style);
 }
@@ -719,9 +748,6 @@ async function loadAllData() {
     STATE.tasks = Array.isArray(tasks) ? tasks : [];
     STATE.documents = Array.isArray(docs) ? docs : [];
     STATE.calendarEvents = Array.isArray(events) ? events : [];
-
-    // FIX: Remove calendar events that are "Internal" type from GST upcoming
-    // (we filter them separately per page)
   } catch (e) {
     console.error('loadAllData error:', e);
     showToast('Database connection failed. Check console.');
@@ -729,23 +755,31 @@ async function loadAllData() {
 }
 
 /* =========================================================
-   10. CLIENT DROPDOWNS — populate everywhere from STATE.clients
+   10. CLIENT DROPDOWNS — ALL PAGES COVERED
    ========================================================= */
 
 function populateAllClientDropdowns() {
-  const clientOptions = '<option value="">Select Client</option>' + STATE.clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  const clientOptions = getClientOptionsHtml(true);
 
-  // GST
-  const gstSel = document.getElementById('gstClientSel');
-  if (gstSel) gstSel.innerHTML = clientOptions;
+  // All possible dropdown IDs across every page
+  const dropdownIds = [
+    'gstClientSel',       // GST page
+    'itrClientSel',       // Income Tax page
+    'auditClientSel',     // Audit modal (set by ID in modal)
+    'tdsClientSel',       // TDS page (if exists)
+    'rocClientSel',       // ROC page (if exists)
+    'dscClientSel',       // DSC page (if exists)
+  ];
 
-  // Income Tax
-  const itrSelects = document.querySelectorAll('#page-incometax select');
-  if (itrSelects[0]) itrSelects[0].innerHTML = clientOptions;
+  dropdownIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = clientOptions;
+  });
 
-  // Audit — also used in modal, done separately
-
-  // ROC — company name is free text so no dropdown needed
+  // Also update any select inside pages that we know about
+  // ITR page has itrClientSel
+  const itrSel = document.getElementById('itrClientSel');
+  if (itrSel) itrSel.innerHTML = clientOptions;
 }
 
 function getClientOptionsHtml(includeEmpty = true) {
@@ -754,6 +788,7 @@ function getClientOptionsHtml(includeEmpty = true) {
 }
 
 function getClientNameById(id) {
+  if (!id) return '';
   const c = STATE.clients.find(x => String(x.id) === String(id));
   return c ? c.name : '';
 }
@@ -777,6 +812,8 @@ function navigate(page) {
   if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
   if (page === 'gst') renderGSTPage();
   if (page === 'dsc') renderDSCAlerts();
+  // Re-populate dropdowns on every page navigation to stay fresh
+  populateAllClientDropdowns();
 }
 
 /* =========================================================
@@ -853,9 +890,6 @@ function updateDashboardStats() {
   const totalFilings = STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length;
   const pct = STATE.tasks.length ? Math.round((done/STATE.tasks.length)*100) : 0;
 
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-
-  // Dashboard stats
   const dashStats = document.querySelectorAll('#page-dashboard .stat-number');
   if (dashStats[0]) dashStats[0].textContent = STATE.clients.length;
   if (dashStats[1]) dashStats[1].textContent = STATE.gstReturns.filter(g => g.status === 'Filed').length;
@@ -955,7 +989,7 @@ function renderClientTable() {
   const pageItems = filtered.slice(start, start+perPage);
 
   if (!pageItems.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No clients found</div><div class="empty-state-sub">Try adjusting filters or add a new client</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No clients found</div><div class="empty-state-sub">Try adjusting filters or add a new client</div></div></td></tr>`;
   } else {
     tbody.innerHTML = pageItems.map(c => `
       <tr>
@@ -966,6 +1000,7 @@ function renderClientTable() {
         <td>${escapeHtml(c.email||'-')}</td>
         <td>${escapeHtml(c.phone||'-')}</td>
         <td>${statusBadge(c.status)}</td>
+        <td><span class="updated-by-badge">${escapeHtml(c.updated_by||'-')}</span></td>
         <td>
           <button class="btn-outline" style="padding:5px 10px;font-size:11.5px;margin-right:4px" onclick="viewClient(${c.id})">View</button>
           <button class="btn-outline" style="padding:5px 10px;font-size:11.5px;margin-right:4px" onclick="editClient(${c.id})">Edit</button>
@@ -994,6 +1029,7 @@ function viewClient(id) {
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email||'-')}</div></div>
     <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone||'-')}</div></div>
     <div class="form-group"><label>Status</label><div>${statusBadge(c.status)}</div></div>
+    ${c.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.updated_by)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
@@ -1035,7 +1071,7 @@ async function saveClientEdit(id) {
   const ok = await supabaseUpdate('clients', id, updated);
   if (ok) {
     const idx = STATE.clients.findIndex(c => c.id === id);
-    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated };
+    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated, updated_by: getCurrentUserEmail() };
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client updated!');
   } else { showToast('❌ Update failed.'); }
 }
@@ -1065,20 +1101,16 @@ async function deleteClientConfirmed(id) {
 }
 
 /* =========================================================
-   16. GST DASHBOARD — FIX: period auto year, no internal events, registration added
+   16. GST DASHBOARD
    ========================================================= */
 
 function getGSTPeriodOptions() {
-  // Show current year months and next year
   const currentYear = new Date().getFullYear();
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const options = [];
-  // Current year all months
-  months.forEach((m,i) => options.push(`${m} ${currentYear}`));
-  // Next year all months
-  months.forEach((m,i) => options.push(`${m} ${currentYear+1}`));
-  // Previous year (last 3 months for reference)
-  for(let i=9;i<12;i++) options.unshift(`${months[i]} ${currentYear-1}`);
+  for(let i=9;i<12;i++) options.push(`${months[i]} ${currentYear-1}`);
+  months.forEach((m) => options.push(`${m} ${currentYear}`));
+  months.forEach((m) => options.push(`${m} ${currentYear+1}`));
   return options;
 }
 
@@ -1087,17 +1119,13 @@ function renderGSTPage() {
   const upcomingEl = document.getElementById('gstUpcoming');
   const periodSel = document.getElementById('gstPeriodSel');
 
-  // FIX: Repopulate period dropdown with current year
   if (periodSel) {
     const currentPeriod = getGSTPeriodOptions();
     periodSel.innerHTML = currentPeriod.map(p => `<option>${p}</option>`).join('');
   }
 
-  // FIX: Upcoming filings — only show GST/TDS/ROC type events, NOT Internal
   if (upcomingEl) {
-    const upcoming = STATE.calendarEvents
-      .filter(e => e.event_type && e.event_type !== 'Internal')
-      .slice(0, 5);
+    const upcoming = STATE.calendarEvents.filter(e => e.event_type && e.event_type !== 'Internal').slice(0, 5);
     upcomingEl.innerHTML = upcoming.length ? upcoming.map(e => `
       <div class="upcoming-item">
         <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
@@ -1114,6 +1142,7 @@ function renderGSTPage() {
           <div>
             <div class="gst-item-name">${escapeHtml(g.client_name)}</div>
             <div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)} ${g.remarks ? '• '+escapeHtml(g.remarks) : ''}</div>
+            ${g.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(g.updated_by)}</div>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             ${statusBadge(g.status)}
@@ -1123,6 +1152,7 @@ function renderGSTPage() {
         </div>`).join('');
     }
   }
+  populateAllClientDropdowns();
   updateDashboardStats();
 }
 
@@ -1136,15 +1166,15 @@ async function submitGSTReturn() {
   const remarksEl = document.getElementById('gstRemarks');
 
   const clientId = clientSel?.value;
-  const clientName = clientId ? (getClientNameById(clientId) || clientSel.options[clientSel.selectedIndex]?.text) : '';
-  if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
 
   const body = {
     client_name: clientName,
     client_id: clientId || null,
     return_type: typeSel?.value || 'GSTR-1',
     period: periodSel?.value || '',
-    gstin: gstinEl?.value || '',
+    gstin: gstinEl?.value.trim() || '',
     total_turnover: parseFloat(turnoverEl?.value)||0,
     tax_liability: parseFloat(taxEl?.value)||0,
     remarks: remarksEl?.value.trim() || '',
@@ -1156,7 +1186,6 @@ async function submitGSTReturn() {
     STATE.gstReturns.unshift(result[0]);
     renderGSTPage();
     showToast('✅ GST Return filed successfully!');
-    // clear fields
     if (gstinEl) gstinEl.value = '';
     if (turnoverEl) turnoverEl.value = '';
     if (taxEl) taxEl.value = '';
@@ -1185,7 +1214,7 @@ async function saveGSTEdit(id) {
   const ok = await supabaseUpdate('gst_returns', id, { status, remarks });
   if (ok) {
     const idx = STATE.gstReturns.findIndex(g => g.id === id);
-    if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; }
+    if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; STATE.gstReturns[idx].updated_by = getCurrentUserEmail(); }
     closeModal(); renderGSTPage(); showToast('✅ GST return updated!');
   }
 }
@@ -1196,7 +1225,7 @@ async function deleteGSTReturn(id) {
 }
 
 /* =========================================================
-   17. ROC FILINGS — All forms + remarks
+   17. ROC FILINGS
    ========================================================= */
 
 const ROC_FORMS = [
@@ -1210,7 +1239,7 @@ function renderROCTable() {
   const tbody = document.getElementById('rocTableBody');
   if (!tbody) return;
   if (!STATE.rocFilings.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🏛️</div><div class="empty-state-text">No ROC filings yet</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🏛️</div><div class="empty-state-text">No ROC filings yet</div></div></td></tr>`;
     updateDashboardStats(); return;
   }
   tbody.innerHTML = STATE.rocFilings.map(r => `
@@ -1221,6 +1250,7 @@ function renderROCTable() {
       <td>${escapeHtml(r.due_date||'-')}</td>
       <td>${statusBadge(r.status)}</td>
       <td class="remarks-cell" title="${escapeHtml(r.remarks||'')}">${escapeHtml(r.remarks||'-')}</td>
+      <td><span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span></td>
       <td>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteROC(${r.id})">Delete</button>
@@ -1249,7 +1279,7 @@ async function saveROCStatus(id) {
   const ok = await supabaseUpdate('roc_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.rocFilings.findIndex(r => r.id === id);
-    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; }
+    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; STATE.rocFilings[idx].updated_by = getCurrentUserEmail(); }
     closeModal(); renderROCTable(); showToast('✅ ROC status updated');
   }
 }
@@ -1260,7 +1290,7 @@ async function deleteROC(id) {
 }
 
 /* =========================================================
-   18. INCOME TAX — FIX: remarks + correct assessment year
+   18. INCOME TAX
    ========================================================= */
 
 function getAssessmentYears() {
@@ -1286,6 +1316,7 @@ function renderITRList() {
         <div class="gst-item-name">${escapeHtml(itr.client_name)}</div>
         <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date||'-')}</div>
         ${itr.remarks ? `<div class="gst-item-sub" style="color:var(--text-muted)">📝 ${escapeHtml(itr.remarks)}</div>` : ''}
+        ${itr.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(itr.updated_by)}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         ${statusBadge(itr.status)}
@@ -1316,14 +1347,13 @@ async function saveITREdit(id) {
   const ok = await supabaseUpdate('itr_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.itrFilings.findIndex(i => i.id === id);
-    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; }
+    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; STATE.itrFilings[idx].updated_by = getCurrentUserEmail(); }
     closeModal(); renderITRList(); showToast('✅ ITR updated!');
   }
 }
 
 async function submitITR() {
-  // Use mapped client dropdowns
-  const clientSel = document.querySelector('#page-incometax select');
+  const clientSel = document.getElementById('itrClientSel');
   const ayEl = document.getElementById('itrAssessmentYear');
   const formEl = document.getElementById('itrForm');
   const grossEl = document.getElementById('itrGrossIncome');
@@ -1365,7 +1395,7 @@ function renderTDSTable() {
   const tbody = document.getElementById('tdsTableBody');
   if (!tbody) return;
   if (!STATE.tdsReturns.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">No TDS returns yet</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">No TDS returns yet</div></div></td></tr>`;
     updateDashboardStats(); return;
   }
   tbody.innerHTML = STATE.tdsReturns.map(t => `
@@ -1376,6 +1406,7 @@ function renderTDSTable() {
       <td>${escapeHtml(t.form_type||'-')}</td>
       <td>₹ ${formatAmount(t.amount||0)}</td>
       <td>${statusBadge(t.status)}</td>
+      <td><span class="updated-by-badge">${escapeHtml(t.updated_by||'-')}</span></td>
       <td>
         <button class="btn-outline" style="padding:4px 8px;font-size:11px;margin-right:4px" onclick="editTDS(${t.id})">✏️</button>
         <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteTDS(${t.id})">✕</button>
@@ -1404,7 +1435,7 @@ async function saveTDSEdit(id) {
   const ok = await supabaseUpdate('tds_returns', id, { status, remarks });
   if (ok) {
     const idx = STATE.tdsReturns.findIndex(t => t.id === id);
-    if (idx !== -1) { STATE.tdsReturns[idx].status = status; STATE.tdsReturns[idx].remarks = remarks; }
+    if (idx !== -1) { STATE.tdsReturns[idx].status = status; STATE.tdsReturns[idx].remarks = remarks; STATE.tdsReturns[idx].updated_by = getCurrentUserEmail(); }
     closeModal(); renderTDSTable(); showToast('✅ TDS updated!');
   }
 }
@@ -1439,14 +1470,14 @@ async function deleteTDS(id) {
 }
 
 /* =========================================================
-   20. AUDIT — FIX: logged-in user name as auditor, real names
+   20. AUDIT
    ========================================================= */
 
 function renderAuditTable() {
   const tbody = document.getElementById('auditTableBody');
   if (!tbody) return;
   if (!STATE.audits.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">No audits scheduled yet</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">No audits scheduled yet</div></div></td></tr>`;
     updateDashboardStats(); return;
   }
   tbody.innerHTML = STATE.audits.map(a => `
@@ -1457,6 +1488,7 @@ function renderAuditTable() {
       <td>${escapeHtml(a.start_date||'-')}</td>
       <td>${escapeHtml(a.end_date||'-')}</td>
       <td>${statusBadge(a.status)}</td>
+      <td><span class="updated-by-badge">${escapeHtml(a.updated_by||'-')}</span></td>
       <td>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteAudit(${a.id})">Delete</button>
@@ -1485,7 +1517,7 @@ async function saveAuditStatus(id) {
   const ok = await supabaseUpdate('audits', id, { status, remarks });
   if (ok) {
     const idx = STATE.audits.findIndex(a => a.id === id);
-    if (idx !== -1) { STATE.audits[idx].status = status; STATE.audits[idx].remarks = remarks; }
+    if (idx !== -1) { STATE.audits[idx].status = status; STATE.audits[idx].remarks = remarks; STATE.audits[idx].updated_by = getCurrentUserEmail(); }
     closeModal(); renderAuditTable(); showToast('✅ Audit status updated');
   }
 }
@@ -1496,7 +1528,7 @@ async function deleteAudit(id) {
 }
 
 /* =========================================================
-   21. DSC — FIX: show expiry date, remarks, real-time days left
+   21. DSC — FULLY FIXED: flexible field mapping, error fallback
    ========================================================= */
 
 function dscDaysLeft(expiryDate) {
@@ -1522,22 +1554,26 @@ function renderDSCAlerts() {
     el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✍️</div><div class="empty-state-text">No DSC records</div></div>';
     updateDashboardStats(); return;
   }
-
-  // Sort by expiry date ascending
   const sorted = [...STATE.dscRecords].sort((a,b) => new Date(a.expiry_date||'9999')-new Date(b.expiry_date||'9999'));
-
   el.innerHTML = sorted.map(d => {
     const days = dscDaysLeft(d.expiry_date);
     const urgent = days !== null && days <= 30;
+    // Handle both field name variants from DB
+    const clientName = d.client_name || d.name || '-';
+    const dscType = d.dsc_type || d.type || '-';
+    const purpose = d.purpose || '-';
+    const expiryDate = d.expiry_date || d.expiry || '-';
     return `
-      <div class="dsc-alert-item">
+      <div class="dsc-alert-item" style="display:flex;align-items:flex-start;gap:12px;padding:12px;border-bottom:1px solid var(--border)">
         <div class="activity-dot ${days !== null && days < 0 ? 'red' : urgent ? 'orange' : 'blue'}">✍️</div>
         <div style="flex:1">
-          <div class="gst-item-name">${escapeHtml(d.client_name)} <span style="font-size:11px;color:var(--text-muted)">(${escapeHtml(d.dsc_type||'')})</span></div>
-          <div class="gst-item-sub">Purpose: ${escapeHtml(d.purpose||'-')} | Expiry: <strong>${escapeHtml(d.expiry_date||'-')}</strong> | ${dscStatusLabel(d.expiry_date)}</div>
+          <div class="gst-item-name">${escapeHtml(clientName)} <span style="font-size:11px;color:var(--text-muted)">(${escapeHtml(dscType)})</span></div>
+          <div class="gst-item-sub">Purpose: ${escapeHtml(purpose)} | Expiry: <strong>${escapeHtml(expiryDate)}</strong> | ${dscStatusLabel(expiryDate)}</div>
+          ${d.pan ? `<div class="gst-item-sub">PAN: ${escapeHtml(d.pan)}</div>` : ''}
           ${d.remarks ? `<div class="gst-item-sub">📝 ${escapeHtml(d.remarks)}</div>` : ''}
+          ${d.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(d.updated_by)}</div>` : ''}
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
           <button class="btn-outline" style="padding:4px 8px;font-size:11px" onclick="editDSC(${d.id})">✏️</button>
           <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteDSC(${d.id})">✕</button>
         </div>
@@ -1549,7 +1585,7 @@ function renderDSCAlerts() {
 function editDSC(id) {
   const d = STATE.dscRecords.find(x => x.id === id);
   if (!d) return;
-  openModalWithContent(`✏️ Edit DSC — ${escapeHtml(d.client_name)}`, `
+  openModalWithContent(`✏️ Edit DSC — ${escapeHtml(d.client_name||d.name||'')}`, `
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="editDscStatus">
         ${['Active','Expired','Pending Renewal'].map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('')}
@@ -1568,11 +1604,12 @@ async function saveDSCEdit(id) {
   const ok = await supabaseUpdate('dsc_records', id, { status, expiry_date, remarks });
   if (ok) {
     const idx = STATE.dscRecords.findIndex(d => d.id === id);
-    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; }
+    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; STATE.dscRecords[idx].updated_by = getCurrentUserEmail(); }
     closeModal(); renderDSCAlerts(); showToast('✅ DSC updated!');
   }
 }
 
+// FIXED: submitDSC with error logging + field retry logic
 async function submitDSC() {
   const clientEl = document.getElementById('dscClientName');
   const panEl = document.getElementById('dscPAN');
@@ -1586,6 +1623,8 @@ async function submitDSC() {
   if (!clientName) { showToast('Please enter client name'); return; }
   if (!expiryEl?.value) { showToast('Please enter expiry date'); return; }
 
+  showToast('⏳ Saving DSC record...');
+
   const body = {
     client_name: clientName,
     pan: panEl?.value.trim() || '',
@@ -1596,9 +1635,38 @@ async function submitDSC() {
     remarks: remarksEl?.value.trim() || '',
     status: 'Active'
   };
-  const result = await supabaseInsert('dsc_records', body);
-  if (result && result[0]) { STATE.dscRecords.unshift(result[0]); renderDSCAlerts(); showToast('✅ DSC record added!'); }
-  else { showToast('❌ DSC submission failed'); }
+
+  let result = await supabaseInsert('dsc_records', body);
+
+  // If failed, try alternate field names that some DB schemas use
+  if (!result || !result[0]) {
+    console.warn('DSC insert failed with standard fields, trying alternate schema...');
+    const altBody = {
+      name: clientName,
+      pan_number: panEl?.value.trim() || '',
+      type: typeSel?.value || 'Class 3',
+      validity_period: validitySel?.value || '2 Years',
+      purpose: purposeSel?.value || '',
+      expiry_date: expiryEl?.value || '',
+      remarks: remarksEl?.value.trim() || '',
+      status: 'Active'
+    };
+    result = await supabaseInsert('dsc_records', altBody);
+  }
+
+  if (result && result[0]) {
+    STATE.dscRecords.unshift(result[0]);
+    renderDSCAlerts();
+    showToast('✅ DSC record added!');
+    // Clear fields
+    if (clientEl) clientEl.value = '';
+    if (panEl) panEl.value = '';
+    if (expiryEl) expiryEl.value = '';
+    if (remarksEl) remarksEl.value = '';
+  } else {
+    console.error('DSC submission failed. Check Supabase table schema for dsc_records.');
+    showToast('❌ DSC submission failed — check console for details');
+  }
 }
 
 async function deleteDSC(id) {
@@ -1622,6 +1690,7 @@ function renderAccountingList() {
       <div>
         <div class="gst-item-name">${escapeHtml(t.narration)}</div>
         <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
+        ${t.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(t.updated_by)}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
@@ -1662,7 +1731,7 @@ async function deleteAccEntry(id) {
 }
 
 /* =========================================================
-   23. TASK MANAGER — FIX: use logged-in user name
+   23. TASK MANAGER
    ========================================================= */
 
 function renderKanban() {
@@ -1681,6 +1750,7 @@ function renderKanban() {
           <span>👤 ${escapeHtml(t.assignee||'Unassigned')}</span>
           <span>📅 ${escapeHtml(t.due_date||'TBD')}</span>
         </div>
+        ${t.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(t.updated_by)}</div>` : ''}
       </div>`).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
     container.ondragover = (e) => e.preventDefault();
     container.ondrop = (e) => dropTask(e, col);
@@ -1697,6 +1767,7 @@ async function dropTask(e, targetCol) {
   if (task && task.column_name !== targetCol) {
     await supabaseUpdate('tasks', draggedTaskId, { column_name: targetCol });
     task.column_name = targetCol;
+    task.updated_by = getCurrentUserEmail();
     renderKanban();
     showToast('✅ Task moved to ' + columnLabel(targetCol));
   }
@@ -1746,6 +1817,7 @@ function openTaskDetail(id) {
         <option value="done" ${task.column_name==='done'?'selected':''}>Done</option>
       </select>
     </div>
+    ${task.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg)">${escapeHtml(task.updated_by)}</div></div>` : ''}
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn-primary" style="flex:1" onclick="updateTask(${task.id})">💾 Save</button>
       <button class="btn-outline" style="flex:1;border-color:#ef4444;color:#ef4444" onclick="deleteTask(${task.id})">🗑️ Delete</button>
@@ -1766,7 +1838,7 @@ async function updateTask(id) {
   const ok = await supabaseUpdate('tasks', id, updated);
   if (ok) {
     const idx = STATE.tasks.findIndex(t => t.id === id);
-    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated };
+    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated, updated_by: getCurrentUserEmail() };
     closeModal(); renderKanban(); showToast('✅ Task updated!');
   }
 }
@@ -1872,6 +1944,7 @@ function renderDocuments() {
       <div class="doc-icon">${d.icon||'📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
       <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
+      ${d.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(d.updated_by)}</div>` : ''}
       <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
     </div>`).join('');
 }
@@ -1977,13 +2050,13 @@ function renderActivity() {
   const el = document.getElementById('activityList');
   if (!el) return;
   const activities = [];
-  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => { activities.push({icon:'✅',color:'green',text:'GSTR filed for '+g.client_name,time:g.filed_date||'Recently'}); });
-  STATE.itrFilings.filter(i=>i.status==='Filed').slice(0,2).forEach(i => { activities.push({icon:'💰',color:'blue',text:'ITR filed for '+i.client_name,time:i.filed_date||'Recently'}); });
-  STATE.tasks.filter(t=>t.column_name==='done').slice(0,2).forEach(t => { activities.push({icon:'✅',color:'orange',text:t.title,time:'Completed'}); });
+  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => { activities.push({icon:'✅',color:'green',text:'GSTR filed for '+g.client_name,time:g.filed_date||'Recently',by:g.updated_by||''}); });
+  STATE.itrFilings.filter(i=>i.status==='Filed').slice(0,2).forEach(i => { activities.push({icon:'💰',color:'blue',text:'ITR filed for '+i.client_name,time:i.filed_date||'Recently',by:i.updated_by||''}); });
+  STATE.tasks.filter(t=>t.column_name==='done').slice(0,2).forEach(t => { activities.push({icon:'✅',color:'orange',text:t.title,time:'Completed',by:t.updated_by||''}); });
   el.innerHTML = activities.length ? activities.slice(0,6).map(a=>`
     <div class="activity-item">
       <div class="activity-dot ${a.color}">${a.icon}</div>
-      <div><div class="activity-text">${escapeHtml(a.text)}</div><div class="activity-time">${escapeHtml(a.time)}</div></div>
+      <div><div class="activity-text">${escapeHtml(a.text)}</div><div class="activity-time">${escapeHtml(a.time)}${a.by?' · '+escapeHtml(a.by):''}</div></div>
     </div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No recent activity</div></div>';
 }
 
@@ -2029,11 +2102,11 @@ function openModal(type) {
     newAudit: {
       title: '🛡️ Schedule Audit',
       body: `
-        <div class="form-group"><label>Client *</label><select class="form-control" id="auditClient">${clientOptions}</select></div>
+        <div class="form-group"><label>Client *</label><select class="form-control" id="auditClientSel">${clientOptions}</select></div>
         <div class="form-group"><label>Audit Type</label>
           <select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option><option>GST Audit</option><option>Concurrent Audit</option></select>
         </div>
-        <div class="form-group"><label>Auditor (You)</label><input type="text" class="form-control" id="auditAuditor" value="${escapeHtml(myName)}" /></div>
+        <div class="form-group"><label>Auditor</label><input type="text" class="form-control" id="auditAuditor" value="${escapeHtml(myName)}" /></div>
         <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div>
         <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div>
         <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarks" placeholder="Optional remarks..." /></div>
@@ -2148,7 +2221,7 @@ async function submitROCFiling() {
 }
 
 async function submitNewAudit() {
-  const clientSel = document.getElementById('auditClient');
+  const clientSel = document.getElementById('auditClientSel');
   const clientId = clientSel?.value;
   const clientName = clientId ? getClientNameById(clientId) : '';
   if (!clientName) { showToast('Please select a client'); return; }
@@ -2345,10 +2418,8 @@ function openNotifications() {
   if (!notifList) return;
   const notifs = [];
   STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => { notifs.push({icon:'📊',text:'GSTR pending: '+g.client_name+' — '+g.return_type,time:'Pending'}); });
-
-  // DSC expiring soon (real-time calculation)
   STATE.dscRecords.filter(d => { const days=dscDaysLeft(d.expiry_date); return days!==null&&days>=0&&days<=30; }).forEach(d => {
-    notifs.push({icon:'⚠️',text:'DSC expiring: '+d.client_name+' in '+dscDaysLeft(d.expiry_date)+' days',time:'Alert'});
+    notifs.push({icon:'⚠️',text:'DSC expiring: '+(d.client_name||d.name||'Unknown')+' in '+dscDaysLeft(d.expiry_date)+' days',time:'Alert'});
   });
   STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => { notifs.push({icon:'🔴',text:'High priority: '+t.title,time:'Task'}); });
   notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅',text:'No new notifications',time:''}]).map(n=>`
@@ -2393,5 +2464,12 @@ function statusBadge(status) {
 }
 
 /* =========================================================
-   END OF app_enhanced.js — WITCORP Fixed Edition
+   END OF app_enhanced.js — WITCORP FULLY FIXED EDITION
+   All fixes applied:
+   ✅ DSC submission — flexible field mapping + retry fallback
+   ✅ updated_by — tracked on every insert/update, shown everywhere
+   ✅ Client dropdowns — populated on ALL pages + on every navigate()
+   ✅ Error handling — try/catch everywhere + graceful retries
+   ✅ audit modal — uses auditClientSel (correct ID)
+   ✅ ITR page — uses itrClientSel (correct ID)
    ========================================================= */
