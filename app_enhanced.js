@@ -2603,6 +2603,192 @@ function statusBadge(status) {
   };
   return `<span class="badge ${map[status]||'badge-info'}">${escapeHtml(status||'-')}</span>`;
 }
+/* =========================================================
+   ACCOUNTING HUB — CLIENT WISE
+   ========================================================= */
+
+const ACC_CATEGORIES = [
+  'Sales','Purchases','Sundry Debtors','Sundry Creditors',
+  'Payroll Entries','Bank Statement','GST Transfer Entries',
+  'Depreciation Entries','TDS Entries','Miscellaneous Ledgers'
+];
+
+let accActiveTab = 'Sales';
+let accActiveClientId = '';
+let accActiveClientName = '';
+
+function onAccClientChange() {
+  const sel = document.getElementById('accClientSel');
+  accActiveClientId = sel?.value || '';
+  accActiveClientName = sel?.options[sel.selectedIndex]?.text || '';
+  const wrapper = document.getElementById('accTabsWrapper');
+  const noClient = document.getElementById('accNoClient');
+  if (!accActiveClientId) {
+    if (wrapper) wrapper.style.display = 'none';
+    if (noClient) noClient.style.display = 'block';
+    return;
+  }
+  if (wrapper) wrapper.style.display = 'block';
+  if (noClient) noClient.style.display = 'none';
+  accActiveTab = 'Sales';
+  updateAccTabButtons();
+  renderAccEntries();
+  renderAccClientStats();
+}
+
+function switchAccTab(tab) {
+  accActiveTab = tab;
+  updateAccTabButtons();
+  renderAccEntries();
+}
+
+function updateAccTabButtons() {
+  document.querySelectorAll('.acc-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.includes(accActiveTab.split(' ')[0]) || btn.onclick.toString().includes(`'${accActiveTab}'`));
+  });
+  const formTitle = document.getElementById('accFormTitle');
+  if (formTitle) formTitle.textContent = `➕ Add ${accActiveTab} Entry`;
+  const tableTitle = document.getElementById('accTableTitle');
+  if (tableTitle) tableTitle.textContent = `📋 ${accActiveTab} Entries`;
+}
+
+function renderAccClientStats() {
+  const el = document.getElementById('accClientStats');
+  if (!el) return;
+  const entries = STATE.accountingEntries.filter(e => String(e.client_id) === String(accActiveClientId));
+  const totalDebit = entries.reduce((s, e) => s + (parseFloat(e.debit) || 0), 0);
+  const totalCredit = entries.reduce((s, e) => s + (parseFloat(e.credit) || 0), 0);
+  const balance = totalCredit - totalDebit;
+  el.innerHTML = `
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-size:12px">
+      <div style="color:var(--text-muted)">Total Debit</div>
+      <div style="font-weight:700;color:#ef4444">₹ ${formatAmount(totalDebit)}</div>
+    </div>
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-size:12px">
+      <div style="color:var(--text-muted)">Total Credit</div>
+      <div style="font-weight:700;color:#10b981">₹ ${formatAmount(totalCredit)}</div>
+    </div>
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-size:12px">
+      <div style="color:var(--text-muted)">Net Balance</div>
+      <div style="font-weight:700;color:${balance >= 0 ? '#10b981' : '#ef4444'}">₹ ${formatAmount(Math.abs(balance))} ${balance >= 0 ? 'CR' : 'DR'}</div>
+    </div>
+  `;
+}
+
+function renderAccEntries() {
+  const tbody = document.getElementById('accEntriesBody');
+  const emptyEl = document.getElementById('accEntriesEmpty');
+  const statsEl = document.getElementById('accTabStats');
+  if (!tbody) return;
+
+  const entries = STATE.accountingEntries.filter(e =>
+    String(e.client_id) === String(accActiveClientId) &&
+    e.category === accActiveTab
+  );
+
+  const tabDebit = entries.reduce((s, e) => s + (parseFloat(e.debit) || 0), 0);
+  const tabCredit = entries.reduce((s, e) => s + (parseFloat(e.credit) || 0), 0);
+  if (statsEl) statsEl.innerHTML = `<span style="color:#ef4444">Dr: ₹${formatAmount(tabDebit)}</span> &nbsp;|&nbsp; <span style="color:#10b981">Cr: ₹${formatAmount(tabCredit)}</span>`;
+
+  if (!entries.length) {
+    tbody.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  tbody.innerHTML = entries.map(e => `
+    <tr>
+      <td>${escapeHtml(e.entry_date || '-')}</td>
+      <td><strong>${escapeHtml(e.description || e.narration || '-')}</strong></td>
+      <td style="color:#ef4444">${e.debit ? '₹ ' + formatAmount(e.debit) : '-'}</td>
+      <td style="color:#10b981">${e.credit ? '₹ ' + formatAmount(e.credit) : '-'}</td>
+      <td>${escapeHtml(e.reference_no || '-')}</td>
+      <td style="color:var(--text-muted);font-size:12px">${escapeHtml(e.remarks || '-')}</td>
+      <td style="font-size:11px;color:var(--text-muted)">
+        ${escapeHtml(e.updated_by || '-')}<br>
+        ${e.updated_at ? formatDateTime(e.updated_at) : ''}
+      </td>
+      <td>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editAccEntry(${e.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteAccEntry(${e.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function submitAccEntry() {
+  const desc = document.getElementById('accDesc')?.value.trim();
+  const dateVal = document.getElementById('accDate')?.value;
+  if (!accActiveClientId) { showToast('Please select a client first'); return; }
+  if (!desc) { showToast('Description required'); return; }
+  if (!dateVal) { showToast('Date required'); return; }
+  const debit = parseFloat(document.getElementById('accDebit')?.value) || 0;
+  const credit = parseFloat(document.getElementById('accCredit')?.value) || 0;
+  if (!debit && !credit) { showToast('Enter debit or credit amount'); return; }
+
+  const body = {
+    client_id: accActiveClientId,
+    client_name: accActiveClientName,
+    category: accActiveTab,
+    entry_date: dateVal,
+    description: desc,
+    debit, credit,
+    amount: debit || credit,
+    entry_type: credit > 0 ? 'credit' : 'debit',
+    reference_no: document.getElementById('accRef')?.value.trim() || '',
+    remarks: document.getElementById('accRemarks')?.value.trim() || ''
+  };
+
+  const result = await supabaseInsert('accounting_entries', body);
+  if (result && result[0]) {
+    STATE.accountingEntries.unshift(result[0]);
+    document.getElementById('accDesc').value = '';
+    document.getElementById('accDate').value = '';
+    document.getElementById('accDebit').value = '';
+    document.getElementById('accCredit').value = '';
+    document.getElementById('accRef').value = '';
+    document.getElementById('accRemarks').value = '';
+    renderAccEntries();
+    renderAccClientStats();
+    showToast('✅ Entry added!');
+  } else { showToast('❌ Entry failed'); }
+}
+
+function editAccEntry(id) {
+  const e = STATE.accountingEntries.find(x => x.id === id);
+  if (!e) return;
+  openModalWithContent(`✏️ Edit Entry`, `
+    <div class="form-group"><label>Date</label><input type="date" class="form-control" id="editAccDate" value="${e.entry_date||''}" /></div>
+    <div class="form-group"><label>Description</label><input type="text" class="form-control" id="editAccDesc" value="${escapeHtml(e.description||e.narration||'')}" /></div>
+    <div class="form-group"><label>Debit (₹)</label><input type="number" class="form-control" id="editAccDebit" value="${e.debit||''}" /></div>
+    <div class="form-group"><label>Credit (₹)</label><input type="number" class="form-control" id="editAccCredit" value="${e.credit||''}" /></div>
+    <div class="form-group"><label>Reference No.</label><input type="text" class="form-control" id="editAccRef" value="${escapeHtml(e.reference_no||'')}" /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editAccRemarks" value="${escapeHtml(e.remarks||'')}" /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAccEntry(${id})">💾 Save</button>
+  `);
+}
+
+async function saveAccEntry(id) {
+  const desc = document.getElementById('editAccDesc')?.value.trim();
+  if (!desc) { showToast('Description required'); return; }
+  const debit = parseFloat(document.getElementById('editAccDebit')?.value) || 0;
+  const credit = parseFloat(document.getElementById('editAccCredit')?.value) || 0;
+  const updated = {
+    entry_date: document.getElementById('editAccDate')?.value,
+    description: desc,
+    debit, credit,
+    amount: debit || credit,
+    entry_type: credit > 0 ? 'credit' : 'debit',
+    reference_no: document.getElementById('editAccRef')?.value.trim() || '',
+    remarks: document.getElementById('editAccRemarks')?.value.trim() || ''
+  };
+  const ok = await supabaseUpdate('accounting_entries', id, updated);
+  if (ok) {
+    const idx = STATE.accountingEntries.findIndex(e => e.id === id);
+    if (idx !== -1) STATE.accountingEntries[idx] = { ...STATE.accountingEntries[idx], ...updated, updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString() };
+    closeModal(); renderAccEntries(); renderAccClientStats(); showToast('✅ Entry updated!');
+  }
+}
 
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v3
