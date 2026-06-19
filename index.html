@@ -775,6 +775,16 @@
         <div class="chat-sidebar">
           <div class="chat-search">
             <input type="text" id="newChatEmail" placeholder="Email for New Message..." />
+            <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+           <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px">
+          <span style="color:var(--text-muted);font-size:14px">🔍</span>
+         <input type="text" id="msgSearchInput" placeholder="Search messages..." 
+         style="border:none;background:transparent;outline:none;font-size:13px;color:var(--text);width:100%" 
+        oninput="searchTeamMessages(this.value)" />
+      <button id="msgSearchClear" onclick="clearMsgSearch()" 
+      style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;display:none">✕</button>
+  </div>
+</div>
             <button class="btn-primary" style="margin-top:6px;width:100%;padding:8px;font-size:12px" onclick="startNewChat()">+ New Chat</button>
           </div>
           <div class="chat-contacts" id="chatContacts"></div>
