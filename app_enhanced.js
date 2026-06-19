@@ -1228,7 +1228,7 @@ async function saveGSTEdit(id) {
   const ok = await supabaseUpdate('gst_returns', id, { status, remarks });
   if (ok) {
     const idx = STATE.gstReturns.findIndex(g => g.id === id);
-    if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; STATE.gstReturns[idx].updated_by = getCurrentUserEmail(); STATE.gstReturns[idx].updated_at = new Date().toISOString(); }
+    if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; STATE.gstReturns[idx].updated_by = getUpdatedByLabel(); STATE.gstReturns[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderGSTPage(); showToast('✅ GST return updated!');
   }
 }
@@ -1296,7 +1296,7 @@ async function saveROCStatus(id) {
   const ok = await supabaseUpdate('roc_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.rocFilings.findIndex(r => r.id === id);
-    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; STATE.rocFilings[idx].updated_by = getCurrentUserEmail(); STATE.rocFilings[idx].updated_at = new Date().toISOString(); }
+    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; STATE.rocFilings[idx].updated_by = getUpdatedByLabel(); STATE.rocFilings[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderROCTable(); showToast('✅ ROC status updated');
   }
 }
@@ -1398,7 +1398,7 @@ async function saveITREdit(id) {
   const ok = await supabaseUpdate('itr_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.itrFilings.findIndex(i => i.id === id);
-    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; STATE.itrFilings[idx].updated_by = getCurrentUserEmail(); STATE.itrFilings[idx].updated_at = new Date().toISOString(); }
+    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; STATE.itrFilings[idx].updated_by = getUpdatedByLabel(); STATE.itrFilings[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderITRList(); showToast('✅ ITR updated!');
   }
 }
@@ -1490,7 +1490,7 @@ async function saveTDSEdit(id) {
   const ok = await supabaseUpdate('tds_returns', id, { status, remarks });
   if (ok) {
     const idx = STATE.tdsReturns.findIndex(t => t.id === id);
-    if (idx !== -1) { STATE.tdsReturns[idx].status = status; STATE.tdsReturns[idx].remarks = remarks; STATE.tdsReturns[idx].updated_by = getCurrentUserEmail(); STATE.tdsReturns[idx].updated_at = new Date().toISOString(); }
+    if (idx !== -1) { STATE.tdsReturns[idx].status = status; STATE.tdsReturns[idx].remarks = remarks; STATE.tdsReturns[idx].updated_by = getUpdatedByLabel(); STATE.tdsReturns[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderTDSTable(); showToast('✅ TDS updated!');
   }
 }
@@ -1587,7 +1587,7 @@ async function saveAuditStatus(id) {
   const ok = await supabaseUpdate('audits', id, { status, remarks });
   if (ok) {
     const idx = STATE.audits.findIndex(a => a.id === id);
-    if (idx !== -1) { STATE.audits[idx].status = status; STATE.audits[idx].remarks = remarks; STATE.audits[idx].updated_by = getCurrentUserEmail(); STATE.audits[idx].updated_at = new Date().toISOString(); }
+    if (idx !== -1) { STATE.audits[idx].status = status; STATE.audits[idx].remarks = remarks; STATE.audits[idx].updated_by = getUpdatedByLabel(); STATE.audits[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderAuditTable(); showToast('✅ Audit status updated');
   }
 }
@@ -1674,7 +1674,7 @@ async function saveDSCEdit(id) {
   const ok = await supabaseUpdate('dsc_records', id, { status, expiry_date, remarks });
   if (ok) {
     const idx = STATE.dscRecords.findIndex(d => d.id === id);
-    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; STATE.dscRecords[idx].updated_by = getCurrentUserEmail(); STATE.dscRecords[idx].updated_at = new Date().toISOString(); }
+    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; STATE.dscRecords[idx].updated_by = getUpdatedByLabel(); STATE.dscRecords[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderDSCAlerts(); showToast('✅ DSC updated!');
   }
 }
