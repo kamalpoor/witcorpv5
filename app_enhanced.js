@@ -1165,12 +1165,14 @@ async function submitGSTReturn() {
   const clientName = clientId ? getClientNameById(clientId) : '';
   if (!clientName) { showToast('Please select a client'); return; }
 
+  const gstinVal = gstinEl?.value.trim().toUpperCase() || '';
+  if (gstinVal && !isValidFormat(gstinVal, 'gstin')) { showToast('❌ Invalid GSTIN format'); return; }
   const body = {
     client_name: clientName,
     client_id: clientId || null,
     return_type: typeSel?.value || 'GSTR-1',
     period: periodSel?.value || '',
-    gstin: gstinEl?.value.trim() || '',
+    gstin: gstinVal,
     total_turnover: parseFloat(turnoverEl?.value)||0,
     tax_liability: parseFloat(taxEl?.value)||0,
     remarks: remarksEl?.value.trim() || '',
@@ -1302,11 +1304,14 @@ async function submitROCFiling() {
     companyName = companyEl.value.trim();
   }
   if (!companyName) { showToast('Please select a client or enter company name'); return; }
+   const dueVal = dueEl?.value;
+  if (!dueVal) { showToast('Please select a due date'); return; }
 
+  const cinVal = cinEl?.value.trim().toUpperCase() || '';
   const body = {
     company: companyName,
     client_id: (clientSel && clientSel.value) ? clientSel.value : null,
-    cin: cinEl?.value.trim() || '-',
+    cin: cinVal || '-',
     form: formSel?.value || 'AOC-4',
     due_date: dueEl?.value || 'TBD',
     remarks: remarksEl?.value.trim() || '',
@@ -2131,7 +2136,7 @@ function openModal(type) {
           <select class="form-control" id="rocClientSel">${clientOptions}</select>
         </div>
         <div class="form-group"><label>Company Name (if not in clients)</label><input type="text" class="form-control" id="rocCompany" placeholder="Or enter company name manually" /></div>
-        <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" placeholder="Enter CIN" /></div>
+        <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" maxlength="21" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="U12345MH2020PTC123456" /></div>
         <div class="form-group"><label>Form Type</label>
           <select class="form-control" id="rocForm">${ROC_FORMS.map(f=>`<option>${f}</option>`).join('')}</select>
         </div>
