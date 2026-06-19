@@ -1,6 +1,6 @@
 /* =============================================================
    WITCORP DASHBOARD - app_enhanced.js
-   FIXED VERSION: Real-time tracking, proper mapping, updated_by tracking
+   FIXED VERSION: Real-time tracking, proper mapping, all bugs fixed
    ============================================================= */
 
 /* =========================================================
@@ -52,11 +52,6 @@ async function supabaseInsert(table, body) {
 async function supabaseUpdate(table, id, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-  
-  // Add updated_by and updated_at to all updates
-  body.updated_by = getCurrentUserEmail();
-  body.updated_at = new Date().toISOString();
-  
   const res = await fetch(url, {
     method: 'PATCH',
     headers: {
@@ -148,26 +143,6 @@ function loadUserInfo() {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
   });
-}
-
-/* =========================================================
-   3A. CLIENT MAPPING FUNCTIONS — PAN to Client Name
-   ========================================================= */
-
-function getClientByPAN(pan) {
-  if (!pan) return null;
-  return STATE.clients.find(c => (c.pan || '').toLowerCase() === pan.toLowerCase());
-}
-
-function getClientNameByPAN(pan) {
-  const client = getClientByPAN(pan);
-  return client ? client.name : null;
-}
-
-function mapPANToClient(panValue) {
-  if (!panValue) return null;
-  const client = getClientByPAN(panValue);
-  return client;
 }
 
 /* =========================================================
@@ -266,7 +241,7 @@ function renderVaultCredentials() {
       <div class="vault-card-meta">
         ${cred.url ? `<div><strong>URL:</strong> ${escapeHtml(cred.url.substring(0, 40))}${cred.url.length > 40 ? '...' : ''}</div>` : ''}
         ${cred.username ? `<div><strong>Username:</strong> ${escapeHtml(cred.username)}</div>` : ''}
-        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Added ${new Date(cred.created_at).toLocaleDateString()} ${cred.updated_by ? '• Updated by ' + escapeHtml(cred.updated_by) : ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Added ${new Date(cred.created_at).toLocaleDateString()}</div>
       </div>
     </div>
   `).join('');
@@ -288,7 +263,6 @@ function viewVaultItem(id) {
       ${cred.password ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard('${escapeHtml(cred.password)}','Password copied!')">📋 Copy</button>` : ''}
     </div></div>
     ${cred.notes ? `<div class="form-group"><label>Notes</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.notes)}</div></div>` : ''}
-    ${cred.updated_by ? `<div class="form-group"><label>Last Updated</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(cred.updated_by)} on ${new Date(cred.updated_at).toLocaleString()}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
@@ -745,6 +719,9 @@ async function loadAllData() {
     STATE.tasks = Array.isArray(tasks) ? tasks : [];
     STATE.documents = Array.isArray(docs) ? docs : [];
     STATE.calendarEvents = Array.isArray(events) ? events : [];
+
+    // FIX: Remove calendar events that are "Internal" type from GST upcoming
+    // (we filter them separately per page)
   } catch (e) {
     console.error('loadAllData error:', e);
     showToast('Database connection failed. Check console.');
@@ -767,6 +744,8 @@ function populateAllClientDropdowns() {
   if (itrSelects[0]) itrSelects[0].innerHTML = clientOptions;
 
   // Audit — also used in modal, done separately
+
+  // ROC — company name is free text so no dropdown needed
 }
 
 function getClientOptionsHtml(includeEmpty = true) {
@@ -1007,7 +986,6 @@ function nextPage(section) { if(section==='clients'){const total=Math.ceil(getFi
 function viewClient(id) {
   const c = STATE.clients.find(x => x.id === id);
   if (!c) return;
-  const updatedInfo = c.updated_by ? `<div class="form-group"><label>Last Updated</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(c.updated_by)} on ${new Date(c.updated_at).toLocaleString()}</div></div>` : '';
   openModalWithContent(`👥 ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.name)}</div></div>
     <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan||'-')}</div></div>
@@ -1016,7 +994,6 @@ function viewClient(id) {
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email||'-')}</div></div>
     <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone||'-')}</div></div>
     <div class="form-group"><label>Status</label><div>${statusBadge(c.status)}</div></div>
-    ${updatedInfo}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
@@ -1088,15 +1065,19 @@ async function deleteClientConfirmed(id) {
 }
 
 /* =========================================================
-   16. GST DASHBOARD — with updated_by tracking
+   16. GST DASHBOARD — FIX: period auto year, no internal events, registration added
    ========================================================= */
 
 function getGSTPeriodOptions() {
+  // Show current year months and next year
   const currentYear = new Date().getFullYear();
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const options = [];
+  // Current year all months
   months.forEach((m,i) => options.push(`${m} ${currentYear}`));
+  // Next year all months
   months.forEach((m,i) => options.push(`${m} ${currentYear+1}`));
+  // Previous year (last 3 months for reference)
   for(let i=9;i<12;i++) options.unshift(`${months[i]} ${currentYear-1}`);
   return options;
 }
@@ -1106,11 +1087,13 @@ function renderGSTPage() {
   const upcomingEl = document.getElementById('gstUpcoming');
   const periodSel = document.getElementById('gstPeriodSel');
 
+  // FIX: Repopulate period dropdown with current year
   if (periodSel) {
     const currentPeriod = getGSTPeriodOptions();
     periodSel.innerHTML = currentPeriod.map(p => `<option>${p}</option>`).join('');
   }
 
+  // FIX: Upcoming filings — only show GST/TDS/ROC type events, NOT Internal
   if (upcomingEl) {
     const upcoming = STATE.calendarEvents
       .filter(e => e.event_type && e.event_type !== 'Internal')
@@ -1131,7 +1114,6 @@ function renderGSTPage() {
           <div>
             <div class="gst-item-name">${escapeHtml(g.client_name)}</div>
             <div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)} ${g.remarks ? '• '+escapeHtml(g.remarks) : ''}</div>
-            ${g.updated_by ? `<div class="gst-item-sub" style="font-size:11px;color:var(--text-muted)">📝 Updated by ${escapeHtml(g.updated_by)}</div>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             ${statusBadge(g.status)}
@@ -1174,6 +1156,7 @@ async function submitGSTReturn() {
     STATE.gstReturns.unshift(result[0]);
     renderGSTPage();
     showToast('✅ GST Return filed successfully!');
+    // clear fields
     if (gstinEl) gstinEl.value = '';
     if (turnoverEl) turnoverEl.value = '';
     if (taxEl) taxEl.value = '';
@@ -1192,7 +1175,6 @@ function editGSTReturn(id) {
       </select>
     </div>
     <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editGstRemarks" value="${escapeHtml(g.remarks||'')}" placeholder="Add remarks..." /></div>
-    ${g.updated_by ? `<div class="form-group"><label>Last Updated</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(g.updated_by)} on ${new Date(g.updated_at).toLocaleString()}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveGSTEdit(${id})">💾 Save</button>
   `);
 }
@@ -1214,7 +1196,7 @@ async function deleteGSTReturn(id) {
 }
 
 /* =========================================================
-   17. ROC FILINGS — with updated_by tracking
+   17. ROC FILINGS — All forms + remarks
    ========================================================= */
 
 const ROC_FORMS = [
@@ -1238,7 +1220,7 @@ function renderROCTable() {
       <td>${escapeHtml(r.form||'-')}</td>
       <td>${escapeHtml(r.due_date||'-')}</td>
       <td>${statusBadge(r.status)}</td>
-      <td class="remarks-cell" title="${escapeHtml(r.remarks||'')}">${escapeHtml(r.remarks||'-')} ${r.updated_by ? '(by ' + escapeHtml(r.updated_by) + ')' : ''}</td>
+      <td class="remarks-cell" title="${escapeHtml(r.remarks||'')}">${escapeHtml(r.remarks||'-')}</td>
       <td>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteROC(${r.id})">Delete</button>
@@ -1257,7 +1239,6 @@ function editROCStatus(id) {
       </select>
     </div>
     <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarks" value="${escapeHtml(r.remarks||'')}" placeholder="Add remarks..." /></div>
-    ${r.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(r.updated_by)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>
   `);
 }
@@ -1279,7 +1260,7 @@ async function deleteROC(id) {
 }
 
 /* =========================================================
-   18. INCOME TAX — with PAN mapping & updated_by
+   18. INCOME TAX — FIX: remarks + correct assessment year
    ========================================================= */
 
 function getAssessmentYears() {
@@ -1305,7 +1286,6 @@ function renderITRList() {
         <div class="gst-item-name">${escapeHtml(itr.client_name)}</div>
         <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date||'-')}</div>
         ${itr.remarks ? `<div class="gst-item-sub" style="color:var(--text-muted)">📝 ${escapeHtml(itr.remarks)}</div>` : ''}
-        ${itr.updated_by ? `<div class="gst-item-sub" style="font-size:11px;color:var(--text-muted)">Updated by ${escapeHtml(itr.updated_by)}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         ${statusBadge(itr.status)}
@@ -1326,7 +1306,6 @@ function editITR(id) {
       </select>
     </div>
     <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editItrRemarks" value="${escapeHtml(itr.remarks||'')}" placeholder="Add remarks..." /></div>
-    ${itr.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(itr.updated_by)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveITREdit(${id})">💾 Save</button>
   `);
 }
@@ -1343,6 +1322,7 @@ async function saveITREdit(id) {
 }
 
 async function submitITR() {
+  // Use mapped client dropdowns
   const clientSel = document.querySelector('#page-incometax select');
   const ayEl = document.getElementById('itrAssessmentYear');
   const formEl = document.getElementById('itrForm');
@@ -1378,7 +1358,7 @@ async function deleteITR(id) {
 }
 
 /* =========================================================
-   19. TDS RETURNS — with updated_by tracking
+   19. TDS RETURNS
    ========================================================= */
 
 function renderTDSTable() {
@@ -1414,7 +1394,6 @@ function editTDS(id) {
       </select>
     </div>
     <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editTdsRemarks" value="${escapeHtml(t.remarks||'')}" placeholder="Add remarks..." /></div>
-    ${t.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(t.updated_by)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveTDSEdit(${id})">💾 Save</button>
   `);
 }
@@ -1460,7 +1439,7 @@ async function deleteTDS(id) {
 }
 
 /* =========================================================
-   20. AUDIT — with updated_by tracking
+   20. AUDIT — FIX: logged-in user name as auditor, real names
    ========================================================= */
 
 function renderAuditTable() {
@@ -1496,7 +1475,6 @@ function editAuditStatus(id) {
       </select>
     </div>
     <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarks" value="${escapeHtml(a.remarks||'')}" placeholder="Add remarks..." /></div>
-    ${a.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(a.updated_by)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAuditStatus(${id})">Save</button>
   `);
 }
@@ -1518,7 +1496,7 @@ async function deleteAudit(id) {
 }
 
 /* =========================================================
-   21. DSC — with updated_by tracking
+   21. DSC — FIX: show expiry date, remarks, real-time days left
    ========================================================= */
 
 function dscDaysLeft(expiryDate) {
@@ -1545,6 +1523,7 @@ function renderDSCAlerts() {
     updateDashboardStats(); return;
   }
 
+  // Sort by expiry date ascending
   const sorted = [...STATE.dscRecords].sort((a,b) => new Date(a.expiry_date||'9999')-new Date(b.expiry_date||'9999'));
 
   el.innerHTML = sorted.map(d => {
@@ -1557,7 +1536,6 @@ function renderDSCAlerts() {
           <div class="gst-item-name">${escapeHtml(d.client_name)} <span style="font-size:11px;color:var(--text-muted)">(${escapeHtml(d.dsc_type||'')})</span></div>
           <div class="gst-item-sub">Purpose: ${escapeHtml(d.purpose||'-')} | Expiry: <strong>${escapeHtml(d.expiry_date||'-')}</strong> | ${dscStatusLabel(d.expiry_date)}</div>
           ${d.remarks ? `<div class="gst-item-sub">📝 ${escapeHtml(d.remarks)}</div>` : ''}
-          ${d.updated_by ? `<div class="gst-item-sub" style="font-size:11px;color:var(--text-muted)">Updated by ${escapeHtml(d.updated_by)}</div>` : ''}
         </div>
         <div style="display:flex;gap:6px;align-items:center">
           <button class="btn-outline" style="padding:4px 8px;font-size:11px" onclick="editDSC(${d.id})">✏️</button>
@@ -1579,7 +1557,6 @@ function editDSC(id) {
     </div>
     <div class="form-group"><label>Expiry Date</label><input type="date" class="form-control" id="editDscExpiry" value="${d.expiry_date||''}" /></div>
     <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editDscRemarks" value="${escapeHtml(d.remarks||'')}" placeholder="Add remarks..." /></div>
-    ${d.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(d.updated_by)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveDSCEdit(${id})">💾 Save</button>
   `);
 }
@@ -1630,7 +1607,7 @@ async function deleteDSC(id) {
 }
 
 /* =========================================================
-   22. ACCOUNTING HUB — with updated_by tracking
+   22. ACCOUNTING HUB
    ========================================================= */
 
 function renderAccountingList() {
@@ -1644,7 +1621,7 @@ function renderAccountingList() {
     <div class="acc-item">
       <div>
         <div class="gst-item-name">${escapeHtml(t.narration)}</div>
-        <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')} ${t.updated_by ? '• Updated by ' + escapeHtml(t.updated_by) : ''}</div>
+        <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
@@ -1685,7 +1662,7 @@ async function deleteAccEntry(id) {
 }
 
 /* =========================================================
-   23. TASK MANAGER — with updated_by tracking
+   23. TASK MANAGER — FIX: use logged-in user name
    ========================================================= */
 
 function renderKanban() {
@@ -1704,7 +1681,6 @@ function renderKanban() {
           <span>👤 ${escapeHtml(t.assignee||'Unassigned')}</span>
           <span>📅 ${escapeHtml(t.due_date||'TBD')}</span>
         </div>
-        ${t.updated_by ? `<div class="task-meta" style="font-size:10px;color:var(--text-muted)">Updated by ${escapeHtml(t.updated_by)}</div>` : ''}
       </div>`).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
     container.ondragover = (e) => e.preventDefault();
     container.ondrop = (e) => dropTask(e, col);
@@ -1770,7 +1746,6 @@ function openTaskDetail(id) {
         <option value="done" ${task.column_name==='done'?'selected':''}>Done</option>
       </select>
     </div>
-    ${task.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg);font-size:12px">${escapeHtml(task.updated_by)}</div></div>` : ''}
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn-primary" style="flex:1" onclick="updateTask(${task.id})">💾 Save</button>
       <button class="btn-outline" style="flex:1;border-color:#ef4444;color:#ef4444" onclick="deleteTask(${task.id})">🗑️ Delete</button>
@@ -1896,7 +1871,7 @@ function renderDocuments() {
     <div class="doc-card">
       <div class="doc-icon">${d.icon||'📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
-      <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')} ${d.updated_by ? '• By ' + escapeHtml(d.updated_by) : ''}</div>
+      <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
       <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
     </div>`).join('');
 }
@@ -2371,6 +2346,7 @@ function openNotifications() {
   const notifs = [];
   STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => { notifs.push({icon:'📊',text:'GSTR pending: '+g.client_name+' — '+g.return_type,time:'Pending'}); });
 
+  // DSC expiring soon (real-time calculation)
   STATE.dscRecords.filter(d => { const days=dscDaysLeft(d.expiry_date); return days!==null&&days>=0&&days<=30; }).forEach(d => {
     notifs.push({icon:'⚠️',text:'DSC expiring: '+d.client_name+' in '+dscDaysLeft(d.expiry_date)+' days',time:'Alert'});
   });
@@ -2417,5 +2393,5 @@ function statusBadge(status) {
 }
 
 /* =========================================================
-   END OF app_enhanced.js — WITCORP Fixed Edition with updated_by tracking
+   END OF app_enhanced.js — WITCORP Fixed Edition
    ========================================================= */
