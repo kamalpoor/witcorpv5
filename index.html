@@ -17,20 +17,45 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>W</text></svg>" />
 
-  <!-- AUTH GUARD -->
-  <script src="auth.js"></script>
-  <script>
-    (async function () {
-      const isCallback = await handleOAuthCallback();
-      if (isCallback) { window.location.replace('index.html'); return; }
-      const token = localStorage.getItem('witcorp-access-token');
-      if (!token) { window.location.replace('login.html'); return; }
-      const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-        headers: { 'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw', 'Authorization': 'Bearer ' + token }
-      });
-      if (!res.ok) { localStorage.clear(); window.location.replace('login.html'); }
-    })();
-  </script>
+ <!-- AUTH GUARD -->
+<script src="auth.js"></script>
+<script>
+  (async function () {
+    const SUPA_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+    const SUPA_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+
+    // Step 1: Google OAuth callback handle karo
+    const isCallback = await handleOAuthCallback();
+
+    // Step 2: Token lo
+    const token = localStorage.getItem('witcorp-access-token');
+    if (!token) { window.location.replace('login.html'); return; }
+
+    // Step 3: User valid hai?
+    const userRes = await fetch(SUPA_URL + '/auth/v1/user', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+    });
+    if (!userRes.ok) { localStorage.clear(); window.location.replace('login.html'); return; }
+
+    const user = await userRes.json();
+    try { localStorage.setItem('witcorp-user', JSON.stringify(user)); } catch(e) {}
+
+    // Step 4: APPROVAL CHECK — har baar, Google ho ya email
+    const profRes = await fetch(
+      SUPA_URL + '/rest/v1/profiles?id=eq.' + user.id + '&select=status',
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token } }
+    );
+    const profData = await profRes.json();
+    const status = profData?.[0]?.status;
+
+    if (status !== 'approved') {
+      localStorage.clear();
+      window.location.replace('login.html?error=not_approved');
+      return;
+    }
+    // approved hai — page load hone do
+  })();
+</script>
 
   <script>
     function toggleDarkMode() {
