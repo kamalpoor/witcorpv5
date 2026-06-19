@@ -1632,20 +1632,25 @@ function renderDSCAlerts() {
     const dscType = d.dsc_type || d.type || '-';
     const purpose = d.purpose || '-';
     const expiryDate = d.expiry_date || d.expiry || '-';
-    return `
-      <div class="dsc-alert-item" style="display:flex;align-items:flex-start;gap:12px;padding:12px;border-bottom:1px solid var(--border)">
-        <div class="activity-dot ${days !== null && days < 0 ? 'red' : urgent ? 'orange' : 'blue'}">✍️</div>
-        <div style="flex:1">
-          <div class="gst-item-name">${escapeHtml(clientName)} <span style="font-size:11px;color:var(--text-muted)">(${escapeHtml(dscType)})</span></div>
-          <div class="gst-item-sub">Purpose: ${escapeHtml(purpose)} | Expiry: <strong>${escapeHtml(expiryDate)}</strong> | ${dscStatusLabel(expiryDate)}</div>
-          ${d.pan ? `<div class="gst-item-sub">PAN: ${escapeHtml(d.pan)}</div>` : ''}
-          ${d.remarks ? `<div class="gst-item-sub">📝 ${escapeHtml(d.remarks)}</div>` : ''}
-          ${d.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(d.updated_by)}</div>` : ''}
-          ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+   return `
+      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;">
+        <div style="width:42px;height:42px;border-radius:10px;background:${days !== null && days < 0 ? '#fee2e2' : urgent ? '#fef3c7' : 'var(--primary-glow)'};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">✍️</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">${escapeHtml(clientName)} <span style="font-size:12px;font-weight:500;color:var(--text-muted);">(${escapeHtml(dscType)})</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:4px;">
+            <span>📋 <strong style="color:var(--text)">Purpose:</strong> ${escapeHtml(purpose)}</span>
+            <span>📅 <strong style="color:var(--text)">Expiry:</strong> ${escapeHtml(expiryDate)}</span>
+            ${d.pan ? `<span>🪪 <strong style="color:var(--text)">PAN:</strong> ${escapeHtml(d.pan)}</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            ${dscStatusLabel(expiryDate)}
+            ${d.remarks ? `<span style="font-size:11px;color:var(--text-muted);">📝 ${escapeHtml(d.remarks)}</span>` : ''}
+          </div>
+          ${d.updated_by || d.updated_at ? `<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">🖊 ${escapeHtml(d.updated_by||'')} ${d.updated_at ? '· '+formatDateTime(d.updated_at) : ''}</div>` : ''}
         </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-          <button class="btn-outline" style="padding:4px 8px;font-size:11px" onclick="editDSC(${d.id})">✏️</button>
-          <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteDSC(${d.id})">✕</button>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+          <button class="btn-outline" style="padding:5px 12px;font-size:12px;" onclick="editDSC(${d.id})">✏️ Edit</button>
+          <button class="btn-outline" style="padding:5px 12px;font-size:12px;border-color:#ef4444;color:#ef4444;" onclick="deleteDSC(${d.id})">🗑️ Delete</button>
         </div>
       </div>`;
   }).join('');
