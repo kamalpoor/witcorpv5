@@ -300,10 +300,10 @@
             <label>Period</label>
             <select class="form-control" id="gstPeriodSel"><!-- populated by JS --></select>
           </div>
-          <div class="form-group">
-            <label>GSTIN</label>
-            <input type="text" class="form-control" id="gstGSTIN" placeholder="Enter GSTIN" />
-          </div>
+         <div class="form-group">
+         <label>GSTIN</label>
+        <input type="text" class="form-control" id="gstGSTIN" maxlength="15" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="29ABCDE1234F1Z5" />
+         </div>
           <div class="form-group">
             <label>Total Turnover (₹)</label>
             <input type="number" class="form-control" id="gstTurnover" placeholder="Enter amount" />
