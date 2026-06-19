@@ -405,7 +405,7 @@
         <div class="card-title">TDS Filing Form</div>
         <div class="form-grid">
           <div class="form-group"><label>Deductor Name *</label><input type="text" class="form-control" id="tdsDeductor" placeholder="Company/Individual name" /></div>
-          <div class="form-group"><label>TAN Number</label><input type="text" class="form-control" id="tdsTAN" placeholder="Enter TAN" /></div>
+          <div class="form-group"><label>TAN Number</label><input type="text" class="form-control" id="tdsTAN" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="ABCD12345E" /></div>
           <div class="form-group"><label>Quarter</label>
             <select class="form-control" id="tdsQuarter">
               <option>Q1 (Apr-Jun)</option><option>Q2 (Jul-Sep)</option><option>Q3 (Oct-Dec)</option><option>Q4 (Jan-Mar)</option>
