@@ -2112,7 +2112,7 @@ function openModal(type) {
       body: `
         <div class="form-grid">
           <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="addClientName" placeholder="Enter client name" /></div>
-          <div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="Enter PAN/TAN" /></div>
+          <div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" /></div>
           <div class="form-group"><label>Type</label>
             <select class="form-control" id="addClientType"><option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option></select>
           </div>
@@ -2466,6 +2466,33 @@ function closeNotifications() {
 /* =========================================================
    36. UTILITY
    ========================================================= */
+/* =========================================================
+   FORMAT VALIDATORS — auto-capitalize + correct length
+   ========================================================= */
+const FORMAT_RULES = {
+  pan: { regex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, len: 10, example: 'ABCDE1234F' },
+  tan: { regex: /^[A-Z]{4}[0-9]{5}[A-Z]{1}$/, len: 10, example: 'ABCD12345E' },
+  gstin: { regex: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, len: 15, example: '29ABCDE1234F1Z5' },
+  cin: { regex: /^[LUu][0-9]{5}[A-Za-z]{2}[0-9]{4}[A-Za-z]{3}[0-9]{6}$/i, len: 21, example: 'U12345MH2020PTC123456' }
+};
+
+function attachFormatField(inputId, ruleKey) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const rule = FORMAT_RULES[ruleKey];
+  el.maxLength = rule.len;
+  el.placeholder = rule.example;
+  el.style.textTransform = 'uppercase';
+  el.addEventListener('input', () => {
+    el.value = el.value.toUpperCase().replace(/\s/g, '');
+  });
+}
+
+function isValidFormat(value, ruleKey) {
+  if (!value) return true; // empty allowed unless marked required separately
+  const rule = FORMAT_RULES[ruleKey];
+  return rule.regex.test(value.toUpperCase());
+}
 
 function escapeHtml(str) {
   if (str===null||str===undefined) return '';
