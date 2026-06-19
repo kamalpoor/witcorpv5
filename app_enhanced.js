@@ -711,7 +711,7 @@ function injectWAMenuStyles() {
     .dsc-warning { color:#f59e0b;font-weight:700; }
     .dsc-expired { color:#ef4444;font-weight:700; }
     .remarks-cell { max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12px; }
-    .updated-by-cell { max-width:200px;white-space:normal;word-break:break-word;overflow:visible; }
+    .updated-by-cell { max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
     .updated-by-badge { font-size:10px;color:var(--text-muted);font-style:italic;display:block; }
   `;
   document.head.appendChild(style);
