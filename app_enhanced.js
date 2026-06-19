@@ -2121,6 +2121,7 @@ function openModal(type) {
       body: `
         <div class="form-grid">
           <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="addClientName" placeholder="Enter client name" /></div>
+          <div class="form-group"><label>Contact Person</label><input type="text" class="form-control" id="addClientContact" placeholder="Enter contact person name" /></div>
           <div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" /></div>
           <div class="form-group"><label>Type</label>
             <select class="form-control" id="addClientType"><option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option></select>
@@ -2243,6 +2244,7 @@ async function submitAddClient() {
   if (panVal && !isValidFormat(panVal, 'pan')) { showToast('❌ Invalid PAN format. Use ABCDE1234F'); return; }
   const body = {
     name,
+    contact_person: document.getElementById('addClientContact')?.value.trim() || '',
     pan: panVal || '-',
     type: document.getElementById('addClientType')?.value || 'Individual',
     gst: document.getElementById('addClientGST')?.value.trim() || '-',
