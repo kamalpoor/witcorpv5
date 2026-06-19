@@ -984,19 +984,19 @@ function updateDashboardStats() {
   const donutCenter = document.querySelector('#page-reports .donut-center');
   if (donutCenter) donutCenter.textContent = pct+'%';
    // Workspace Overview update
-  const ovItems = document.querySelectorAll('.overview-item strong');
+ const ovItems = document.querySelectorAll('.overview-item strong');
   if (ovItems[0]) ovItems[0].textContent = done;
   if (ovItems[1]) ovItems[1].textContent = inprog;
   if (ovItems[2]) ovItems[2].textContent = todo;
-   if (donutChart) {
-  if (!STATE.tasks.length) {
-    donutChart.style.background = `conic-gradient(var(--border) 0% 100%)`;
-  } else {
   const donutChart = document.querySelector('#page-reports .donut-chart');
-  if (donutChart && STATE.tasks.length) {
-    const doneP = done/STATE.tasks.length*100;
-    const ipP = inprog/STATE.tasks.length*100;
-    donutChart.style.background = `conic-gradient(var(--success,#10b981) 0% ${doneP}%,var(--info,#3b82f6) ${doneP}% ${doneP+ipP}%,var(--warning,#f59e0b) ${doneP+ipP}% 100%)`;
+  if (donutChart) {
+    if (!STATE.tasks.length) {
+      donutChart.style.background = `conic-gradient(var(--border) 0% 100%)`;
+    } else {
+      const doneP = done/STATE.tasks.length*100;
+      const ipP = inprog/STATE.tasks.length*100;
+      donutChart.style.background = `conic-gradient(var(--success,#10b981) 0% ${doneP}%,var(--info,#3b82f6) ${doneP}% ${doneP+ipP}%,var(--warning,#f59e0b) ${doneP+ipP}% 100%)`;
+    }
   }
 }
 
