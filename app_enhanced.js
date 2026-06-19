@@ -269,7 +269,7 @@ function renderVaultCredentials() {
     return;
   }
   container.innerHTML = `
-    <div class="table-wrapper">
+    <div class="table-wrapper" style="overflow-x:auto;width:100%">
       <table class="data-table">
         <thead>
           <tr>
@@ -731,9 +731,9 @@ function injectWAMenuStyles() {
     .vault-card-actions { display:flex;gap:6px; }
     .vault-btn { background:none;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:14px;transition:background .15s; }
     .vault-btn:hover { background:var(--bg); }
-    .vault-container { display:grid;grid-template-columns:220px 1fr;gap:16px; }
+    .vault-container { display:grid;grid-template-columns:220px 1fr;gap:16px;overflow:hidden; }
     .vault-sidebar { background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px; }
-    .vault-main { background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px; }
+    .vault-main { background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;overflow-x:auto; }
     .dsc-warning { color:#f59e0b;font-weight:700; }
     .dsc-expired { color:#ef4444;font-weight:700; }
     .remarks-cell { max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12px; }
