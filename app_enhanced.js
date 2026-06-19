@@ -1755,7 +1755,9 @@ async function submitJournalEntry() {
   const creditEl = document.getElementById('accCredit');
   const amount = parseFloat(amountEl?.value)||0;
   if (!narration) { showToast('Please enter narration'); return; }
+  if (isJunkText(narration, 4)) { showToast('Please enter a meaningful narration (min 4 characters)'); return; }
   if (!amount) { showToast('Please enter amount'); return; }
+  if (isJunkText(debitEl?.value.trim(), 2) || isJunkText(creditEl?.value.trim(), 2)) { showToast('Please enter full account head names'); return; }
   const voucherType = voucherSel?.value || 'Journal';
   const entryType = ['Receipt','Sales','Invoice'].includes(voucherType) ? 'credit' : 'debit';
   const body = {
@@ -2502,7 +2504,11 @@ function isValidFormat(value, ruleKey) {
   const rule = FORMAT_RULES[ruleKey];
   return rule.regex.test(value.toUpperCase());
 }
-
+function isJunkText(value, minLen = 3) {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length < minLen;
+}
 function escapeHtml(str) {
   if (str===null||str===undefined) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
