@@ -386,11 +386,12 @@ async function deleteVaultItem(id) {
   }
 }
 
-function togglePasswordView(inputId) {
+function togglePasswordView(inputId, btn) {
   const input = document.getElementById(inputId);
+  const button = btn || event?.target;
   if (input) {
     input.type = input.type === 'password' ? 'text' : 'password';
-    event.target.textContent = input.type === 'text' ? '🙈 Hide' : '👁️ Show';
+    if (button) button.textContent = input.type === 'text' ? '🙈 Hide' : '👁️ Show';
   }
 }
 
