@@ -451,7 +451,26 @@ async function logout() {
 async function requireAuth() {
   try {
     const isCallback = await handleOAuthCallback();
-    if (isCallback) { redirectToDashboard(); return; }
+if (isCallback) {
+  // Google login ke baad bhi approval check karo
+  const cbUser = getCurrentUser();
+  if (!cbUser || !cbUser.id) { window.location.href = 'login.html'; return; }
+  let cbToken = null;
+  try { cbToken = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+  const cbRes = await fetch(
+    SUPABASE_URL + '/rest/v1/profiles?id=eq.' + cbUser.id + '&select=status',
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + cbToken } }
+  );
+  const cbProfile = await cbRes.json();
+  const cbStatus = cbProfile?.[0]?.status;
+  if (cbStatus === 'approved') {
+    redirectToDashboard();
+  } else {
+    clearSession();
+    window.location.href = 'login.html';
+  }
+  return;
+}
 
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('type') === 'recovery') {
