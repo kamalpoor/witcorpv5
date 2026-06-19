@@ -540,37 +540,106 @@
     </section>
 
     <!-- ACCOUNTING HUB — FIXED: proper IDs -->
-    <section class="page" id="page-accounting">
-      <div class="page-header">
-        <div><h1>🧮 Accounting Hub</h1><p>Accounting &amp; bookkeeping</p></div>
-        <button class="btn-primary" onclick="openModal('newEntry')">+ New Entry</button>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">📈</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Total Revenue</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">📉</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Total Expenses</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">💼</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Net Profit</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">📊</div><div class="stat-info"><div class="stat-number">0%</div><div class="stat-label">Profit Margin</div></div></div>
-      </div>
-      <div class="two-col">
-        <div class="card">
-          <div class="card-title">Add Journal Entry</div>
-          <div class="form-group"><label>Date</label><input type="date" class="form-control" /></div>
-          <div class="form-group"><label>Voucher Type</label>
-            <select class="form-control"><option>Payment</option><option>Receipt</option><option>Journal</option><option>Contra</option><option>Sales</option><option>Purchase</option></select>
-          </div>
-          <div class="form-group"><label>Account Head (Dr)</label><input type="text" class="form-control" id="accDebit" placeholder="Debit account" /></div>
-          <div class="form-group"><label>Account Head (Cr)</label><input type="text" class="form-control" id="accCredit" placeholder="Credit account" /></div>
-          <div class="form-group"><label>Amount (₹)</label><input type="number" class="form-control" id="accAmount" placeholder="Enter amount" /></div>
-          <div class="form-group"><label>Narration</label><textarea class="form-control" rows="2" placeholder="Entry description"></textarea></div>
-          <button class="btn-primary" onclick="submitJournalEntry()">Post Entry</button>
-        </div>
-        <div class="card">
-          <div class="card-title">Recent Transactions</div>
-          <div id="accountingList"></div>
-        </div>
-      </div>
-    </section>
+    <!-- ACCOUNTING HUB — CLIENT WISE -->
+<section class="page" id="page-accounting">
+  <div class="page-header">
+    <div><h1>🧮 Accounting Hub</h1><p>Client-wise accounting & bookkeeping</p></div>
+  </div>
 
+  <!-- Client Selector -->
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="font-weight:600;font-size:14px">Select Client:</label>
+      <select class="form-control" id="accClientSel" style="max-width:280px" onchange="onAccClientChange()">
+        <option value="">-- Select Client --</option>
+      </select>
+      <div id="accClientStats" style="display:flex;gap:10px;flex-wrap:wrap;margin-left:auto"></div>
+    </div>
+  </div>
+
+  <!-- Category Tabs -->
+  <div id="accTabsWrapper" style="display:none">
+    <div class="acc-tabs" id="accTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
+      <button class="acc-tab active" onclick="switchAccTab('Sales')">💰 Sales</button>
+      <button class="acc-tab" onclick="switchAccTab('Purchases')">🛒 Purchases</button>
+      <button class="acc-tab" onclick="switchAccTab('Sundry Debtors')">📤 Sundry Debtors</button>
+      <button class="acc-tab" onclick="switchAccTab('Sundry Creditors')">📥 Sundry Creditors</button>
+      <button class="acc-tab" onclick="switchAccTab('Payroll Entries')">👨‍💼 Payroll</button>
+      <button class="acc-tab" onclick="switchAccTab('Bank Statement')">🏦 Bank Statement</button>
+      <button class="acc-tab" onclick="switchAccTab('GST Transfer Entries')">📊 GST Transfer</button>
+      <button class="acc-tab" onclick="switchAccTab('Depreciation Entries')">📉 Depreciation</button>
+      <button class="acc-tab" onclick="switchAccTab('TDS Entries')">🧾 TDS Entries</button>
+      <button class="acc-tab" onclick="switchAccTab('Miscellaneous Ledgers')">📋 Misc Ledgers</button>
+    </div>
+
+    <!-- Add Entry Form -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title" id="accFormTitle">➕ Add Entry</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" class="form-control" id="accDate" />
+        </div>
+        <div class="form-group">
+          <label>Description *</label>
+          <input type="text" class="form-control" id="accDesc" placeholder="Entry description" />
+        </div>
+        <div class="form-group">
+          <label>Debit (₹)</label>
+          <input type="number" class="form-control" id="accDebit" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>Credit (₹)</label>
+          <input type="number" class="form-control" id="accCredit" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>Reference No.</label>
+          <input type="text" class="form-control" id="accRef" placeholder="Invoice/Challan no." />
+        </div>
+        <div class="form-group">
+          <label>Remarks</label>
+          <input type="text" class="form-control" id="accRemarks" placeholder="Optional" />
+        </div>
+      </div>
+      <button class="btn-primary" onclick="submitAccEntry()">✅ Add Entry</button>
+    </div>
+
+    <!-- Entries Table -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" id="accTableTitle" style="margin:0">Entries</div>
+        <div id="accTabStats" style="font-size:13px;color:var(--text-muted)"></div>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Debit (₹)</th>
+              <th>Credit (₹)</th>
+              <th>Reference</th>
+              <th>Remarks</th>
+              <th>Updated By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="accEntriesBody"></tbody>
+        </table>
+      </div>
+      <div id="accEntriesEmpty" style="display:none">
+        <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No entries yet</div><div class="empty-state-sub">Add your first entry above</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- No client selected -->
+  <div id="accNoClient" style="text-align:center;padding:60px 20px;color:var(--text-muted)">
+    <div style="font-size:48px;margin-bottom:12px">🧮</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:8px">Select a Client to Begin</div>
+    <div style="font-size:13px">Choose a client from the dropdown above to view and manage their accounting entries</div>
+  </div>
+</section>
     <!-- TASK MANAGER -->
     <section class="page" id="page-tasks">
       <div class="page-header">
