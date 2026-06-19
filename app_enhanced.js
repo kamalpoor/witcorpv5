@@ -1,6 +1,6 @@
 /* =============================================================
    WITCORP DASHBOARD - app_enhanced.js
-   Enterprise Edition — Fixed Dark Mode + WhatsApp Arrow Menu
+   FIXED VERSION: Real-time tracking, proper mapping, all bugs fixed
    ============================================================= */
 
 /* =========================================================
@@ -10,15 +10,16 @@
 var SUPABASE_URL = window.SUPABASE_URL || 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
 var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
 
-async function supabase(table, options = {}) {
+async function supabaseQuery(table, options = {}) {
   const { method = 'GET', filters = '', body = null, select = '*', order = 'created_at.desc', limit = null } = options;
   let url = `${SUPABASE_URL}/rest/v1/${table}?select=${select}`;
   if (filters) url += `&${filters}`;
   if (order) url += `&order=${order}`;
   if (limit) url += `&limit=${limit}`;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   const headers = {
     'apikey': SUPABASE_ANON_KEY,
-    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
     'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
   };
@@ -28,13 +29,17 @@ async function supabase(table, options = {}) {
   return await res.json();
 }
 
+// Keep backward compat alias
+var supabase = supabaseQuery;
+
 async function supabaseInsert(table, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}`;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     },
@@ -46,11 +51,12 @@ async function supabaseInsert(table, body) {
 
 async function supabaseUpdate(table, id, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   const res = await fetch(url, {
     method: 'PATCH',
     headers: {
       'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     },
@@ -62,11 +68,12 @@ async function supabaseUpdate(table, id, body) {
 
 async function supabaseDelete(table, id) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   const res = await fetch(url, {
     method: 'DELETE',
     headers: {
       'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      'Authorization': `Bearer ${token}`
     }
   });
   return res.ok;
@@ -80,7 +87,6 @@ const STATE = {
   currentPage: 'dashboard',
   sidebarOpen: false,
   notifOpen: false,
-  activeTheme: { bg: 'default', sidebar: 'dark-sidebar' },
   calendar: { month: new Date().getMonth(), year: new Date().getFullYear() },
   pagination: { clients: { page: 1, perPage: 10 } },
   filters: { clients: { search: '', status: '', type: '' } },
@@ -89,39 +95,66 @@ const STATE = {
   clients: [], gstReturns: [], rocFilings: [], itrFilings: [],
   tdsReturns: [], audits: [], dscRecords: [], accountingEntries: [],
   tasks: [], documents: [], calendarEvents: [],
-  vaultCredentials: [], vaultFolders: [],
+  vaultCredentials: [],
   teamMessages: [], userPresence: {},
-  typingIndicators: {},
   selectedMessageId: null,
-  replyToId: null
+  replyToId: null,
+  currentUser: null // logged in user info
 };
 
 /* =========================================================
-   3. DARK MODE — FIXED
+   3. USER INFO — get logged-in user details
+   ========================================================= */
+
+function getCurrentUser() {
+  const userRaw = localStorage.getItem('witcorp-user');
+  if (!userRaw) return null;
+  try { return JSON.parse(userRaw); } catch(e) { return null; }
+}
+
+function getCurrentUserName() {
+  const user = getCurrentUser();
+  if (!user) return 'User';
+  return (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name
+    : (user.email ? user.email.split('@')[0] : 'User');
+}
+
+function getCurrentUserEmail() {
+  const user = getCurrentUser();
+  return user ? (user.email || '') : '';
+}
+
+function loadUserInfo() {
+  const user = getCurrentUser();
+  if (!user) return;
+  STATE.currentUser = user;
+  const name = getCurrentUserName();
+  const initial = name.charAt(0).toUpperCase();
+  const role = (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'Member';
+
+  const els = {
+    userInitial: initial,
+    userDisplayName: name,
+    userDisplayRole: role,
+    welcomeUserName: name
+  };
+  Object.entries(els).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+}
+
+/* =========================================================
+   4. DARK MODE
    ========================================================= */
 
 function toggleDarkMode() {
   const isDark = document.body.classList.toggle('force-dark');
   localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
-
-  // Update ALL dark mode toggle buttons
   document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function (btn) {
     btn.textContent = isDark ? '☀️' : '🌙';
   });
-
-  // Apply CSS variable overrides for dark mode
-  if (isDark) {
-    document.documentElement.style.setProperty('--bg', '#0f172a');
-    document.documentElement.style.setProperty('--surface', '#1e293b');
-    document.documentElement.style.setProperty('--surface2', '#1e293b');
-    document.documentElement.style.setProperty('--text', '#f1f5f9');
-    document.documentElement.style.setProperty('--text-muted', '#94a3b8');
-    document.documentElement.style.setProperty('--border', '#334155');
-  } else {
-    // Restore saved bg theme
-    const savedBg = localStorage.getItem('witcorp-bg-theme') || 'default';
-    applyBgTheme(savedBg);
-  }
 }
 
 function initDarkMode() {
@@ -131,109 +164,40 @@ function initDarkMode() {
     document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function (btn) {
       btn.textContent = '☀️';
     });
-    document.documentElement.style.setProperty('--bg', '#0f172a');
-    document.documentElement.style.setProperty('--surface', '#1e293b');
-    document.documentElement.style.setProperty('--surface2', '#1e293b');
-    document.documentElement.style.setProperty('--text', '#f1f5f9');
-    document.documentElement.style.setProperty('--text-muted', '#94a3b8');
-    document.documentElement.style.setProperty('--border', '#334155');
   }
 }
 
 /* =========================================================
-   4. THEME SYSTEM
+   5. THEME SYSTEM
    ========================================================= */
 
-const BG_THEMES = [
-  { id: 'default', name: 'Light Mode', bg: '#f1f5f9', surface: '#ffffff', text: '#0f172a', textMuted: '#64748b', border: '#e2e8f0' },
-  { id: 'dark-mode', name: 'Dark Mode', bg: '#0f172a', surface: '#1e293b', text: '#f1f5f9', textMuted: '#94a3b8', border: '#334155' },
-  { id: 'midnight', name: 'Midnight', bg: '#020617', surface: '#0f172a', text: '#f8fafc', textMuted: '#94a3b8', border: '#1e293b' },
-  { id: 'ocean-blue', name: 'Ocean Blue', bg: '#eff6ff', surface: '#ffffff', text: '#1e3a5f', textMuted: '#3b82f6', border: '#bfdbfe' },
-  { id: 'purple-dream', name: 'Purple Dream', bg: '#faf5ff', surface: '#ffffff', text: '#3b0764', textMuted: '#7c3aed', border: '#e9d5ff' },
-  { id: 'green-nature', name: 'Green Nature', bg: '#f0fdf4', surface: '#ffffff', text: '#052e16', textMuted: '#059669', border: '#bbf7d0' },
-  { id: 'sunset', name: 'Sunset', bg: '#fff7ed', surface: '#ffffff', text: '#431407', textMuted: '#ea580c', border: '#fed7aa' },
-  { id: 'rose-gold', name: 'Rose Gold', bg: '#fff1f2', surface: '#ffffff', text: '#4c0519', textMuted: '#e11d48', border: '#fecdd3' },
-  { id: 'carbon', name: 'Carbon', bg: '#18181b', surface: '#27272a', text: '#fafafa', textMuted: '#a1a1aa', border: '#3f3f46' },
-  { id: 'amber-glow', name: 'Amber Glow', bg: '#fffbeb', surface: '#ffffff', text: '#451a03', textMuted: '#b45309', border: '#fde68a' },
-];
-
-const SIDEBAR_THEMES = [
-  { id: 'dark-sidebar', name: 'Classic Dark', bg: '#1e1b4b' },
-  { id: 'black-sidebar', name: 'Pure Black', bg: '#0a0a0a' },
-  { id: 'slate-sidebar', name: 'Slate', bg: '#0f172a' },
-  { id: 'violet-sidebar', name: 'Violet', bg: '#4c1d95' },
-  { id: 'blue-sidebar', name: 'Ocean', bg: '#1e3a5f' },
-  { id: 'emerald-sidebar', name: 'Emerald', bg: '#052e16' },
-  { id: 'carbon-sidebar', name: 'Carbon', bg: '#18181b' },
-];
-
-function applyBgTheme(themeId) {
-  const theme = BG_THEMES.find(t => t.id === themeId) || BG_THEMES[0];
-  const root = document.documentElement;
-  root.style.setProperty('--bg', theme.bg);
-  root.style.setProperty('--surface', theme.surface);
-  root.style.setProperty('--surface2', theme.surface);
-  root.style.setProperty('--text', theme.text);
-  root.style.setProperty('--text-muted', theme.textMuted);
-  root.style.setProperty('--border', theme.border);
-  STATE.activeTheme.bg = themeId;
-  localStorage.setItem('witcorp-bg-theme', themeId);
-  document.querySelectorAll('.theme-bg-card').forEach(c => c.classList.toggle('active', c.dataset.id === themeId));
-}
-
-function applySidebarTheme(themeId) {
-  const theme = SIDEBAR_THEMES.find(t => t.id === themeId) || SIDEBAR_THEMES[0];
-  document.documentElement.style.setProperty('--sidebar-bg', theme.bg);
-  STATE.activeTheme.sidebar = themeId;
-  localStorage.setItem('witcorp-sidebar-theme', themeId);
-}
-
 function setTheme(themeName) {
-  var themes = [
-    'theme-violet', 'theme-blue', 'theme-emerald', 'theme-rose',
-    'theme-amber', 'theme-cyan', 'theme-dark', 'theme-midnight',
-    'theme-forest', 'theme-sunset', 'theme-sakura', 'theme-gold'
+  const themes = [
+    'theme-violet','theme-blue','theme-emerald','theme-rose',
+    'theme-amber','theme-cyan','theme-dark','theme-midnight',
+    'theme-forest','theme-sunset','theme-sakura','theme-gold'
   ];
-  themes.forEach(function (t) { document.body.classList.remove(t); });
+  themes.forEach(t => document.body.classList.remove(t));
   document.body.classList.add(themeName);
   localStorage.setItem('witcorp-body-theme', themeName);
-  document.querySelectorAll('.swatch').forEach(function (s) {
+  document.querySelectorAll('.swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.theme === themeName);
   });
 }
 
 function initTheme() {
-  const savedBg = localStorage.getItem('witcorp-bg-theme') || 'default';
-  const savedSidebar = localStorage.getItem('witcorp-sidebar-theme') || 'dark-sidebar';
-  const savedBodyTheme = localStorage.getItem('witcorp-body-theme');
-
-  applyBgTheme(savedBg);
-  applySidebarTheme(savedSidebar);
-
-  if (savedBodyTheme) {
-    setTheme(savedBodyTheme);
-  }
-
-  const primaryMap = {
-    'default': '#6366f1', 'dark-mode': '#818cf8', 'midnight': '#a78bfa',
-    'ocean-blue': '#3b82f6', 'purple-dream': '#a855f7', 'green-nature': '#10b981',
-    'sunset': '#f97316', 'rose-gold': '#f43f5e', 'carbon': '#6366f1',
-    'amber-glow': '#f59e0b'
-  };
-  const primary = primaryMap[savedBg] || '#6366f1';
-  document.documentElement.style.setProperty('--primary', primary);
-  document.documentElement.style.setProperty('--primary-dark', primary);
-  document.documentElement.style.setProperty('--primary-glow', primary + '22');
+  const savedBodyTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
+  setTheme(savedBodyTheme);
 }
 
 /* =========================================================
-   5. VAULT SYSTEM
+   6. VAULT SYSTEM
    ========================================================= */
 
 const VAULT_FOLDERS = ['General', 'GST', 'MCA', 'TDS', 'ITR', 'Banking', 'Clients', 'Other'];
 
 async function loadVaultData() {
-  const creds = await supabase('vault_credentials', { order: 'folder.asc,created_at.desc' });
+  const creds = await supabaseQuery('vault_credentials', { order: 'folder.asc,created_at.desc' });
   STATE.vaultCredentials = Array.isArray(creds) ? creds : [];
 }
 
@@ -322,15 +286,15 @@ function editVaultItem(id) {
 }
 
 async function saveVaultEdit(id) {
-  const label = document.getElementById('editVaultLabel') ? document.getElementById('editVaultLabel').value.trim() : '';
+  const label = document.getElementById('editVaultLabel')?.value.trim();
   if (!label) { showToast('Label is required'); return; }
   const updated = {
     label,
-    folder: document.getElementById('editVaultFolder') ? document.getElementById('editVaultFolder').value : 'General',
-    url: document.getElementById('editVaultUrl') ? document.getElementById('editVaultUrl').value.trim() : '',
-    username: document.getElementById('editVaultUsername') ? document.getElementById('editVaultUsername').value.trim() : '',
-    password: document.getElementById('editVaultPassword') ? document.getElementById('editVaultPassword').value : '',
-    notes: document.getElementById('editVaultNotes') ? document.getElementById('editVaultNotes').value.trim() : ''
+    folder: document.getElementById('editVaultFolder')?.value || 'General',
+    url: document.getElementById('editVaultUrl')?.value.trim() || '',
+    username: document.getElementById('editVaultUsername')?.value.trim() || '',
+    password: document.getElementById('editVaultPassword')?.value || '',
+    notes: document.getElementById('editVaultNotes')?.value.trim() || ''
   };
   const ok = await supabaseUpdate('vault_credentials', id, updated);
   if (ok) {
@@ -355,55 +319,32 @@ async function deleteVaultItem(id) {
 function togglePasswordView(inputId) {
   const input = document.getElementById(inputId);
   if (input) {
-    const isPassword = input.type === 'password';
-    input.type = isPassword ? 'text' : 'password';
-    event.target.textContent = isPassword ? '🙈 Hide' : '👁️ Show';
+    input.type = input.type === 'password' ? 'text' : 'password';
+    event.target.textContent = input.type === 'text' ? '🙈 Hide' : '👁️ Show';
   }
 }
 
 function copyToClipboard(text, message) {
   navigator.clipboard.writeText(text).then(() => {
     showToast(message || '📋 Copied!');
-  }).catch(() => {
-    showToast('❌ Copy failed');
-  });
+  }).catch(() => showToast('❌ Copy failed'));
 }
 
 /* =========================================================
-   6. WHATSAPP-STYLE MESSAGE CONTEXT MENU
+   7. WHATSAPP-STYLE MESSAGE CONTEXT MENU
    ========================================================= */
 
-// Create the floating menu DOM once
 function ensureMessageMenu() {
   let menu = document.getElementById('waContextMenu');
   if (!menu) {
     menu = document.createElement('div');
     menu.id = 'waContextMenu';
-    menu.style.cssText = `
-      display:none;
-      position:fixed;
-      background:var(--surface,#fff);
-      border:1px solid var(--border,#e2e8f0);
-      border-radius:12px;
-      box-shadow:0 8px 32px rgba(0,0,0,0.18);
-      z-index:9999;
-      min-width:160px;
-      overflow:hidden;
-      animation:fadeInMenu 0.12s ease;
-    `;
+    menu.style.cssText = `display:none;position:fixed;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:9999;min-width:160px;overflow:hidden;`;
     menu.innerHTML = `
-      <button class="wa-menu-item" id="waReplyBtn" onclick="waMenuAction('reply')">
-        <span>↩️</span> Reply
-      </button>
-      <button class="wa-menu-item" id="waCopyBtn" onclick="waMenuAction('copy')">
-        <span>📋</span> Copy
-      </button>
-      <button class="wa-menu-item" id="waEditBtn" onclick="waMenuAction('edit')">
-        <span>✏️</span> Edit
-      </button>
-      <button class="wa-menu-item wa-menu-danger" id="waDeleteBtn" onclick="waMenuAction('delete')">
-        <span>🗑️</span> Delete
-      </button>
+      <button class="wa-menu-item" onclick="waMenuAction('reply')"><span>↩️</span> Reply</button>
+      <button class="wa-menu-item" onclick="waMenuAction('copy')"><span>📋</span> Copy</button>
+      <button class="wa-menu-item" id="waEditBtn" onclick="waMenuAction('edit')"><span>✏️</span> Edit</button>
+      <button class="wa-menu-item wa-menu-danger" id="waDeleteBtn" onclick="waMenuAction('delete')"><span>🗑️</span> Delete</button>
     `;
     document.body.appendChild(menu);
   }
@@ -411,25 +352,16 @@ function ensureMessageMenu() {
 }
 
 function showMsgArrowMenu(e, msgId, isOwn) {
-  e.preventDefault();
-  e.stopPropagation();
+  e.preventDefault(); e.stopPropagation();
   STATE.selectedMessageId = msgId;
-
   const menu = ensureMessageMenu();
-  const editBtn = document.getElementById('waEditBtn');
-  const deleteBtn = document.getElementById('waDeleteBtn');
-  if (editBtn) editBtn.style.display = isOwn ? 'flex' : 'none';
-  if (deleteBtn) deleteBtn.style.display = isOwn ? 'flex' : 'none';
-
-  // Position near the arrow button
+  document.getElementById('waEditBtn').style.display = isOwn ? 'flex' : 'none';
+  document.getElementById('waDeleteBtn').style.display = isOwn ? 'flex' : 'none';
   const rect = e.target.getBoundingClientRect();
   let left = rect.left - 170;
   let top = rect.top - 10;
-
-  // Keep inside viewport
   if (left < 8) left = rect.right + 8;
   if (top + 180 > window.innerHeight) top = window.innerHeight - 190;
-
   menu.style.left = left + 'px';
   menu.style.top = top + 'px';
   menu.style.display = 'block';
@@ -438,21 +370,14 @@ function showMsgArrowMenu(e, msgId, isOwn) {
 function waMenuAction(action) {
   const menu = document.getElementById('waContextMenu');
   if (menu) menu.style.display = 'none';
-
   const msgId = STATE.selectedMessageId;
   if (!msgId) return;
   const msg = STATE.teamMessages.find(x => x.id === msgId);
   if (!msg) return;
-
   if (action === 'reply') {
     STATE.replyToId = msgId;
     const input = document.getElementById('teamChatInput');
-    if (input) {
-      input.placeholder = `↩ Replying: ${msg.message.substring(0, 30)}...`;
-      input.dataset.replyTo = msgId;
-      input.focus();
-    }
-    // Show reply preview bar
+    if (input) { input.placeholder = `↩ Replying: ${msg.message.substring(0, 30)}...`; input.dataset.replyTo = msgId; input.focus(); }
     showReplyBar(msg.message);
   } else if (action === 'copy') {
     navigator.clipboard.writeText(msg.message).then(() => showToast('📋 Copied!'));
@@ -468,71 +393,39 @@ function showReplyBar(text) {
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'replyPreviewBar';
-    bar.style.cssText = `
-      padding:8px 14px;
-      background:var(--bg,#f8fafc);
-      border-left:3px solid var(--primary,#6366f1);
-      font-size:12px;
-      color:var(--text-muted,#64748b);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-    `;
-    const chatBar = document.querySelector('.chat-input-bar');
+    bar.style.cssText = 'padding:8px 14px;background:var(--bg,#f8fafc);border-left:3px solid var(--primary,#6366f1);font-size:12px;color:var(--text-muted,#64748b);display:flex;align-items:center;justify-content:space-between;gap:8px;';
+    const chatBar = document.querySelector('#page-teamchat .chat-input-bar');
     if (chatBar) chatBar.parentNode.insertBefore(bar, chatBar);
   }
-  bar.innerHTML = `
-    <span>↩ <strong>Replying to:</strong> ${escapeHtml(text.substring(0, 40))}${text.length > 40 ? '...' : ''}</span>
-    <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:var(--text-muted)">✕</button>
-  `;
+  bar.innerHTML = `<span>↩ <strong>Replying to:</strong> ${escapeHtml(text.substring(0, 40))}${text.length > 40 ? '...' : ''}</span><button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">✕</button>`;
   bar.style.display = 'flex';
 }
 
 function cancelReply() {
   STATE.replyToId = null;
   const input = document.getElementById('teamChatInput');
-  if (input) {
-    input.placeholder = 'Type a message...';
-    delete input.dataset.replyTo;
-  }
+  if (input) { input.placeholder = 'Type a message...'; delete input.dataset.replyTo; }
   const bar = document.getElementById('replyPreviewBar');
   if (bar) bar.style.display = 'none';
 }
 
-// Close menu on outside click
 document.addEventListener('click', function (e) {
   const menu = document.getElementById('waContextMenu');
-  if (menu && !menu.contains(e.target) && !e.target.classList.contains('msgArrow')) {
-    menu.style.display = 'none';
-  }
+  if (menu && !menu.contains(e.target) && !e.target.classList.contains('msgArrow')) menu.style.display = 'none';
   const notifPanel = document.getElementById('notifPanel');
-  if (notifPanel && notifPanel.classList.contains('show')) {
-    if (!notifPanel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) {
-      closeNotifications();
-    }
-  }
+  if (notifPanel && notifPanel.classList.contains('show') && !notifPanel.contains(e.target) && !e.target.closest('[onclick*="openNotifications"]')) closeNotifications();
   const modalOverlay = document.getElementById('modalOverlay');
-  if (modalOverlay && modalOverlay.classList.contains('show')) {
-    if (e.target === modalOverlay) closeModal();
-  }
+  if (modalOverlay && modalOverlay.classList.contains('show') && e.target === modalOverlay) closeModal();
 });
 
 /* =========================================================
-   7. TEAM CHAT
+   8. TEAM CHAT
    ========================================================= */
 
-const EMOJI_LIST = [
-  '😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','🙃','😉','😌','😍','🥰',
-  '😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','😑','😐','😶','😏','😒','🙄',
-  '😬','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤑','🤗','🤭','🤫','🤔','🤨','😮',
-  '🤐','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞',
-  '😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👻','🤖'
-];
+const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','😉','😌','😍','🥰','😘','😋','😛','😜','🤪','😝','😑','😐','😏','😒','🙄','😬','😔','😪','😴','😷','🤒','🤗','🤔','😮','🤐','😯','😲','😳','🥺','😦','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','😤','😡','😠','🤬','😈','👿','💩','🤖'];
 
 function initPresence() {
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const myEmail = getCurrentUserEmail();
   if (myEmail) {
     setPresenceOnline(myEmail);
     setInterval(() => setPresenceOnline(myEmail), 30000);
@@ -540,11 +433,12 @@ function initPresence() {
 }
 
 async function setPresenceOnline(email) {
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   await fetch(`${SUPABASE_URL}/rest/v1/user_presence`, {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Prefer': 'resolution=merge-duplicates'
     },
@@ -555,11 +449,10 @@ async function setPresenceOnline(email) {
 async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-  const profiles = await supabase('profiles', { order: 'full_name.asc' });
+  const myEmail = getCurrentUserEmail();
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
   const others = (profiles || []).filter(p => p.email !== myEmail);
-
   if (!others.length) {
     el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet.</div>`;
     return;
@@ -568,21 +461,18 @@ async function renderTeamContacts() {
     const name = p.full_name || p.email.split('@')[0];
     const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
     const isActive = p.email === STATE.activeChatContact;
-    const isOnline = STATE.userPresence[p.email] ? STATE.userPresence[p.email].is_online : false;
+    const isOnline = STATE.userPresence[p.email]?.is_online || false;
     return `
       <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
-          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">
-            ${initial}
-          </div>
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>
           <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${isOnline ? '#10b981' : '#9ca3af'};border:2px solid var(--surface)"></div>
         </div>
         <div style="flex:1;overflow:hidden;margin-left:10px">
           <div style="font-weight:600;font-size:13.5px">${escapeHtml(name)}</div>
           <div style="font-size:11px;color:var(--text-muted)">${isOnline ? '● Online' : 'Offline'}</div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
@@ -590,11 +480,6 @@ function switchChatContact(email, name) {
   STATE.activeChatContact = email;
   const nameEl = document.getElementById('activeChatName');
   if (nameEl) nameEl.textContent = name || email.split('@')[0];
-  const statusEl = document.getElementById('onlineStatus');
-  const indicator = document.getElementById('onlineIndicator');
-  const isOnline = STATE.userPresence[email] ? STATE.userPresence[email].is_online : false;
-  if (statusEl) statusEl.textContent = isOnline ? 'Online' : 'Offline';
-  if (indicator) { indicator.style.color = isOnline ? '#10b981' : '#9ca3af'; indicator.textContent = '●'; }
   cancelReply();
   renderTeamContacts();
   renderTeamMessages();
@@ -603,134 +488,65 @@ function switchChatContact(email, name) {
 async function renderTeamMessages() {
   const el = document.getElementById('teamMessages');
   if (!el) return;
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const myEmail = getCurrentUserEmail();
   const contactEmail = STATE.activeChatContact;
   if (!contactEmail) {
     el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>';
     return;
   }
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   const url = `${SUPABASE_URL}/rest/v1/team_messages?or=(and(sender_email.eq.${encodeURIComponent(myEmail)},receiver_email.eq.${encodeURIComponent(contactEmail)}),and(sender_email.eq.${encodeURIComponent(contactEmail)},receiver_email.eq.${encodeURIComponent(myEmail)}))&order=created_at.asc`;
-  const res = await fetch(url, {
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-  });
+  const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token } });
   const messages = res.ok ? await res.json() : [];
   STATE.teamMessages = messages;
-
   if (!messages.length) {
     el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 20px">No messages yet. Send the first one! 👋</div>';
     return;
   }
-
   el.innerHTML = messages.map(m => {
     const isOwn = m.sender_email === myEmail;
     const replyMsg = m.reply_to && messages.find(msg => msg.id === m.reply_to);
     const timeStr = new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
     const senderInitial = m.sender_email.charAt(0).toUpperCase();
-
     return `
       <div class="chat-msg ${isOwn ? 'user' : ''}" data-msg-id="${m.id}">
         ${!isOwn ? `<div class="msg-avatar">${senderInitial}</div>` : ''}
         <div class="msg-content">
-          ${replyMsg ? `
-            <div class="msg-reply-preview">
-              <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:2px">↩ Reply</div>
-              <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(replyMsg.message.substring(0, 50))}${replyMsg.message.length > 50 ? '...' : ''}</div>
-            </div>
-          ` : ''}
-          <div class="msgBubble" style="
-            background:${isOwn ? 'var(--primary,#6366f1)' : 'var(--surface,#f1f5f9)'};
-            color:${isOwn ? '#fff' : 'var(--text,#0f172a)'};
-            padding:8px 36px 8px 12px;
-            border-radius:${isOwn ? '14px 14px 4px 14px' : '14px 14px 14px 4px'};
-            word-break:break-word;
-            position:relative;
-            display:inline-block;
-            max-width:100%;
-            min-width:60px;
-          ">
+          ${replyMsg ? `<div class="msg-reply-preview"><div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:2px">↩ Reply</div><div style="font-size:11px;color:var(--text-muted)">${escapeHtml(replyMsg.message.substring(0,50))}</div></div>` : ''}
+          <div class="msgBubble" style="background:${isOwn ? 'var(--primary,#6366f1)' : 'var(--surface,#f1f5f9)'};color:${isOwn ? '#fff' : 'var(--text,#0f172a)'};padding:8px 36px 8px 12px;border-radius:${isOwn ? '14px 14px 4px 14px' : '14px 14px 14px 4px'};word-break:break-word;position:relative;display:inline-block;max-width:100%;min-width:60px;">
             ${escapeHtml(m.message)}
             ${m.is_edited ? '<div style="font-size:10px;opacity:0.6;margin-top:2px">edited</div>' : ''}
-            <button class="msgArrow" onclick="showMsgArrowMenu(event, ${m.id}, ${isOwn})" style="
-              position:absolute;
-              top:50%;
-              right:6px;
-              transform:translateY(-50%);
-              background:none;
-              border:none;
-              cursor:pointer;
-              font-size:14px;
-              padding:2px 4px;
-              border-radius:50%;
-              opacity:0;
-              transition:opacity 0.15s;
-              color:${isOwn ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'};
-              line-height:1;
-            " title="More">▾</button>
+            <button class="msgArrow" onclick="showMsgArrowMenu(event,${m.id},${isOwn})" style="position:absolute;top:50%;right:6px;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:50%;opacity:0;transition:opacity 0.15s;color:${isOwn ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'};line-height:1;" title="More">▾</button>
           </div>
-          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn ? 'right' : 'left'}">
-            ${timeStr}
-          </div>
+          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn ? 'right' : 'left'}">${timeStr}</div>
         </div>
         ${isOwn ? `<div class="msg-avatar">${senderInitial}</div>` : ''}
-      </div>
-    `;
+      </div>`;
   }).join('');
-
-  // Show arrow on hover over bubble
   el.querySelectorAll('.msgBubble').forEach(bubble => {
-    bubble.addEventListener('mouseenter', () => {
-      const arrow = bubble.querySelector('.msgArrow');
-      if (arrow) arrow.style.opacity = '1';
-    });
-    bubble.addEventListener('mouseleave', () => {
-      const arrow = bubble.querySelector('.msgArrow');
-      if (arrow) arrow.style.opacity = '0';
-    });
+    bubble.addEventListener('mouseenter', () => { const a = bubble.querySelector('.msgArrow'); if (a) a.style.opacity = '1'; });
+    bubble.addEventListener('mouseleave', () => { const a = bubble.querySelector('.msgArrow'); if (a) a.style.opacity = '0'; });
   });
-
   el.scrollTop = el.scrollHeight;
 }
 
 function handleChatKeypress(event) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    sendTeamMessage();
-  }
+  if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendTeamMessage(); }
 }
 
-function notifyTyping() {
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
-  const contactEmail = STATE.activeChatContact;
-  if (!myEmail || !contactEmail) return;
-  supabaseInsert('typing_indicators', { sender_email: myEmail, receiver_email: contactEmail });
-  clearTimeout(window.typingTimeout);
-  window.typingTimeout = setTimeout(() => {
-    supabaseDelete('typing_indicators', STATE.activeChatContact);
-  }, 3000);
-}
+function notifyTyping() {}
 
 async function sendTeamMessage() {
   const input = document.getElementById('teamChatInput');
-  const text = input ? input.value.trim() : '';
+  const text = input?.value.trim();
   if (!text) return;
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const myEmail = getCurrentUserEmail();
   const contactEmail = STATE.activeChatContact;
   if (!contactEmail) { showToast('Select a contact first'); return; }
-
-  const msgBody = {
-    sender_email: myEmail,
-    receiver_email: contactEmail,
-    message: text,
-    message_type: 'text'
-  };
+  const msgBody = { sender_email: myEmail, receiver_email: contactEmail, message: text, message_type: 'text' };
   if (STATE.replyToId) msgBody.reply_to = STATE.replyToId;
-
   input.value = '';
   cancelReply();
-
   await supabaseInsert('team_messages', msgBody);
   await renderTeamMessages();
   await renderTeamContacts();
@@ -739,11 +555,7 @@ async function sendTeamMessage() {
 function replyToMessage(msgId, preview) {
   STATE.replyToId = msgId;
   const input = document.getElementById('teamChatInput');
-  if (input) {
-    input.placeholder = `↩ Replying: ${preview}...`;
-    input.dataset.replyTo = msgId;
-    input.focus();
-  }
+  if (input) { input.placeholder = `↩ Replying: ${preview}...`; input.dataset.replyTo = msgId; input.focus(); }
   showReplyBar(preview);
 }
 
@@ -755,14 +567,14 @@ function editMessage(msgId, originalText) {
 }
 
 async function saveEditMessage(msgId) {
-  const newText = document.getElementById('editMsgText') ? document.getElementById('editMsgText').value.trim() : '';
+  const newText = document.getElementById('editMsgText')?.value.trim();
   if (!newText) { showToast('Message cannot be empty'); return; }
   const ok = await supabaseUpdate('team_messages', msgId, { message: newText, is_edited: true });
   if (ok) { closeModal(); renderTeamMessages(); showToast('✅ Message edited'); }
 }
 
 async function deleteMessage(msgId) {
-  if (confirm('Delete this message? This cannot be undone.')) {
+  if (confirm('Delete this message?')) {
     const ok = await supabaseUpdate('team_messages', msgId, { is_deleted: true, message: '[Message deleted]' });
     if (ok) { renderTeamMessages(); showToast('🗑️ Message deleted'); }
   }
@@ -774,12 +586,7 @@ function openEmojiPicker() {
   if (modal) {
     modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
     if (grid && modal.style.display === 'block') {
-      grid.innerHTML = EMOJI_LIST.map(emoji => `
-        <button style="padding:8px;font-size:20px;border:none;background:transparent;cursor:pointer;border-radius:6px;transition:.2s"
-          onmouseover="this.style.background='var(--bg)'"
-          onmouseout="this.style.background='transparent'"
-          onclick="insertEmoji('${emoji}');this.closest('#emojiPickerModal').style.display='none'">${emoji}</button>
-      `).join('');
+      grid.innerHTML = EMOJI_LIST.map(emoji => `<button style="padding:8px;font-size:20px;border:none;background:transparent;cursor:pointer;border-radius:6px" onclick="insertEmoji('${emoji}');this.closest('#emojiPickerModal').style.display='none'">${emoji}</button>`).join('');
     }
   }
 }
@@ -791,10 +598,9 @@ function insertEmoji(emoji) {
 
 function startNewChat() {
   const emailInput = document.getElementById('newChatEmail');
-  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+  const email = emailInput?.value.trim().toLowerCase();
   if (!email || !email.includes('@')) { showToast('Enter a valid email address'); return; }
-  const userRaw = localStorage.getItem('witcorp-user');
-  const myEmail = userRaw ? JSON.parse(userRaw).email : '';
+  const myEmail = getCurrentUserEmail();
   if (email === myEmail) { showToast('Cannot message yourself!'); return; }
   emailInput.value = '';
   switchChatContact(email, email.split('@')[0]);
@@ -802,7 +608,7 @@ function startNewChat() {
 }
 
 /* =========================================================
-   8. INITIALIZATION
+   9. INITIALIZATION
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -839,69 +645,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderBarChart();
   renderVaultFolders();
   renderVaultCredentials();
-  populateGSTClientDropdown();
+  populateAllClientDropdowns();
 
+  // Real-time polling every 5 seconds for team chat
   setInterval(async () => {
     await renderTeamContacts();
     if (STATE.activeChatContact) await renderTeamMessages();
   }, 5000);
 });
 
-// Inject styles for WA menu + message arrow
 function injectWAMenuStyles() {
   const style = document.createElement('style');
   style.textContent = `
-    @keyframes fadeInMenu {
-      from { opacity:0; transform:scale(0.93) translateY(-4px); }
-      to   { opacity:1; transform:scale(1)    translateY(0);    }
-    }
-    .wa-menu-item {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      width:100%;
-      padding:10px 16px;
-      background:none;
-      border:none;
-      cursor:pointer;
-      font-size:13.5px;
-      font-weight:500;
-      color:var(--text,#0f172a);
-      text-align:left;
-      transition:background 0.12s;
-    }
-    .wa-menu-item:hover {
-      background:var(--bg,#f1f5f9);
-    }
-    .wa-menu-danger {
-      color:#ef4444 !important;
-    }
-    .msgArrow {
-      user-select:none;
-      -webkit-user-select:none;
-    }
-    .msgBubble:hover .msgArrow {
-      opacity:1 !important;
-    }
-    .msg-reply-preview {
-      background:rgba(0,0,0,0.06);
-      border-left:3px solid var(--primary,#6366f1);
-      border-radius:6px;
-      padding:5px 8px;
-      margin-bottom:5px;
-    }
-    #replyPreviewBar {
-      border-top:1px solid var(--border,#e2e8f0);
-    }
-    /* Dark mode override */
-    body.force-dark {
-      --bg: #0f172a !important;
-      --surface: #1e293b !important;
-      --surface2: #1e293b !important;
-      --text: #f1f5f9 !important;
-      --text-muted: #94a3b8 !important;
-      --border: #334155 !important;
-    }
+    .wa-menu-item { display:flex;align-items:center;gap:10px;width:100%;padding:10px 16px;background:none;border:none;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--text,#0f172a);text-align:left;transition:background 0.12s; }
+    .wa-menu-item:hover { background:var(--bg,#f1f5f9); }
+    .wa-menu-danger { color:#ef4444 !important; }
+    .msg-reply-preview { background:rgba(0,0,0,0.06);border-left:3px solid var(--primary,#6366f1);border-radius:6px;padding:5px 8px;margin-bottom:5px; }
+    body.force-dark { --bg:#0f172a!important;--surface:#1e293b!important;--surface2:#1e293b!important;--text:#f1f5f9!important;--text-muted:#94a3b8!important;--border:#334155!important; }
+    .vault-folder { display:flex;align-items:center;padding:10px 14px;border-radius:10px;cursor:pointer;transition:background .15s;font-size:13px;font-weight:500;color:var(--text); }
+    .vault-folder:hover,.vault-folder.active { background:var(--primary-glow);color:var(--primary); }
+    .folder-count { margin-left:auto;background:var(--border);border-radius:99px;padding:1px 8px;font-size:11px;color:var(--text-muted); }
+    .vault-card { background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px; }
+    .vault-card-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:8px; }
+    .vault-card-title { font-weight:700;font-size:14px;color:var(--text); }
+    .vault-card-actions { display:flex;gap:6px; }
+    .vault-btn { background:none;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:14px;transition:background .15s; }
+    .vault-btn:hover { background:var(--bg); }
+    .vault-container { display:grid;grid-template-columns:220px 1fr;gap:16px; }
+    .vault-sidebar { background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px; }
+    .vault-main { background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px; }
+    .dsc-warning { color:#f59e0b;font-weight:700; }
+    .dsc-expired { color:#ef4444;font-weight:700; }
+    .remarks-cell { max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12px; }
   `;
   document.head.appendChild(style);
 }
@@ -921,17 +696,17 @@ function showPageLoader(show) {
 async function loadAllData() {
   try {
     const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events] = await Promise.all([
-      supabase('clients', { order: 'created_at.desc' }),
-      supabase('gst_returns', { order: 'created_at.desc' }),
-      supabase('roc_filings', { order: 'created_at.desc' }),
-      supabase('itr_filings', { order: 'created_at.desc' }),
-      supabase('tds_returns', { order: 'created_at.desc' }),
-      supabase('audits', { order: 'created_at.desc' }),
-      supabase('dsc_records', { order: 'days_left.asc' }),
-      supabase('accounting_entries', { order: 'created_at.desc' }),
-      supabase('tasks', { order: 'created_at.desc' }),
-      supabase('documents', { order: 'created_at.desc' }),
-      supabase('calendar_events', { order: 'event_date.asc' }),
+      supabaseQuery('clients', { order: 'created_at.desc' }),
+      supabaseQuery('gst_returns', { order: 'created_at.desc' }),
+      supabaseQuery('roc_filings', { order: 'created_at.desc' }),
+      supabaseQuery('itr_filings', { order: 'created_at.desc' }),
+      supabaseQuery('tds_returns', { order: 'created_at.desc' }),
+      supabaseQuery('audits', { order: 'created_at.desc' }),
+      supabaseQuery('dsc_records', { order: 'created_at.desc' }),
+      supabaseQuery('accounting_entries', { order: 'created_at.desc' }),
+      supabaseQuery('tasks', { order: 'created_at.desc' }),
+      supabaseQuery('documents', { order: 'created_at.desc' }),
+      supabaseQuery('calendar_events', { order: 'event_date.asc' }),
     ]);
     STATE.clients = Array.isArray(clients) ? clients : [];
     STATE.gstReturns = Array.isArray(gst) ? gst : [];
@@ -944,6 +719,9 @@ async function loadAllData() {
     STATE.tasks = Array.isArray(tasks) ? tasks : [];
     STATE.documents = Array.isArray(docs) ? docs : [];
     STATE.calendarEvents = Array.isArray(events) ? events : [];
+
+    // FIX: Remove calendar events that are "Internal" type from GST upcoming
+    // (we filter them separately per page)
   } catch (e) {
     console.error('loadAllData error:', e);
     showToast('Database connection failed. Check console.');
@@ -951,7 +729,37 @@ async function loadAllData() {
 }
 
 /* =========================================================
-   9. NAVIGATION
+   10. CLIENT DROPDOWNS — populate everywhere from STATE.clients
+   ========================================================= */
+
+function populateAllClientDropdowns() {
+  const clientOptions = '<option value="">Select Client</option>' + STATE.clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+  // GST
+  const gstSel = document.getElementById('gstClientSel');
+  if (gstSel) gstSel.innerHTML = clientOptions;
+
+  // Income Tax
+  const itrSelects = document.querySelectorAll('#page-incometax select');
+  if (itrSelects[0]) itrSelects[0].innerHTML = clientOptions;
+
+  // Audit — also used in modal, done separately
+
+  // ROC — company name is free text so no dropdown needed
+}
+
+function getClientOptionsHtml(includeEmpty = true) {
+  const prefix = includeEmpty ? '<option value="">Select Client</option>' : '';
+  return prefix + STATE.clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+}
+
+function getClientNameById(id) {
+  const c = STATE.clients.find(x => String(x.id) === String(id));
+  return c ? c.name : '';
+}
+
+/* =========================================================
+   11. NAVIGATION
    ========================================================= */
 
 function navigate(page) {
@@ -967,10 +775,12 @@ function navigate(page) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (page === 'reports') setTimeout(renderBarChart, 100);
   if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
+  if (page === 'gst') renderGSTPage();
+  if (page === 'dsc') renderDSCAlerts();
 }
 
 /* =========================================================
-   10. SIDEBAR
+   12. SIDEBAR
    ========================================================= */
 
 function toggleSidebar() {
@@ -997,13 +807,8 @@ function toggleRightPanel() {
 function initRightPanelMobile() {
   const btn = document.getElementById('toggleRightPanel');
   const handleResize = () => {
-    if (window.innerWidth <= 1200) {
-      if (btn) btn.style.display = 'flex';
-    } else {
-      if (btn) btn.style.display = 'none';
-      const panel = document.getElementById('rightPanel');
-      if (panel) panel.classList.remove('show-mobile');
-    }
+    if (window.innerWidth <= 1200) { if (btn) btn.style.display = 'flex'; }
+    else { if (btn) btn.style.display = 'none'; const panel = document.getElementById('rightPanel'); if (panel) panel.classList.remove('show-mobile'); }
   };
   handleResize();
   window.addEventListener('resize', handleResize);
@@ -1011,98 +816,96 @@ function initRightPanelMobile() {
 document.addEventListener('DOMContentLoaded', initRightPanelMobile);
 
 /* =========================================================
-   11. DATE
+   13. DATE
    ========================================================= */
 
 function setCurrentDate() {
   const el = document.getElementById('currentDate');
   if (!el) return;
   const now = new Date();
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   el.textContent = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${days[now.getDay()]}`;
 }
 
 /* =========================================================
-   12. DASHBOARD STATS
+   14. DASHBOARD STATS
    ========================================================= */
 
 function updateDashboardStats() {
-  const totalClients = STATE.clients.length;
-  const gstFiled = STATE.gstReturns.filter(g => g.status === 'Filed').length;
-  const pendingTasks = STATE.tasks.filter(t => t.column_name !== 'done').length;
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
 
   const upcomingDue = STATE.calendarEvents.filter(e => {
     const d = new Date(e.event_date);
-    const diff = (d - today) / (1000 * 60 * 60 * 24);
+    const diff = (d - today) / (1000*60*60*24);
     return diff >= 0 && diff <= 7;
   }).length;
 
   const todayFilings = STATE.calendarEvents.filter(e => e.event_date === todayStr).length;
-
-  const dashStats = document.querySelectorAll('#page-dashboard .stat-number');
-  if (dashStats[0]) dashStats[0].textContent = totalClients;
-  if (dashStats[1]) dashStats[1].textContent = gstFiled;
-  if (dashStats[2]) dashStats[2].textContent = pendingTasks;
-  if (dashStats[3]) dashStats[3].textContent = upcomingDue;
-  if (dashStats[4]) dashStats[4].textContent = String(todayFilings).padStart(2, '0');
-
-  const gstStats = document.querySelectorAll('#page-gst .stat-number');
-  if (gstStats[0]) gstStats[0].textContent = STATE.gstReturns.filter(g => g.status === 'Filed').length;
-  if (gstStats[1]) gstStats[1].textContent = STATE.gstReturns.filter(g => g.status === 'Pending').length;
-  if (gstStats[2]) gstStats[2].textContent = STATE.gstReturns.filter(g => g.status === 'Overdue').length;
-  if (gstStats[3]) { const t = STATE.gstReturns.reduce((s, g) => s + (g.tax_liability || 0), 0); gstStats[3].textContent = '₹ ' + formatAmount(t); }
-
-  const rocStats = document.querySelectorAll('#page-roc .stat-number');
-  if (rocStats[0]) rocStats[0].textContent = STATE.rocFilings.filter(r => r.status === 'Filed').length;
-  if (rocStats[1]) rocStats[1].textContent = STATE.rocFilings.filter(r => r.status === 'In Progress').length;
-  if (rocStats[2]) rocStats[2].textContent = STATE.rocFilings.filter(r => r.status === 'Overdue').length;
-  if (rocStats[3]) rocStats[3].textContent = STATE.clients.filter(c => c.type === 'Company').length;
-
-  const itrStats = document.querySelectorAll('#page-incometax .stat-number');
-  if (itrStats[0]) itrStats[0].textContent = STATE.itrFilings.filter(i => i.status === 'Filed').length;
-  if (itrStats[1]) itrStats[1].textContent = STATE.itrFilings.filter(i => i.status === 'Pending' || i.status === 'In Progress').length;
-  if (itrStats[2]) { const r = STATE.itrFilings.reduce((s, i) => s + (i.tax_deducted || 0), 0); itrStats[2].textContent = '₹ ' + formatAmount(r); }
-  if (itrStats[3]) { const t = STATE.itrFilings.reduce((s, i) => s + (i.gross_income || 0) * 0.1, 0); itrStats[3].textContent = '₹ ' + formatAmount(t); }
-
-  const tdsStats = document.querySelectorAll('#page-tds .stat-number');
-  if (tdsStats[0]) tdsStats[0].textContent = STATE.tdsReturns.filter(t => t.status === 'Filed').length;
-  if (tdsStats[1]) tdsStats[1].textContent = STATE.tdsReturns.filter(t => t.status === 'Pending').length;
-  if (tdsStats[2]) { const a = STATE.tdsReturns.reduce((s, t) => s + (t.amount || 0), 0); tdsStats[2].textContent = '₹ ' + formatAmount(a); }
-  if (tdsStats[3]) tdsStats[3].textContent = STATE.tdsReturns.filter(t => t.status === 'Filed').length;
-
-  const auditStats = document.querySelectorAll('#page-audit .stat-number');
-  if (auditStats[0]) auditStats[0].textContent = STATE.audits.filter(a => a.status === 'In Progress').length;
-  if (auditStats[1]) auditStats[1].textContent = STATE.audits.filter(a => a.status === 'Completed').length;
-  if (auditStats[2]) auditStats[2].textContent = STATE.audits.filter(a => a.status === 'In Review').length;
-  const dueThisMonth = STATE.audits.filter(a => {
-    if (!a.end_date) return false;
-    const d = new Date(a.end_date);
-    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-  }).length;
-  if (auditStats[3]) auditStats[3].textContent = dueThisMonth;
-
-  const dscStats = document.querySelectorAll('#page-dsc .stat-number');
-  if (dscStats[0]) dscStats[0].textContent = STATE.dscRecords.filter(d => d.status === 'Active').length;
-  if (dscStats[1]) dscStats[1].textContent = STATE.dscRecords.filter(d => (d.days_left || 999) <= 30).length;
-  if (dscStats[2]) dscStats[2].textContent = STATE.dscRecords.length;
-  if (dscStats[3]) dscStats[3].textContent = STATE.dscRecords.filter(d => (d.days_left || 999) <= 30).length;
-
-  const totalRev = STATE.accountingEntries.filter(t => t.entry_type === 'credit').reduce((s, t) => s + (t.amount || 0), 0);
-  const totalExp = STATE.accountingEntries.filter(t => t.entry_type === 'debit').reduce((s, t) => s + (t.amount || 0), 0);
-  const netProfit = totalRev - totalExp;
-  const margin = totalRev ? Math.round((netProfit / totalRev) * 100) : 0;
-  const accStats = document.querySelectorAll('#page-accounting .stat-number');
-  if (accStats[0]) accStats[0].textContent = '₹ ' + formatAmount(totalRev);
-  if (accStats[1]) accStats[1].textContent = '₹ ' + formatAmount(totalExp);
-  if (accStats[2]) accStats[2].textContent = '₹ ' + formatAmount(netProfit);
-  if (accStats[3]) accStats[3].textContent = margin + '%';
-
   const done = STATE.tasks.filter(t => t.column_name === 'done').length;
   const inprog = STATE.tasks.filter(t => t.column_name === 'inprogress').length;
   const todo = STATE.tasks.filter(t => t.column_name === 'todo').length;
+  const totalRev = STATE.accountingEntries.filter(t => t.entry_type === 'credit').reduce((s,t) => s+(t.amount||0), 0);
+  const totalExp = STATE.accountingEntries.filter(t => t.entry_type === 'debit').reduce((s,t) => s+(t.amount||0), 0);
+  const netProfit = totalRev - totalExp;
+  const margin = totalRev ? Math.round((netProfit/totalRev)*100) : 0;
+  const totalFilings = STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length;
+  const pct = STATE.tasks.length ? Math.round((done/STATE.tasks.length)*100) : 0;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  // Dashboard stats
+  const dashStats = document.querySelectorAll('#page-dashboard .stat-number');
+  if (dashStats[0]) dashStats[0].textContent = STATE.clients.length;
+  if (dashStats[1]) dashStats[1].textContent = STATE.gstReturns.filter(g => g.status === 'Filed').length;
+  if (dashStats[2]) dashStats[2].textContent = STATE.tasks.filter(t => t.column_name !== 'done').length;
+  if (dashStats[3]) dashStats[3].textContent = upcomingDue;
+  if (dashStats[4]) dashStats[4].textContent = String(todayFilings).padStart(2,'0');
+
+  const gstStats = document.querySelectorAll('#page-gst .stat-number');
+  if (gstStats[0]) gstStats[0].textContent = STATE.gstReturns.filter(g=>g.status==='Filed').length;
+  if (gstStats[1]) gstStats[1].textContent = STATE.gstReturns.filter(g=>g.status==='Pending').length;
+  if (gstStats[2]) gstStats[2].textContent = STATE.gstReturns.filter(g=>g.status==='Overdue').length;
+  if (gstStats[3]) { const t=STATE.gstReturns.reduce((s,g)=>s+(g.tax_liability||0),0); gstStats[3].textContent='₹ '+formatAmount(t); }
+
+  const rocStats = document.querySelectorAll('#page-roc .stat-number');
+  if (rocStats[0]) rocStats[0].textContent = STATE.rocFilings.filter(r=>r.status==='Filed').length;
+  if (rocStats[1]) rocStats[1].textContent = STATE.rocFilings.filter(r=>r.status==='In Progress').length;
+  if (rocStats[2]) rocStats[2].textContent = STATE.rocFilings.filter(r=>r.status==='Overdue').length;
+  if (rocStats[3]) rocStats[3].textContent = STATE.clients.filter(c=>c.type==='Company'||c.type==='LLP').length;
+
+  const itrStats = document.querySelectorAll('#page-incometax .stat-number');
+  if (itrStats[0]) itrStats[0].textContent = STATE.itrFilings.filter(i=>i.status==='Filed').length;
+  if (itrStats[1]) itrStats[1].textContent = STATE.itrFilings.filter(i=>i.status==='Pending'||i.status==='In Progress').length;
+  if (itrStats[2]) { const r=STATE.itrFilings.reduce((s,i)=>s+(i.tax_deducted||0),0); itrStats[2].textContent='₹ '+formatAmount(r); }
+  if (itrStats[3]) { const t=STATE.itrFilings.reduce((s,i)=>s+(i.gross_income||0)*0.1,0); itrStats[3].textContent='₹ '+formatAmount(t); }
+
+  const tdsStats = document.querySelectorAll('#page-tds .stat-number');
+  if (tdsStats[0]) tdsStats[0].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
+  if (tdsStats[1]) tdsStats[1].textContent = STATE.tdsReturns.filter(t=>t.status==='Pending').length;
+  if (tdsStats[2]) { const a=STATE.tdsReturns.reduce((s,t)=>s+(t.amount||0),0); tdsStats[2].textContent='₹ '+formatAmount(a); }
+  if (tdsStats[3]) tdsStats[3].textContent = STATE.tdsReturns.filter(t=>t.status==='Filed').length;
+
+  const auditStats = document.querySelectorAll('#page-audit .stat-number');
+  if (auditStats[0]) auditStats[0].textContent = STATE.audits.filter(a=>a.status==='In Progress').length;
+  if (auditStats[1]) auditStats[1].textContent = STATE.audits.filter(a=>a.status==='Completed').length;
+  if (auditStats[2]) auditStats[2].textContent = STATE.audits.filter(a=>a.status==='In Review').length;
+  const dueThisMonth = STATE.audits.filter(a => { if(!a.end_date) return false; const d=new Date(a.end_date); return d.getMonth()===today.getMonth()&&d.getFullYear()===today.getFullYear(); }).length;
+  if (auditStats[3]) auditStats[3].textContent = dueThisMonth;
+
+  const dscStats = document.querySelectorAll('#page-dsc .stat-number');
+  if (dscStats[0]) dscStats[0].textContent = STATE.dscRecords.filter(d=>d.status==='Active'||d.status==='Valid').length;
+  if (dscStats[1]) dscStats[1].textContent = STATE.dscRecords.filter(d => { if(!d.expiry_date) return false; const days=Math.ceil((new Date(d.expiry_date)-today)/(1000*60*60*24)); return days>=0&&days<=30; }).length;
+  if (dscStats[2]) dscStats[2].textContent = STATE.dscRecords.length;
+  if (dscStats[3]) dscStats[3].textContent = STATE.dscRecords.filter(d => { if(!d.expiry_date) return false; const days=Math.ceil((new Date(d.expiry_date)-today)/(1000*60*60*24)); return days>=0&&days<=30; }).length;
+
+  const accStats = document.querySelectorAll('#page-accounting .stat-number');
+  if (accStats[0]) accStats[0].textContent = '₹ '+formatAmount(totalRev);
+  if (accStats[1]) accStats[1].textContent = '₹ '+formatAmount(totalExp);
+  if (accStats[2]) accStats[2].textContent = '₹ '+formatAmount(netProfit);
+  if (accStats[3]) accStats[3].textContent = margin+'%';
+
   const taskStats = document.querySelectorAll('#page-tasks .stat-number');
   if (taskStats[0]) taskStats[0].textContent = done;
   if (taskStats[1]) taskStats[1].textContent = inprog;
@@ -1110,32 +913,30 @@ function updateDashboardStats() {
   if (taskStats[3]) taskStats[3].textContent = 0;
 
   const rptStats = document.querySelectorAll('#page-reports .stat-number');
-  const totalFilings = STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length;
-  const pct = STATE.tasks.length ? Math.round((done / STATE.tasks.length) * 100) : 0;
   if (rptStats[0]) rptStats[0].textContent = STATE.clients.length;
   if (rptStats[1]) rptStats[1].textContent = totalFilings;
-  if (rptStats[2]) rptStats[2].textContent = '₹ ' + formatAmount(totalRev);
-  if (rptStats[3]) rptStats[3].textContent = pct + '%';
+  if (rptStats[2]) rptStats[2].textContent = '₹ '+formatAmount(totalRev);
+  if (rptStats[3]) rptStats[3].textContent = pct+'%';
 
   const donutCenter = document.querySelector('#page-reports .donut-center');
-  if (donutCenter) donutCenter.textContent = pct + '%';
+  if (donutCenter) donutCenter.textContent = pct+'%';
   const donutChart = document.querySelector('#page-reports .donut-chart');
   if (donutChart && STATE.tasks.length) {
-    const doneP = done / STATE.tasks.length * 100;
-    const ipP = inprog / STATE.tasks.length * 100;
-    donutChart.style.background = `conic-gradient(var(--success,#10b981) 0% ${doneP}%, var(--info,#3b82f6) ${doneP}% ${doneP + ipP}%, var(--warning,#f59e0b) ${doneP + ipP}% 100%)`;
+    const doneP = done/STATE.tasks.length*100;
+    const ipP = inprog/STATE.tasks.length*100;
+    donutChart.style.background = `conic-gradient(var(--success,#10b981) 0% ${doneP}%,var(--info,#3b82f6) ${doneP}% ${doneP+ipP}%,var(--warning,#f59e0b) ${doneP+ipP}% 100%)`;
   }
 }
 
 /* =========================================================
-   13. CLIENT MANAGEMENT
+   15. CLIENT MANAGEMENT
    ========================================================= */
 
 function getFilteredClients() {
   const { search, status, type } = STATE.filters.clients;
   return STATE.clients.filter(c => {
     const s = search.toLowerCase();
-    const matchSearch = !search || (c.name || '').toLowerCase().includes(s) || (c.pan || '').toLowerCase().includes(s) || (c.email || '').toLowerCase().includes(s);
+    const matchSearch = !search || (c.name||'').toLowerCase().includes(s) || (c.pan||'').toLowerCase().includes(s) || (c.email||'').toLowerCase().includes(s);
     const matchStatus = !status || c.status === status;
     const matchType = !type || c.type === type;
     return matchSearch && matchStatus && matchType;
@@ -1147,11 +948,11 @@ function renderClientTable() {
   if (!tbody) return;
   const filtered = getFilteredClients();
   const { page, perPage } = STATE.pagination.clients;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const totalPages = Math.max(1, Math.ceil(filtered.length/perPage));
   const safePage = Math.min(page, totalPages);
   STATE.pagination.clients.page = safePage;
-  const start = (safePage - 1) * perPage;
-  const pageItems = filtered.slice(start, start + perPage);
+  const start = (safePage-1)*perPage;
+  const pageItems = filtered.slice(start, start+perPage);
 
   if (!pageItems.length) {
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No clients found</div><div class="empty-state-sub">Try adjusting filters or add a new client</div></div></td></tr>`;
@@ -1159,70 +960,39 @@ function renderClientTable() {
     tbody.innerHTML = pageItems.map(c => `
       <tr>
         <td><strong>${escapeHtml(c.name)}</strong></td>
-        <td>${escapeHtml(c.pan || '-')}</td>
-        <td>${escapeHtml(c.type || '-')}</td>
-        <td>${escapeHtml(c.gst || '-')}</td>
-        <td>${escapeHtml(c.email || '-')}</td>
-        <td>${escapeHtml(c.phone || '-')}</td>
+        <td>${escapeHtml(c.pan||'-')}</td>
+        <td>${escapeHtml(c.type||'-')}</td>
+        <td>${escapeHtml(c.gst||'-')}</td>
+        <td>${escapeHtml(c.email||'-')}</td>
+        <td>${escapeHtml(c.phone||'-')}</td>
         <td>${statusBadge(c.status)}</td>
         <td>
-          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="viewClient(${c.id})">View</button>
-          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editClient(${c.id})">Edit</button>
-          <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:var(--danger,#ef4444);color:var(--danger,#ef4444)" onclick="deleteClientConfirm(${c.id})">Delete</button>
+          <button class="btn-outline" style="padding:5px 10px;font-size:11.5px;margin-right:4px" onclick="viewClient(${c.id})">View</button>
+          <button class="btn-outline" style="padding:5px 10px;font-size:11.5px;margin-right:4px" onclick="editClient(${c.id})">Edit</button>
+          <button class="btn-outline" style="padding:5px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteClientConfirm(${c.id})">Delete</button>
         </td>
-      </tr>
-    `).join('');
+      </tr>`).join('');
   }
-
   const pageInfo = document.getElementById('clientPageInfo');
   if (pageInfo) pageInfo.textContent = `Page ${safePage} of ${totalPages} (${filtered.length} clients)`;
 }
 
-function filterClients(value) {
-  STATE.filters.clients.search = value;
-  STATE.pagination.clients.page = 1;
-  renderClientTable();
-}
-
-function filterClientStatus(value) {
-  STATE.filters.clients.status = value;
-  STATE.pagination.clients.page = 1;
-  renderClientTable();
-}
-
-function filterClientType(value) {
-  STATE.filters.clients.type = value;
-  STATE.pagination.clients.page = 1;
-  renderClientTable();
-}
-
-function prevPage(section) {
-  if (section === 'clients' && STATE.pagination.clients.page > 1) {
-    STATE.pagination.clients.page--;
-    renderClientTable();
-  }
-}
-
-function nextPage(section) {
-  if (section === 'clients') {
-    const total = Math.ceil(getFilteredClients().length / STATE.pagination.clients.perPage);
-    if (STATE.pagination.clients.page < total) {
-      STATE.pagination.clients.page++;
-      renderClientTable();
-    }
-  }
-}
+function filterClients(value) { STATE.filters.clients.search=value; STATE.pagination.clients.page=1; renderClientTable(); }
+function filterClientStatus(value) { STATE.filters.clients.status=value; STATE.pagination.clients.page=1; renderClientTable(); }
+function filterClientType(value) { STATE.filters.clients.type=value; STATE.pagination.clients.page=1; renderClientTable(); }
+function prevPage(section) { if(section==='clients'&&STATE.pagination.clients.page>1){STATE.pagination.clients.page--;renderClientTable();} }
+function nextPage(section) { if(section==='clients'){const total=Math.ceil(getFilteredClients().length/STATE.pagination.clients.perPage);if(STATE.pagination.clients.page<total){STATE.pagination.clients.page++;renderClientTable();}} }
 
 function viewClient(id) {
   const c = STATE.clients.find(x => x.id === id);
   if (!c) return;
   openModalWithContent(`👥 ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.name)}</div></div>
-    <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan || '-')}</div></div>
-    <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.type || '-')}</div></div>
-    <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.gst || '-')}</div></div>
-    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email || '-')}</div></div>
-    <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone || '-')}</div></div>
+    <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan||'-')}</div></div>
+    <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.type||'-')}</div></div>
+    <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.gst||'-')}</div></div>
+    <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email||'-')}</div></div>
+    <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone||'-')}</div></div>
     <div class="form-group"><label>Status</label><div>${statusBadge(c.status)}</div></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
@@ -1233,14 +1003,18 @@ function editClient(id) {
   if (!c) return;
   openModalWithContent(`✏️ Edit — ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeHtml(c.name)}" /></div>
-    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(c.email || '')}" /></div>
-    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(c.phone || '')}" /></div>
-    <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="editClientGST" value="${escapeHtml(c.gst || '')}" /></div>
+    <div class="form-group"><label>PAN</label><input type="text" class="form-control" id="editClientPAN" value="${escapeHtml(c.pan||'')}" /></div>
+    <div class="form-group"><label>Type</label>
+      <select class="form-control" id="editClientType">
+        ${['Individual','Company','LLP','Partnership'].map(t=>`<option ${c.type===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(c.email||'')}" /></div>
+    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(c.phone||'')}" /></div>
+    <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="editClientGST" value="${escapeHtml(c.gst||'')}" /></div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="editClientStatus">
-        <option ${c.status === 'Active' ? 'selected' : ''}>Active</option>
-        <option ${c.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-        <option ${c.status === 'Pending' ? 'selected' : ''}>Pending</option>
+        ${['Active','Inactive','Pending'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveClientEdit(${id})">💾 Save Changes</button>
@@ -1248,20 +1022,21 @@ function editClient(id) {
 }
 
 async function saveClientEdit(id) {
-  const name = document.getElementById('editClientName').value.trim();
+  const name = document.getElementById('editClientName')?.value.trim();
   if (!name) { showToast('Client name required'); return; }
   const updated = {
-    name,
-    email: document.getElementById('editClientEmail').value.trim(),
-    phone: document.getElementById('editClientPhone').value.trim(),
-    gst: document.getElementById('editClientGST').value.trim(),
-    status: document.getElementById('editClientStatus').value
+    name, pan: document.getElementById('editClientPAN')?.value.trim(),
+    type: document.getElementById('editClientType')?.value,
+    email: document.getElementById('editClientEmail')?.value.trim(),
+    phone: document.getElementById('editClientPhone')?.value.trim(),
+    gst: document.getElementById('editClientGST')?.value.trim(),
+    status: document.getElementById('editClientStatus')?.value
   };
   const ok = await supabaseUpdate('clients', id, updated);
   if (ok) {
     const idx = STATE.clients.findIndex(c => c.id === id);
     if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated };
-    closeModal(); renderClientTable(); updateDashboardStats(); showToast('✅ Client updated!');
+    closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client updated!');
   } else { showToast('❌ Update failed.'); }
 }
 
@@ -1285,23 +1060,50 @@ async function deleteClientConfirmed(id) {
   const ok = await supabaseDelete('clients', id);
   if (ok) {
     STATE.clients = STATE.clients.filter(c => c.id !== id);
-    closeModal(); renderClientTable(); updateDashboardStats(); showToast('🗑️ Client deleted');
+    closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('🗑️ Client deleted');
   } else { showToast('❌ Delete failed'); }
 }
 
 /* =========================================================
-   14. GST DASHBOARD
+   16. GST DASHBOARD — FIX: period auto year, no internal events, registration added
    ========================================================= */
 
-function populateGSTClientDropdown() {
-  const gstSel = document.getElementById('gstClientSel');
-  if (!gstSel || !STATE.clients.length) return;
-  gstSel.innerHTML = '<option value="">Select Client</option>' + STATE.clients.map(c => `<option>${escapeHtml(c.name)}</option>`).join('');
+function getGSTPeriodOptions() {
+  // Show current year months and next year
+  const currentYear = new Date().getFullYear();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const options = [];
+  // Current year all months
+  months.forEach((m,i) => options.push(`${m} ${currentYear}`));
+  // Next year all months
+  months.forEach((m,i) => options.push(`${m} ${currentYear+1}`));
+  // Previous year (last 3 months for reference)
+  for(let i=9;i<12;i++) options.unshift(`${months[i]} ${currentYear-1}`);
+  return options;
 }
 
 function renderGSTPage() {
   const listEl = document.getElementById('gstReturnList');
   const upcomingEl = document.getElementById('gstUpcoming');
+  const periodSel = document.getElementById('gstPeriodSel');
+
+  // FIX: Repopulate period dropdown with current year
+  if (periodSel) {
+    const currentPeriod = getGSTPeriodOptions();
+    periodSel.innerHTML = currentPeriod.map(p => `<option>${p}</option>`).join('');
+  }
+
+  // FIX: Upcoming filings — only show GST/TDS/ROC type events, NOT Internal
+  if (upcomingEl) {
+    const upcoming = STATE.calendarEvents
+      .filter(e => e.event_type && e.event_type !== 'Internal')
+      .slice(0, 5);
+    upcomingEl.innerHTML = upcoming.length ? upcoming.map(e => `
+      <div class="upcoming-item">
+        <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
+        <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
+      </div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming GST filings</div></div>';
+  }
 
   if (listEl) {
     if (!STATE.gstReturns.length) {
@@ -1311,50 +1113,81 @@ function renderGSTPage() {
         <div class="gst-item">
           <div>
             <div class="gst-item-name">${escapeHtml(g.client_name)}</div>
-            <div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)}</div>
+            <div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)} ${g.remarks ? '• '+escapeHtml(g.remarks) : ''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             ${statusBadge(g.status)}
-            <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteGSTReturn(${g.id})">✕</button>
+            <button class="btn-outline" style="padding:4px 8px;font-size:11px" onclick="editGSTReturn(${g.id})">✏️</button>
+            <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteGSTReturn(${g.id})">✕</button>
           </div>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
   }
-
-  if (upcomingEl) {
-    const upcoming = STATE.calendarEvents.slice(0, 5);
-    upcomingEl.innerHTML = upcoming.length ? upcoming.map(e => `
-      <div class="upcoming-item">
-        <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type)}</div></div>
-        <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
-      </div>
-    `).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming filings</div></div>';
-  }
-
   updateDashboardStats();
 }
 
 async function submitGSTReturn() {
-  const gstSelEl = document.getElementById('gstClientSel');
-  const typeEl = document.querySelectorAll('#page-gst select')[1];
-  const periodEl = document.querySelectorAll('#page-gst select')[2];
-  const inputs = document.querySelectorAll('#page-gst input[type="text"], #page-gst input[type="number"]');
-  const clientName = gstSelEl ? gstSelEl.value : '';
+  const clientSel = document.getElementById('gstClientSel');
+  const typeSel = document.getElementById('gstReturnType');
+  const periodSel = document.getElementById('gstPeriodSel');
+  const gstinEl = document.getElementById('gstGSTIN');
+  const turnoverEl = document.getElementById('gstTurnover');
+  const taxEl = document.getElementById('gstTaxLiability');
+  const remarksEl = document.getElementById('gstRemarks');
+
+  const clientId = clientSel?.value;
+  const clientName = clientId ? (getClientNameById(clientId) || clientSel.options[clientSel.selectedIndex]?.text) : '';
   if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
+
   const body = {
     client_name: clientName,
-    return_type: typeEl ? typeEl.value : 'GSTR-1',
-    period: periodEl ? periodEl.value : '',
-    gstin: inputs[0] ? inputs[0].value : '',
-    total_turnover: inputs[1] ? parseFloat(inputs[1].value) || 0 : 0,
-    tax_liability: inputs[2] ? parseFloat(inputs[2].value) || 0 : 0,
+    client_id: clientId || null,
+    return_type: typeSel?.value || 'GSTR-1',
+    period: periodSel?.value || '',
+    gstin: gstinEl?.value || '',
+    total_turnover: parseFloat(turnoverEl?.value)||0,
+    tax_liability: parseFloat(taxEl?.value)||0,
+    remarks: remarksEl?.value.trim() || '',
     status: 'Filed',
-    filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    filed_date: new Date().toISOString().split('T')[0]
   };
   const result = await supabaseInsert('gst_returns', body);
-  if (result && result[0]) { STATE.gstReturns.unshift(result[0]); renderGSTPage(); showToast('✅ GST Return filed successfully!'); }
-  else { showToast('❌ Failed to file GST return'); }
+  if (result && result[0]) {
+    STATE.gstReturns.unshift(result[0]);
+    renderGSTPage();
+    showToast('✅ GST Return filed successfully!');
+    // clear fields
+    if (gstinEl) gstinEl.value = '';
+    if (turnoverEl) turnoverEl.value = '';
+    if (taxEl) taxEl.value = '';
+    if (remarksEl) remarksEl.value = '';
+  } else { showToast('❌ Failed to file GST return'); }
+}
+
+function editGSTReturn(id) {
+  const g = STATE.gstReturns.find(x => x.id === id);
+  if (!g) return;
+  openModalWithContent(`✏️ Edit GST Return`, `
+    <div class="form-group"><label>Client</label><div class="form-control" style="background:var(--bg)">${escapeHtml(g.client_name)}</div></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editGstStatus">
+        ${['Filed','Pending','Overdue'].map(s=>`<option ${g.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editGstRemarks" value="${escapeHtml(g.remarks||'')}" placeholder="Add remarks..." /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveGSTEdit(${id})">💾 Save</button>
+  `);
+}
+
+async function saveGSTEdit(id) {
+  const status = document.getElementById('editGstStatus')?.value;
+  const remarks = document.getElementById('editGstRemarks')?.value.trim();
+  const ok = await supabaseUpdate('gst_returns', id, { status, remarks });
+  if (ok) {
+    const idx = STATE.gstReturns.findIndex(g => g.id === id);
+    if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; }
+    closeModal(); renderGSTPage(); showToast('✅ GST return updated!');
+  }
 }
 
 async function deleteGSTReturn(id) {
@@ -1363,29 +1196,36 @@ async function deleteGSTReturn(id) {
 }
 
 /* =========================================================
-   15. ROC FILINGS
+   17. ROC FILINGS — All forms + remarks
    ========================================================= */
+
+const ROC_FORMS = [
+  'AOC-4','AOC-4 CFS','AOC-4 XBRL','MGT-7','MGT-7A','ADT-1',
+  'DIR-3 KYC','DIR-12','MGT-14','CHG-1','CHG-4','CHG-9',
+  'INC-20A','INC-22','INC-28','SH-7','PAS-3','MBP-1',
+  'BEN-2','BEN-4','LLP-8','LLP-11','Form 15','Form 16','Form 17'
+];
 
 function renderROCTable() {
   const tbody = document.getElementById('rocTableBody');
   if (!tbody) return;
   if (!STATE.rocFilings.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🏛️</div><div class="empty-state-text">No ROC filings yet</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🏛️</div><div class="empty-state-text">No ROC filings yet</div></div></td></tr>`;
     updateDashboardStats(); return;
   }
   tbody.innerHTML = STATE.rocFilings.map(r => `
     <tr>
       <td><strong>${escapeHtml(r.company)}</strong></td>
-      <td>${escapeHtml(r.cin || '-')}</td>
-      <td>${escapeHtml(r.form || '-')}</td>
-      <td>${escapeHtml(r.due_date || '-')}</td>
+      <td>${escapeHtml(r.cin||'-')}</td>
+      <td>${escapeHtml(r.form||'-')}</td>
+      <td>${escapeHtml(r.due_date||'-')}</td>
       <td>${statusBadge(r.status)}</td>
+      <td class="remarks-cell" title="${escapeHtml(r.remarks||'')}">${escapeHtml(r.remarks||'-')}</td>
       <td>
-        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
-        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteROC(${r.id})">Delete</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteROC(${r.id})">Delete</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
   updateDashboardStats();
 }
 
@@ -1395,21 +1235,21 @@ function editROCStatus(id) {
   openModalWithContent(`Update ROC Filing — ${escapeHtml(r.company)}`, `
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="rocStatusSel">
-        <option ${r.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-        <option ${r.status === 'Filed' ? 'selected' : ''}>Filed</option>
-        <option ${r.status === 'Overdue' ? 'selected' : ''}>Overdue</option>
+        ${['In Progress','Filed','Overdue','Pending'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarks" value="${escapeHtml(r.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>
   `);
 }
 
 async function saveROCStatus(id) {
-  const status = document.getElementById('rocStatusSel').value;
-  const ok = await supabaseUpdate('roc_filings', id, { status });
+  const status = document.getElementById('rocStatusSel')?.value;
+  const remarks = document.getElementById('rocRemarks')?.value.trim();
+  const ok = await supabaseUpdate('roc_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.rocFilings.findIndex(r => r.id === id);
-    if (idx !== -1) STATE.rocFilings[idx].status = status;
+    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; }
     closeModal(); renderROCTable(); showToast('✅ ROC status updated');
   }
 }
@@ -1420,8 +1260,18 @@ async function deleteROC(id) {
 }
 
 /* =========================================================
-   16. INCOME TAX
+   18. INCOME TAX — FIX: remarks + correct assessment year
    ========================================================= */
+
+function getAssessmentYears() {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = 0; i < 5; i++) {
+    const y = currentYear + 1 - i;
+    years.push(`${y}-${String(y+1).slice(2)}`);
+  }
+  return years;
+}
 
 function renderITRList() {
   const el = document.getElementById('itrList');
@@ -1434,31 +1284,68 @@ function renderITRList() {
     <div class="itr-item">
       <div>
         <div class="gst-item-name">${escapeHtml(itr.client_name)}</div>
-        <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date || '-')}</div>
+        <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date||'-')}</div>
+        ${itr.remarks ? `<div class="gst-item-sub" style="color:var(--text-muted)">📝 ${escapeHtml(itr.remarks)}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         ${statusBadge(itr.status)}
-        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteITR(${itr.id})">✕</button>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px" onclick="editITR(${itr.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteITR(${itr.id})">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
   updateDashboardStats();
 }
 
+function editITR(id) {
+  const itr = STATE.itrFilings.find(x => x.id === id);
+  if (!itr) return;
+  openModalWithContent(`✏️ Edit ITR — ${escapeHtml(itr.client_name)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editItrStatus">
+        ${['Filed','Pending','In Progress','Overdue'].map(s=>`<option ${itr.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editItrRemarks" value="${escapeHtml(itr.remarks||'')}" placeholder="Add remarks..." /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveITREdit(${id})">💾 Save</button>
+  `);
+}
+
+async function saveITREdit(id) {
+  const status = document.getElementById('editItrStatus')?.value;
+  const remarks = document.getElementById('editItrRemarks')?.value.trim();
+  const ok = await supabaseUpdate('itr_filings', id, { status, remarks });
+  if (ok) {
+    const idx = STATE.itrFilings.findIndex(i => i.id === id);
+    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; }
+    closeModal(); renderITRList(); showToast('✅ ITR updated!');
+  }
+}
+
 async function submitITR() {
-  const selects = document.querySelectorAll('#page-incometax select');
-  const inputs = document.querySelectorAll('#page-incometax input[type="number"]');
-  const clientName = selects[0] ? selects[0].value : '';
-  if (!clientName || clientName === 'Select Client') { showToast('Please select a client'); return; }
+  // Use mapped client dropdowns
+  const clientSel = document.querySelector('#page-incometax select');
+  const ayEl = document.getElementById('itrAssessmentYear');
+  const formEl = document.getElementById('itrForm');
+  const grossEl = document.getElementById('itrGrossIncome');
+  const tdsEl = document.getElementById('itrTaxDeducted');
+  const dedEl = document.getElementById('itrDeductions');
+  const remarksEl = document.getElementById('itrRemarks');
+
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
+
   const body = {
     client_name: clientName,
-    assessment_year: selects[1] ? selects[1].value : '2025-26',
-    form: selects[2] ? selects[2].value : 'ITR-1',
-    gross_income: parseFloat(inputs[0] ? inputs[0].value : 0) || 0,
-    tax_deducted: parseFloat(inputs[1] ? inputs[1].value : 0) || 0,
-    deductions: parseFloat(inputs[2] ? inputs[2].value : 0) || 0,
+    client_id: clientId || null,
+    assessment_year: ayEl?.value || getAssessmentYears()[0],
+    form: formEl?.value || 'ITR-1',
+    gross_income: parseFloat(grossEl?.value)||0,
+    tax_deducted: parseFloat(tdsEl?.value)||0,
+    deductions: parseFloat(dedEl?.value)||0,
+    remarks: remarksEl?.value.trim() || '',
     status: 'Filed',
-    filed_date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    filed_date: new Date().toISOString().split('T')[0]
   };
   const result = await supabaseInsert('itr_filings', body);
   if (result && result[0]) { STATE.itrFilings.unshift(result[0]); renderITRList(); showToast('✅ ITR filed successfully!'); }
@@ -1471,44 +1358,74 @@ async function deleteITR(id) {
 }
 
 /* =========================================================
-   17. TDS RETURNS
+   19. TDS RETURNS
    ========================================================= */
 
 function renderTDSTable() {
   const tbody = document.getElementById('tdsTableBody');
   if (!tbody) return;
   if (!STATE.tdsReturns.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">No TDS returns yet</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">No TDS returns yet</div></div></td></tr>`;
     updateDashboardStats(); return;
   }
   tbody.innerHTML = STATE.tdsReturns.map(t => `
     <tr>
       <td><strong>${escapeHtml(t.deductor)}</strong></td>
-      <td>${escapeHtml(t.tan || '-')}</td>
-      <td>${escapeHtml(t.quarter || '-')}</td>
-      <td>${escapeHtml(t.form_type || '-')}</td>
-      <td>₹ ${formatAmount(t.amount || 0)}</td>
+      <td>${escapeHtml(t.tan||'-')}</td>
+      <td>${escapeHtml(t.quarter||'-')}</td>
+      <td>${escapeHtml(t.form_type||'-')}</td>
+      <td>₹ ${formatAmount(t.amount||0)}</td>
+      <td>${statusBadge(t.status)}</td>
       <td>
-        ${statusBadge(t.status)}
-        <button class="btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px;border-color:#ef4444;color:#ef4444" onclick="deleteTDS(${t.id})">✕</button>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px;margin-right:4px" onclick="editTDS(${t.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteTDS(${t.id})">✕</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
   updateDashboardStats();
 }
 
+function editTDS(id) {
+  const t = STATE.tdsReturns.find(x => x.id === id);
+  if (!t) return;
+  openModalWithContent(`✏️ Edit TDS Return — ${escapeHtml(t.deductor)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editTdsStatus">
+        ${['Filed','Pending','Overdue'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editTdsRemarks" value="${escapeHtml(t.remarks||'')}" placeholder="Add remarks..." /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveTDSEdit(${id})">💾 Save</button>
+  `);
+}
+
+async function saveTDSEdit(id) {
+  const status = document.getElementById('editTdsStatus')?.value;
+  const remarks = document.getElementById('editTdsRemarks')?.value.trim();
+  const ok = await supabaseUpdate('tds_returns', id, { status, remarks });
+  if (ok) {
+    const idx = STATE.tdsReturns.findIndex(t => t.id === id);
+    if (idx !== -1) { STATE.tdsReturns[idx].status = status; STATE.tdsReturns[idx].remarks = remarks; }
+    closeModal(); renderTDSTable(); showToast('✅ TDS updated!');
+  }
+}
+
 async function submitTDS() {
-  const inputs = document.querySelectorAll('#page-tds input[type="text"], #page-tds input[type="number"]');
-  const selects = document.querySelectorAll('#page-tds select');
-  const deductor = inputs[0] ? inputs[0].value.trim() : '';
+  const deductorEl = document.getElementById('tdsDeductor');
+  const tanEl = document.getElementById('tdsTAN');
+  const quarterSel = document.getElementById('tdsQuarter');
+  const formSel = document.getElementById('tdsFormType');
+  const amountEl = document.getElementById('tdsAmount');
+  const challanEl = document.getElementById('tdsChallan');
+
+  const deductor = deductorEl?.value.trim();
   if (!deductor) { showToast('Please enter deductor name'); return; }
   const body = {
     deductor,
-    tan: inputs[1] ? inputs[1].value.trim() : '',
-    quarter: selects[0] ? selects[0].value : '',
-    form_type: selects[1] ? selects[1].value : '',
-    amount: parseFloat(inputs[2] ? inputs[2].value : 0) || 0,
-    challan_no: inputs[3] ? inputs[3].value.trim() : '',
+    tan: tanEl?.value.trim() || '',
+    quarter: quarterSel?.value || '',
+    form_type: formSel?.value || '',
+    amount: parseFloat(amountEl?.value)||0,
+    challan_no: challanEl?.value.trim() || '',
     status: 'Filed'
   };
   const result = await supabaseInsert('tds_returns', body);
@@ -1522,7 +1439,7 @@ async function deleteTDS(id) {
 }
 
 /* =========================================================
-   18. AUDIT & ASSURANCE
+   20. AUDIT — FIX: logged-in user name as auditor, real names
    ========================================================= */
 
 function renderAuditTable() {
@@ -1535,17 +1452,16 @@ function renderAuditTable() {
   tbody.innerHTML = STATE.audits.map(a => `
     <tr>
       <td><strong>${escapeHtml(a.client)}</strong></td>
-      <td>${escapeHtml(a.audit_type || '-')}</td>
-      <td>${escapeHtml(a.auditor || '-')}</td>
-      <td>${escapeHtml(a.start_date || '-')}</td>
-      <td>${escapeHtml(a.end_date || '-')}</td>
+      <td>${escapeHtml(a.audit_type||'-')}</td>
+      <td>${escapeHtml(a.auditor||'-')}</td>
+      <td>${escapeHtml(a.start_date||'-')}</td>
+      <td>${escapeHtml(a.end_date||'-')}</td>
       <td>${statusBadge(a.status)}</td>
       <td>
-        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
-        <button class="btn-outline" style="padding:5px 12px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteAudit(${a.id})">Delete</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteAudit(${a.id})">Delete</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
   updateDashboardStats();
 }
 
@@ -1555,21 +1471,21 @@ function editAuditStatus(id) {
   openModalWithContent(`Update Audit — ${escapeHtml(a.client)}`, `
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="auditStatusSel">
-        <option ${a.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-        <option ${a.status === 'In Review' ? 'selected' : ''}>In Review</option>
-        <option ${a.status === 'Completed' ? 'selected' : ''}>Completed</option>
+        ${['In Progress','In Review','Completed','Pending'].map(s=>`<option ${a.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarks" value="${escapeHtml(a.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAuditStatus(${id})">Save</button>
   `);
 }
 
 async function saveAuditStatus(id) {
-  const status = document.getElementById('auditStatusSel').value;
-  const ok = await supabaseUpdate('audits', id, { status });
+  const status = document.getElementById('auditStatusSel')?.value;
+  const remarks = document.getElementById('auditRemarks')?.value.trim();
+  const ok = await supabaseUpdate('audits', id, { status, remarks });
   if (ok) {
     const idx = STATE.audits.findIndex(a => a.id === id);
-    if (idx !== -1) STATE.audits[idx].status = status;
+    if (idx !== -1) { STATE.audits[idx].status = status; STATE.audits[idx].remarks = remarks; }
     closeModal(); renderAuditTable(); showToast('✅ Audit status updated');
   }
 }
@@ -1580,8 +1496,24 @@ async function deleteAudit(id) {
 }
 
 /* =========================================================
-   19. DSC & ESIGN
+   21. DSC — FIX: show expiry date, remarks, real-time days left
    ========================================================= */
+
+function dscDaysLeft(expiryDate) {
+  if (!expiryDate) return null;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const exp = new Date(expiryDate);
+  return Math.ceil((exp - today) / (1000*60*60*24));
+}
+
+function dscStatusLabel(expiryDate) {
+  const days = dscDaysLeft(expiryDate);
+  if (days === null) return '';
+  if (days < 0) return `<span class="dsc-expired">Expired ${Math.abs(days)}d ago</span>`;
+  if (days <= 30) return `<span class="dsc-warning">⚠️ ${days}d left</span>`;
+  return `<span style="color:var(--success)">✓ ${days}d left</span>`;
+}
 
 function renderDSCAlerts() {
   const el = document.getElementById('dscAlertList');
@@ -1590,47 +1522,82 @@ function renderDSCAlerts() {
     el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✍️</div><div class="empty-state-text">No DSC records</div></div>';
     updateDashboardStats(); return;
   }
-  el.innerHTML = STATE.dscRecords.map(d => {
-    const daysLeft = d.days_left || 999;
+
+  // Sort by expiry date ascending
+  const sorted = [...STATE.dscRecords].sort((a,b) => new Date(a.expiry_date||'9999')-new Date(b.expiry_date||'9999'));
+
+  el.innerHTML = sorted.map(d => {
+    const days = dscDaysLeft(d.expiry_date);
+    const urgent = days !== null && days <= 30;
     return `
       <div class="dsc-alert-item">
-        <div class="activity-dot ${daysLeft <= 7 ? 'orange' : 'blue'}">⚠️</div>
+        <div class="activity-dot ${days !== null && days < 0 ? 'red' : urgent ? 'orange' : 'blue'}">✍️</div>
         <div style="flex:1">
-          <div class="gst-item-name">${escapeHtml(d.client_name)}</div>
-          <div class="gst-item-sub">${escapeHtml(d.purpose || '-')} • Expires ${escapeHtml(d.expiry_date || '-')}</div>
+          <div class="gst-item-name">${escapeHtml(d.client_name)} <span style="font-size:11px;color:var(--text-muted)">(${escapeHtml(d.dsc_type||'')})</span></div>
+          <div class="gst-item-sub">Purpose: ${escapeHtml(d.purpose||'-')} | Expiry: <strong>${escapeHtml(d.expiry_date||'-')}</strong> | ${dscStatusLabel(d.expiry_date)}</div>
+          ${d.remarks ? `<div class="gst-item-sub">📝 ${escapeHtml(d.remarks)}</div>` : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="badge ${daysLeft <= 7 ? 'badge-danger' : 'badge-warning'}">${daysLeft}d left</span>
-          <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteDSC(${d.id})">✕</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn-outline" style="padding:4px 8px;font-size:11px" onclick="editDSC(${d.id})">✏️</button>
+          <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteDSC(${d.id})">✕</button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
   updateDashboardStats();
 }
 
+function editDSC(id) {
+  const d = STATE.dscRecords.find(x => x.id === id);
+  if (!d) return;
+  openModalWithContent(`✏️ Edit DSC — ${escapeHtml(d.client_name)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editDscStatus">
+        ${['Active','Expired','Pending Renewal'].map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Expiry Date</label><input type="date" class="form-control" id="editDscExpiry" value="${d.expiry_date||''}" /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editDscRemarks" value="${escapeHtml(d.remarks||'')}" placeholder="Add remarks..." /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveDSCEdit(${id})">💾 Save</button>
+  `);
+}
+
+async function saveDSCEdit(id) {
+  const status = document.getElementById('editDscStatus')?.value;
+  const expiry_date = document.getElementById('editDscExpiry')?.value;
+  const remarks = document.getElementById('editDscRemarks')?.value.trim();
+  const ok = await supabaseUpdate('dsc_records', id, { status, expiry_date, remarks });
+  if (ok) {
+    const idx = STATE.dscRecords.findIndex(d => d.id === id);
+    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; }
+    closeModal(); renderDSCAlerts(); showToast('✅ DSC updated!');
+  }
+}
+
 async function submitDSC() {
-  const inputs = document.querySelectorAll('#page-dsc input[type="text"]');
-  const selects = document.querySelectorAll('#page-dsc select');
-  const clientName = inputs[0] ? inputs[0].value.trim() : '';
+  const clientEl = document.getElementById('dscClientName');
+  const panEl = document.getElementById('dscPAN');
+  const typeSel = document.getElementById('dscType');
+  const validitySel = document.getElementById('dscValidity');
+  const purposeSel = document.getElementById('dscPurpose');
+  const expiryEl = document.getElementById('dscExpiry');
+  const remarksEl = document.getElementById('dscRemarks');
+
+  const clientName = clientEl?.value.trim();
   if (!clientName) { showToast('Please enter client name'); return; }
-  const expiryDate = new Date();
-  const validity = selects[1] ? selects[1].value : '2 Years';
-  const years = parseInt(validity) || 2;
-  expiryDate.setFullYear(expiryDate.getFullYear() + years);
-  const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+  if (!expiryEl?.value) { showToast('Please enter expiry date'); return; }
+
   const body = {
     client_name: clientName,
-    pan: inputs[1] ? inputs[1].value.trim() : '',
-    dsc_type: selects[0] ? selects[0].value : '',
-    validity,
-    purpose: selects[2] ? selects[2].value : '',
-    expiry_date: expiryDate.toISOString().split('T')[0],
-    days_left: daysLeft,
+    pan: panEl?.value.trim() || '',
+    dsc_type: typeSel?.value || 'Class 3',
+    validity: validitySel?.value || '2 Years',
+    purpose: purposeSel?.value || '',
+    expiry_date: expiryEl?.value || '',
+    remarks: remarksEl?.value.trim() || '',
     status: 'Active'
   };
   const result = await supabaseInsert('dsc_records', body);
-  if (result && result[0]) { STATE.dscRecords.unshift(result[0]); renderDSCAlerts(); showToast('✅ DSC request submitted!'); }
+  if (result && result[0]) { STATE.dscRecords.unshift(result[0]); renderDSCAlerts(); showToast('✅ DSC record added!'); }
   else { showToast('❌ DSC submission failed'); }
 }
 
@@ -1640,7 +1607,7 @@ async function deleteDSC(id) {
 }
 
 /* =========================================================
-   20. ACCOUNTING HUB
+   22. ACCOUNTING HUB
    ========================================================= */
 
 function renderAccountingList() {
@@ -1654,34 +1621,35 @@ function renderAccountingList() {
     <div class="acc-item">
       <div>
         <div class="gst-item-name">${escapeHtml(t.narration)}</div>
-        <div class="gst-item-sub">${escapeHtml(t.entry_date || '')} • ${escapeHtml(t.voucher_type || '')}</div>
+        <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <div class="acc-amount ${t.entry_type}">${t.entry_type === 'credit' ? '+' : '-'} ₹ ${formatAmount(t.amount || 0)}</div>
-        <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteAccEntry(${t.id})">✕</button>
+        <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteAccEntry(${t.id})">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
   updateDashboardStats();
 }
 
 async function submitJournalEntry() {
   const dateEl = document.querySelector('#page-accounting input[type="date"]');
   const voucherSel = document.querySelector('#page-accounting select');
-  const inputs = document.querySelectorAll('#page-accounting input[type="text"], #page-accounting input[type="number"]');
   const textarea = document.querySelector('#page-accounting textarea');
-  const narration = textarea ? textarea.value.trim() : '';
-  const amount = parseFloat(inputs[inputs.length - 1] ? inputs[inputs.length - 1].value : 0) || 0;
+  const narration = textarea?.value.trim();
+  const amountEl = document.getElementById('accAmount');
+  const debitEl = document.getElementById('accDebit');
+  const creditEl = document.getElementById('accCredit');
+  const amount = parseFloat(amountEl?.value)||0;
   if (!narration) { showToast('Please enter narration'); return; }
   if (!amount) { showToast('Please enter amount'); return; }
-  const voucherType = voucherSel ? voucherSel.value : 'Journal';
-  const entryType = ['Receipt', 'Sales', 'Invoice'].includes(voucherType) ? 'credit' : 'debit';
+  const voucherType = voucherSel?.value || 'Journal';
+  const entryType = ['Receipt','Sales','Invoice'].includes(voucherType) ? 'credit' : 'debit';
   const body = {
     narration, voucher_type: voucherType,
-    debit_account: inputs[0] ? inputs[0].value.trim() : '',
-    credit_account: inputs[1] ? inputs[1].value.trim() : '',
+    debit_account: debitEl?.value.trim() || '',
+    credit_account: creditEl?.value.trim() || '',
     amount, entry_type: entryType,
-    entry_date: dateEl ? dateEl.value : new Date().toISOString().split('T')[0]
+    entry_date: dateEl?.value || new Date().toISOString().split('T')[0]
   };
   const result = await supabaseInsert('accounting_entries', body);
   if (result && result[0]) { STATE.accountingEntries.unshift(result[0]); renderAccountingList(); showToast('✅ Journal entry posted!'); }
@@ -1694,7 +1662,7 @@ async function deleteAccEntry(id) {
 }
 
 /* =========================================================
-   21. TASK MANAGER (KANBAN)
+   23. TASK MANAGER — FIX: use logged-in user name
    ========================================================= */
 
 function renderKanban() {
@@ -1708,13 +1676,12 @@ function renderKanban() {
     container.innerHTML = items.map(t => `
       <div class="task-card" data-id="${t.id}" draggable="true" ondragstart="dragStart(event)" onclick="openTaskDetail(${t.id})">
         <div class="task-title">${escapeHtml(t.title)}</div>
-        <div class="task-meta">${(t.tags || []).map(tag => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}</div>
+        <div class="task-meta">${(t.tags||[]).map(tag=>`<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}</div>
         <div class="task-meta">
-          <span>👤 ${escapeHtml(t.assignee || 'Unassigned')}</span>
-          <span>📅 ${escapeHtml(t.due_date || 'TBD')}</span>
+          <span>👤 ${escapeHtml(t.assignee||'Unassigned')}</span>
+          <span>📅 ${escapeHtml(t.due_date||'TBD')}</span>
         </div>
-      </div>
-    `).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
+      </div>`).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
     container.ondragover = (e) => e.preventDefault();
     container.ondrop = (e) => dropTask(e, col);
   });
@@ -1722,12 +1689,7 @@ function renderKanban() {
 }
 
 let draggedTaskId = null;
-
-function dragStart(e) {
-  const card = e.target.closest('.task-card');
-  if (card) draggedTaskId = parseInt(card.getAttribute('data-id'));
-}
-
+function dragStart(e) { const card = e.target.closest('.task-card'); if (card) draggedTaskId = parseInt(card.getAttribute('data-id')); }
 async function dropTask(e, targetCol) {
   e.preventDefault();
   if (!draggedTaskId) return;
@@ -1740,32 +1702,28 @@ async function dropTask(e, targetCol) {
   }
   draggedTaskId = null;
 }
-
-function columnLabel(col) {
-  return { todo: 'To Do', inprogress: 'In Progress', done: 'Done' }[col] || col;
-}
+function columnLabel(col) { return { todo:'To Do', inprogress:'In Progress', done:'Done' }[col]||col; }
 
 function addTask(col) {
+  const myName = getCurrentUserName();
   openModalWithContent('➕ Add Task to ' + columnLabel(col), `
     <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
     <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
-    <div class="form-group"><label>Assignee</label>
-      <select class="form-control" id="newTaskAssignee"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
-    </div>
-    <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDue" placeholder="e.g. 28 May" /></div>
+    <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="newTaskAssignee" value="${escapeHtml(myName)}" placeholder="Assignee name" /></div>
+    <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="newTaskDue" /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="createTask('${col}')">Add Task</button>
   `);
 }
 
 async function createTask(col) {
-  const title = document.getElementById('newTaskTitle') ? document.getElementById('newTaskTitle').value.trim() : '';
+  const title = document.getElementById('newTaskTitle')?.value.trim();
   if (!title) { showToast('Please enter task title'); return; }
-  const tagsRaw = document.getElementById('newTaskTags') ? document.getElementById('newTaskTags').value.trim() : '';
-  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const tagsRaw = document.getElementById('newTaskTags')?.value.trim();
+  const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
   const body = {
     title, tags,
-    assignee: document.getElementById('newTaskAssignee') ? document.getElementById('newTaskAssignee').value : 'Kamlesh',
-    due_date: document.getElementById('newTaskDue') ? document.getElementById('newTaskDue').value.trim() : 'TBD',
+    assignee: document.getElementById('newTaskAssignee')?.value.trim() || getCurrentUserName(),
+    due_date: document.getElementById('newTaskDue')?.value || 'TBD',
     column_name: col
   };
   const result = await supabaseInsert('tasks', body);
@@ -1776,19 +1734,16 @@ async function createTask(col) {
 function openTaskDetail(id) {
   const task = STATE.tasks.find(t => t.id === id);
   if (!task) return;
+  const myName = getCurrentUserName();
   openModalWithContent('📋 Task Details', `
     <div class="form-group"><label>Title</label><input type="text" class="form-control" id="editTaskTitle" value="${escapeHtml(task.title)}" /></div>
-    <div class="form-group"><label>Assignee</label>
-      <select class="form-control" id="taskAssigneeSel">
-        ${['Kamlesh', 'Punit', 'Shankar', 'Ganga', 'Damini'].map(a => `<option ${task.assignee === a ? 'selected' : ''}>${a}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="editTaskDue" value="${escapeHtml(task.due_date || '')}" /></div>
+    <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="taskAssigneeSel" value="${escapeHtml(task.assignee||myName)}" /></div>
+    <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="editTaskDue" value="${task.due_date&&task.due_date!=='TBD'?task.due_date:''}" /></div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="taskStatusSelect">
-        <option value="todo" ${task.column_name === 'todo' ? 'selected' : ''}>To Do</option>
-        <option value="inprogress" ${task.column_name === 'inprogress' ? 'selected' : ''}>In Progress</option>
-        <option value="done" ${task.column_name === 'done' ? 'selected' : ''}>Done</option>
+        <option value="todo" ${task.column_name==='todo'?'selected':''}>To Do</option>
+        <option value="inprogress" ${task.column_name==='inprogress'?'selected':''}>In Progress</option>
+        <option value="done" ${task.column_name==='done'?'selected':''}>Done</option>
       </select>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
@@ -1799,13 +1754,14 @@ function openTaskDetail(id) {
 }
 
 async function updateTask(id) {
-  const title = document.getElementById('editTaskTitle') ? document.getElementById('editTaskTitle').value.trim() : '';
+  const title = document.getElementById('editTaskTitle')?.value.trim();
   if (!title) { showToast('Task title required'); return; }
+  const dueRaw = document.getElementById('editTaskDue')?.value;
   const updated = {
     title,
-    assignee: document.getElementById('taskAssigneeSel') ? document.getElementById('taskAssigneeSel').value : '',
-    due_date: document.getElementById('editTaskDue') ? document.getElementById('editTaskDue').value.trim() : '',
-    column_name: document.getElementById('taskStatusSelect') ? document.getElementById('taskStatusSelect').value : 'todo'
+    assignee: document.getElementById('taskAssigneeSel')?.value || getCurrentUserName(),
+    due_date: dueRaw || 'TBD',
+    column_name: document.getElementById('taskStatusSelect')?.value || 'todo'
   };
   const ok = await supabaseUpdate('tasks', id, updated);
   if (ok) {
@@ -1821,38 +1777,30 @@ async function deleteTask(id) {
 }
 
 /* =========================================================
-   22. REPORTS
+   24. REPORTS
    ========================================================= */
 
 function renderBarChart() {
   const el = document.getElementById('barChart');
   if (!el) return;
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  const currentYear = new Date().getFullYear();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const data = months.map((label, i) => {
-    const count = STATE.gstReturns.filter(g => {
+    const count = [...STATE.gstReturns, ...STATE.itrFilings].filter(g => {
       if (!g.filed_date) return false;
       const d = new Date(g.filed_date);
-      return d.getMonth() === i;
-    }).length + STATE.itrFilings.filter(itr => {
-      if (!itr.filed_date) return false;
-      const d = new Date(itr.filed_date);
-      return d.getMonth() === i;
+      return d.getMonth() === i && d.getFullYear() === currentYear;
     }).length;
     return { label, value: count };
   });
-  const max = Math.max(...data.map(d => d.value), 1);
+  const max = Math.max(...data.map(d=>d.value), 1);
   el.innerHTML = data.map(d => `
     <div class="bar-item">
-      <div class="bar-fill" style="height:0%" data-target="${(d.value / max) * 100}"></div>
-      <div class="bar-label">${d.label} ${d.value > 0 ? '(' + d.value + ')' : ''}</div>
-    </div>
-  `).join('');
+      <div class="bar-fill" style="height:0%" data-target="${(d.value/max)*100}"></div>
+      <div class="bar-label">${d.label}${d.value>0?' ('+d.value+')':''}</div>
+    </div>`).join('');
   requestAnimationFrame(() => {
-    setTimeout(() => {
-      document.querySelectorAll('#barChart .bar-fill').forEach(bar => {
-        bar.style.height = bar.getAttribute('data-target') + '%';
-      });
-    }, 100);
+    setTimeout(() => { document.querySelectorAll('#barChart .bar-fill').forEach(bar => { bar.style.height = bar.getAttribute('data-target')+'%'; }); }, 100);
   });
   updateDashboardStats();
 }
@@ -1861,85 +1809,55 @@ function exportReport() { showToast('📥 Preparing export...'); }
 function generateReport() { showToast('✅ Report generated!'); }
 
 /* =========================================================
-   23. AI ASSISTANT
+   25. AI ASSISTANT
    ========================================================= */
 
 function getAIResponse(query) {
   const q = query.toLowerCase().trim();
   const { clients, gstReturns, tasks, tdsReturns } = STATE;
-
-  if (q.includes('gst') && (q.includes('pending') || q.includes('show'))) {
-    const pending = gstReturns.filter(g => g.status === 'Pending' || g.status === 'Overdue');
+  if (q.includes('gst') && (q.includes('pending')||q.includes('show'))) {
+    const pending = gstReturns.filter(g=>g.status==='Pending'||g.status==='Overdue');
     if (!pending.length) return 'No pending GST returns right now! 🎉';
     let txt = `${pending.length} GST returns need attention:<br><br>`;
-    pending.forEach(g => {
-      txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status === 'Overdue' ? '#ef4444' : '#f59e0b'}">${g.status}</span><br>`;
-    });
+    pending.forEach(g => { txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'#ef4444':'#f59e0b'}">${g.status}</span><br>`; });
     return txt;
   }
-  if (q.includes('task') || q.includes('pending')) {
-    const p = tasks.filter(t => t.column_name !== 'done');
+  if (q.includes('task')||q.includes('pending')) {
+    const p = tasks.filter(t=>t.column_name!=='done');
     if (!p.length) return 'No pending tasks! Everything is done. 🎉';
     let txt = `${p.length} tasks pending:<br><br>`;
-    p.slice(0, 6).forEach(t => {
-      txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name === 'todo' ? 'To Do' : 'In Progress'}, due ${t.due_date || 'TBD'}<br>`;
-    });
+    p.slice(0,6).forEach(t => { txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name==='todo'?'To Do':'In Progress'}, due ${t.due_date||'TBD'}<br>`; });
     return txt;
   }
-  if (q.includes('tds')) {
-    const filed = tdsReturns.filter(t => t.status === 'Filed').length;
-    const pend = tdsReturns.filter(t => t.status === 'Pending').length;
-    return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`;
-  }
-  if (q.includes('client')) {
-    const active = clients.filter(c => c.status === 'Active').length;
-    return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c => c.status === 'Pending').length}</strong>`;
-  }
-  if (q.includes('upcoming') || q.includes('due') || q.includes('compliance')) {
-    return 'Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!';
-  }
-  const defaults = [
-    'I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!',
-    'Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.',
-    'Namaste! Try: "pending tasks", "GST due this week", "TDS filing status"'
-  ];
-  return defaults[Math.floor(Math.random() * defaults.length)];
+  if (q.includes('tds')) { const filed=tdsReturns.filter(t=>t.status==='Filed').length; const pend=tdsReturns.filter(t=>t.status==='Pending').length; return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`; }
+  if (q.includes('client')) { const active=clients.filter(c=>c.status==='Active').length; return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c=>c.status==='Pending').length}</strong>`; }
+  if (q.includes('upcoming')||q.includes('due')||q.includes('compliance')) return 'Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!';
+  const defaults = ['I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!','Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.','Namaste! Try: "pending tasks", "GST due this week", "TDS filing status"'];
+  return defaults[Math.floor(Math.random()*defaults.length)];
 }
 
 function sendAIMessage(presetMsg) {
   const input = document.getElementById('aiInput');
-  const msg = presetMsg || (input ? input.value.trim() : '');
+  const msg = presetMsg || input?.value.trim();
   if (!msg) return;
   const chatEl = document.getElementById('chatMessages');
   if (!chatEl) return;
-  const userRaw = localStorage.getItem('witcorp-user');
-  const user = userRaw ? JSON.parse(userRaw) : {};
-  const name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email ? user.email.split('@')[0] : 'U');
+  const name = getCurrentUserName();
   const initial = name.charAt(0).toUpperCase();
-
-  chatEl.insertAdjacentHTML('beforeend', `
-    <div class="chat-msg user">
-      <div class="msg-avatar">${initial}</div>
-      <div class="msg-content">${escapeHtml(msg)}</div>
-    </div>
-  `);
+  chatEl.insertAdjacentHTML('beforeend', `<div class="chat-msg user"><div class="msg-avatar">${initial}</div><div class="msg-content">${escapeHtml(msg)}</div></div>`);
   if (input) input.value = '';
   chatEl.scrollTop = chatEl.scrollHeight;
-  const typingId = 'typing-' + Date.now();
+  const typingId = 'typing-'+Date.now();
   chatEl.insertAdjacentHTML('beforeend', `<div class="chat-msg bot" id="${typingId}"><div class="msg-avatar">🤖</div><div class="msg-content"><em>Thinking...</em></div></div>`);
   chatEl.scrollTop = chatEl.scrollHeight;
-  setTimeout(() => {
-    const el = document.getElementById(typingId);
-    if (el) el.querySelector('.msg-content').innerHTML = getAIResponse(msg);
-    chatEl.scrollTop = chatEl.scrollHeight;
-  }, 700);
+  setTimeout(() => { const el=document.getElementById(typingId); if(el) el.querySelector('.msg-content').innerHTML=getAIResponse(msg); chatEl.scrollTop=chatEl.scrollHeight; }, 700);
 }
 
 function aiChip(text) { navigate('ai'); setTimeout(() => sendAIMessage(text), 200); }
 function openAI() { navigate('ai'); }
 
 /* =========================================================
-   24. DOCUMENTS
+   26. DOCUMENTS
    ========================================================= */
 
 function renderDocuments() {
@@ -1950,13 +1868,12 @@ function renderDocuments() {
     return;
   }
   el.innerHTML = STATE.documents.map(d => `
-    <div class="doc-card" onclick="showToast('Opening ${escapeHtml(d.name)}')">
-      <div class="doc-icon">${d.icon || '📄'}</div>
+    <div class="doc-card">
+      <div class="doc-icon">${d.icon||'📄'}</div>
       <div class="doc-name">${escapeHtml(d.name)}</div>
-      <div class="doc-meta">${escapeHtml(d.client_name || '')} • ${escapeHtml(d.file_size || '')}</div>
+      <div class="doc-meta">${escapeHtml(d.client_name||'')} • ${escapeHtml(d.file_size||'')}</div>
       <button class="btn-outline" style="padding:4px 10px;font-size:11px;width:100%;margin-top:6px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteDoc(${d.id})">Delete</button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 async function deleteDoc(id) {
@@ -1965,99 +1882,75 @@ async function deleteDoc(id) {
 }
 
 /* =========================================================
-   25. CALENDAR
+   27. CALENDAR
    ========================================================= */
 
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function renderCalendar() {
   const { month, year } = STATE.calendar;
   const titleEl = document.getElementById('calTitle');
   const gridEl = document.getElementById('calGrid');
   if (!titleEl || !gridEl) return;
-  titleEl.textContent = MONTH_NAMES[month] + ' ' + year;
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  titleEl.textContent = MONTH_NAMES[month]+' '+year;
+  const firstDay = new Date(year,month,1).getDay();
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const daysInPrevMonth = new Date(year,month,0).getDate();
   const eventMap = {};
   STATE.calendarEvents.forEach(e => {
     const d = new Date(e.event_date);
-    if (d.getFullYear() === year && d.getMonth() === month) {
-      const key = d.getDate();
-      if (!eventMap[key]) eventMap[key] = [];
-      eventMap[key].push(e);
-    }
+    if (d.getFullYear()===year && d.getMonth()===month) { const key=d.getDate(); if(!eventMap[key]) eventMap[key]=[]; eventMap[key].push(e); }
   });
   const today = new Date();
   let html = '';
-  for (let i = firstDay - 1; i >= 0; i--) html += `<div class="cal-day other-month">${daysInPrevMonth - i}</div>`;
-  for (let d = 1; d <= daysInMonth; d++) {
+  for (let i=firstDay-1;i>=0;i--) html+=`<div class="cal-day other-month">${daysInPrevMonth-i}</div>`;
+  for (let d=1;d<=daysInMonth;d++) {
     const hasEvent = eventMap[d] ? 'has-event' : '';
-    const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) ? 'today' : '';
-    html += `<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d})">${d}</div>`;
+    const isToday = (year===today.getFullYear()&&month===today.getMonth()&&d===today.getDate()) ? 'today' : '';
+    html+=`<div class="cal-day ${hasEvent} ${isToday}" onclick="showDayEvents(${d})">${d}</div>`;
   }
-  const totalCells = firstDay + daysInMonth;
-  const remaining = (7 - (totalCells % 7)) % 7;
-  for (let d = 1; d <= remaining; d++) html += `<div class="cal-day other-month">${d}</div>`;
+  const remaining = (7-((firstDay+daysInMonth)%7))%7;
+  for (let d=1;d<=remaining;d++) html+=`<div class="cal-day other-month">${d}</div>`;
   gridEl.innerHTML = html;
 }
 
 function showDayEvents(day) {
-  const events = STATE.calendarEvents.filter(e => {
-    const d = new Date(e.event_date);
-    return d.getFullYear() === STATE.calendar.year &&
-      d.getMonth() === STATE.calendar.month &&
-      d.getDate() === day;
-  });
-  if (!events || !events.length) {
-    showToast('No events on ' + day + ' ' + MONTH_NAMES[STATE.calendar.month]);
-    return;
-  }
-  openModalWithContent('📅 Events — ' + day + ' ' + MONTH_NAMES[STATE.calendar.month], `
-    ${events.map(e => `
-      <div class="upcoming-item" style="margin-bottom:10px">
-        <div>
-          <div class="gst-item-name">${escapeHtml(e.title)}</div>
-          <div class="gst-item-sub">${escapeHtml(e.event_type || '')}</div>
-        </div>
-      </div>
-    `).join('')}
+  const events = STATE.calendarEvents.filter(e => { const d=new Date(e.event_date); return d.getFullYear()===STATE.calendar.year&&d.getMonth()===STATE.calendar.month&&d.getDate()===day; });
+  if (!events.length) { showToast('No events on '+day+' '+MONTH_NAMES[STATE.calendar.month]); return; }
+  openModalWithContent('📅 Events — '+day+' '+MONTH_NAMES[STATE.calendar.month], `
+    ${events.map(e=>`<div class="upcoming-item" style="margin-bottom:10px"><div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div></div>`).join('')}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
 
 function changeMonth(delta) {
   STATE.calendar.month += delta;
-  if (STATE.calendar.month > 11) { STATE.calendar.month = 0; STATE.calendar.year++; }
-  else if (STATE.calendar.month < 0) { STATE.calendar.month = 11; STATE.calendar.year--; }
+  if (STATE.calendar.month>11) { STATE.calendar.month=0; STATE.calendar.year++; }
+  else if (STATE.calendar.month<0) { STATE.calendar.month=11; STATE.calendar.year--; }
   renderCalendar();
 }
 
 function renderEventList() {
   const el = document.getElementById('eventList');
   if (!el) return;
-  const sorted = [...STATE.calendarEvents].sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
-  el.innerHTML = sorted.length ? sorted.map(e => `
+  const sorted = [...STATE.calendarEvents].sort((a,b) => new Date(a.event_date)-new Date(b.event_date));
+  el.innerHTML = sorted.length ? sorted.map(e=>`
     <div class="upcoming-item" style="margin-bottom:10px">
-      <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type || '')}</div></div>
+      <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
         <button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteEvent(${e.id})">✕</button>
       </div>
-    </div>
-  `).join('') : '<div class="empty-state"><div class="empty-state-text">No events</div></div>';
+    </div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No events</div></div>';
 }
 
 async function deleteEvent(id) {
   const ok = await supabaseDelete('calendar_events', id);
-  if (ok) {
-    STATE.calendarEvents = STATE.calendarEvents.filter(e => e.id !== id);
-    renderCalendar(); renderEventList(); renderDueDates(); showToast('🗑️ Event deleted');
-  }
+  if (ok) { STATE.calendarEvents=STATE.calendarEvents.filter(e=>e.id!==id); renderCalendar(); renderEventList(); renderDueDates(); showToast('🗑️ Event deleted'); }
 }
 
 /* =========================================================
-   26. RIGHT PANEL
+   28. RIGHT PANEL
    ========================================================= */
 
 function renderDueDates() {
@@ -2066,22 +1959,17 @@ function renderDueDates() {
   const today = new Date();
   const upcoming = STATE.calendarEvents
     .filter(e => new Date(e.event_date) >= today)
-    .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
-    .slice(0, 5);
+    .sort((a,b) => new Date(a.event_date)-new Date(b.event_date))
+    .slice(0,5);
   el.innerHTML = upcoming.length ? upcoming.map(e => {
     const d = new Date(e.event_date);
-    const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
-    const sub = diff === 0 ? 'Due Today' : diff === 1 ? 'Due Tomorrow' : 'Due in ' + diff + ' days';
-    const urgent = diff <= 1;
-    return `
-      <div class="due-item">
-        <div class="due-date-badge"><div class="due-date-num">${d.getDate()}</div><div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0, 3)}</div></div>
-        <div style="flex:1">
-          <div class="due-title">${escapeHtml(e.title)}</div>
-          <div class="due-sub ${urgent ? 'red' : ''}">${sub}</div>
-        </div>
-      </div>
-    `;
+    const diff = Math.ceil((d-today)/(1000*60*60*24));
+    const sub = diff===0?'Due Today':diff===1?'Due Tomorrow':'Due in '+diff+' days';
+    const urgent = diff<=1;
+    return `<div class="due-item">
+      <div class="due-date-badge"><div class="due-date-num">${d.getDate()}</div><div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0,3)}</div></div>
+      <div style="flex:1"><div class="due-title">${escapeHtml(e.title)}</div><div class="due-sub ${urgent?'red':''}">${sub}</div></div>
+    </div>`;
   }).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming dates</div></div>';
 }
 
@@ -2089,29 +1977,24 @@ function renderActivity() {
   const el = document.getElementById('activityList');
   if (!el) return;
   const activities = [];
-  STATE.gstReturns.filter(g => g.status === 'Filed').slice(0, 2).forEach(g => {
-    activities.push({ icon: '✅', color: 'green', text: 'GSTR filed for ' + g.client_name, time: g.filed_date || 'Recently' });
-  });
-  STATE.itrFilings.filter(i => i.status === 'Filed').slice(0, 2).forEach(i => {
-    activities.push({ icon: '💰', color: 'blue', text: 'ITR filed for ' + i.client_name, time: i.filed_date || 'Recently' });
-  });
-  STATE.tasks.filter(t => t.column_name === 'done').slice(0, 2).forEach(t => {
-    activities.push({ icon: '✅', color: 'orange', text: t.title, time: 'Completed' });
-  });
-  el.innerHTML = activities.length ? activities.slice(0, 6).map(a => `
+  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => { activities.push({icon:'✅',color:'green',text:'GSTR filed for '+g.client_name,time:g.filed_date||'Recently'}); });
+  STATE.itrFilings.filter(i=>i.status==='Filed').slice(0,2).forEach(i => { activities.push({icon:'💰',color:'blue',text:'ITR filed for '+i.client_name,time:i.filed_date||'Recently'}); });
+  STATE.tasks.filter(t=>t.column_name==='done').slice(0,2).forEach(t => { activities.push({icon:'✅',color:'orange',text:t.title,time:'Completed'}); });
+  el.innerHTML = activities.length ? activities.slice(0,6).map(a=>`
     <div class="activity-item">
       <div class="activity-dot ${a.color}">${a.icon}</div>
       <div><div class="activity-text">${escapeHtml(a.text)}</div><div class="activity-time">${escapeHtml(a.time)}</div></div>
-    </div>
-  `).join('') : '<div class="empty-state"><div class="empty-state-text">No recent activity</div></div>';
+    </div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No recent activity</div></div>';
 }
 
 /* =========================================================
-   27. MODALS
+   29. MODALS
    ========================================================= */
 
 function openModal(type) {
-  const clientOptions = STATE.clients.slice(0, 30).map(c => `<option>${escapeHtml(c.name)}</option>`).join('');
+  const myName = getCurrentUserName();
+  const clientOptions = getClientOptionsHtml();
+
   const configs = {
     addClient: {
       title: '➕ Add New Client',
@@ -2126,88 +2009,79 @@ function openModal(type) {
           <div class="form-group"><label>Email</label><input type="text" class="form-control" id="addClientEmail" placeholder="Enter email" /></div>
           <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="addClientPhone" placeholder="Enter phone" /></div>
         </div>
-        <button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>
-      `
+        <button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>`
     },
-    gstReturn: { title: '📊 File GST Return', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">📊</div><p style="margin:12px 0">Use the GST Dashboard form</p><button class="btn-primary" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button></div>` },
+    gstReturn: { title:'📊 File GST Return', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">📊</div><p style="margin:12px 0">Use the GST Dashboard form below</p><button class="btn-primary" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button></div>` },
     rocFiling: {
       title: '🏛️ New ROC Filing',
       body: `
         <div class="form-group"><label>Company Name *</label><input type="text" class="form-control" id="rocCompany" placeholder="Enter company name" /></div>
         <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" placeholder="Enter CIN" /></div>
         <div class="form-group"><label>Form Type</label>
-          <select class="form-control" id="rocForm"><option>AOC-4</option><option>MGT-7</option><option>ADT-1</option><option>DIR-3 KYC</option><option>MGT-14</option></select>
+          <select class="form-control" id="rocForm">${ROC_FORMS.map(f=>`<option>${f}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="rocDue" /></div>
-        <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Create Filing</button>
-      `
+        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarks" placeholder="Optional remarks..." /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Create Filing</button>`
     },
-    itrFiling: { title: '💰 File ITR', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">💰</div><p style="margin:12px 0">Use the Income Tax form</p><button class="btn-primary" onclick="closeModal();navigate('incometax')">Go to Income Tax</button></div>` },
-    tdsReturn: { title: '🧾 File TDS', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">🧾</div><p style="margin:12px 0">Use the TDS Returns form</p><button class="btn-primary" onclick="closeModal();navigate('tds')">Go to TDS Returns</button></div>` },
+    itrFiling: { title:'💰 File ITR', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">💰</div><p style="margin:12px 0">Use the Income Tax form</p><button class="btn-primary" onclick="closeModal();navigate('incometax')">Go to Income Tax</button></div>` },
+    tdsReturn: { title:'🧾 File TDS', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">🧾</div><p style="margin:12px 0">Use the TDS Returns form</p><button class="btn-primary" onclick="closeModal();navigate('tds')">Go to TDS Returns</button></div>` },
     newAudit: {
       title: '🛡️ Schedule Audit',
       body: `
-        <div class="form-group"><label>Client *</label><select class="form-control" id="auditClient"><option>Select Client</option>${clientOptions}</select></div>
+        <div class="form-group"><label>Client *</label><select class="form-control" id="auditClient">${clientOptions}</select></div>
         <div class="form-group"><label>Audit Type</label>
-          <select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option></select>
+          <select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option><option>GST Audit</option><option>Concurrent Audit</option></select>
         </div>
-        <div class="form-group"><label>Auditor</label>
-          <select class="form-control" id="auditAuditor"><option>Kamlesh Yadav</option><option>Anjali Rao</option><option>Sameer Joshi</option></select>
-        </div>
+        <div class="form-group"><label>Auditor (You)</label><input type="text" class="form-control" id="auditAuditor" value="${escapeHtml(myName)}" /></div>
         <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div>
         <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div>
-        <button class="btn-primary" style="width:100%" onclick="submitNewAudit()">✅ Schedule Audit</button>
-      `
+        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarks" placeholder="Optional remarks..." /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewAudit()">✅ Schedule Audit</button>`
     },
-    newDSC: { title: '✍️ New DSC', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
+    newDSC: { title:'✍️ New DSC', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
     addVaultItem: {
       title: '🔐 Add New Credential',
       body: `
         <div class="form-group"><label>Label *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Gmail, AWS, Banking" /></div>
         <div class="form-group"><label>Folder</label>
-          <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f => `<option>${f}</option>`).join('')}</select>
+          <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f=>`<option>${f}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label>URL</label><input type="text" class="form-control" id="vaultUrl" placeholder="https://..." /></div>
         <div class="form-group"><label>Username</label><input type="text" class="form-control" id="vaultUsername" /></div>
         <div class="form-group"><label>Password</label><input type="password" class="form-control" id="vaultPassword" /></div>
         <div class="form-group"><label>Notes</label><textarea class="form-control" id="vaultNotes" rows="2" placeholder="Additional notes..."></textarea></div>
-        <button class="btn-primary" style="width:100%" onclick="submitVaultItem()">🔐 Save Credential</button>
-      `
+        <button class="btn-primary" style="width:100%" onclick="submitVaultItem()">🔐 Save Credential</button>`
     },
     createVaultFolder: {
       title: '📁 Create New Folder',
       body: `
         <div class="form-group"><label>Folder Name</label><input type="text" class="form-control" id="newFolderName" placeholder="e.g. Clients" /></div>
-        <button class="btn-primary" style="width:100%" onclick="submitCreateFolder()">Create Folder</button>
-      `
+        <button class="btn-primary" style="width:100%" onclick="submitCreateFolder()">Create Folder</button>`
     },
-    newEntry: { title: '🧮 Journal Entry', body: `<div style="text-align:center;padding:20px"><div style="font-size:36px">🧮</div><p style="margin:12px 0">Use the Accounting Hub form</p><button class="btn-primary" onclick="closeModal();navigate('accounting')">Go to Accounting Hub</button></div>` },
+    newEntry: { title:'🧮 Journal Entry', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">🧮</div><p style="margin:12px 0">Use the Accounting Hub form</p><button class="btn-primary" onclick="closeModal();navigate('accounting')">Go to Accounting Hub</button></div>` },
     newTask: {
       title: '✅ Add New Task',
       body: `
         <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitleModal" placeholder="Enter task title" /></div>
         <div class="form-group"><label>Tags</label><input type="text" class="form-control" id="newTaskTagsModal" placeholder="e.g. GST, High" /></div>
-        <div class="form-group"><label>Assignee</label>
-          <select class="form-control" id="newTaskAssigneeModal"><option>Kamlesh</option><option>Anjali</option><option>Sameer</option><option>Priya</option><option>Vikram</option></select>
-        </div>
-        <div class="form-group"><label>Due Date</label><input type="text" class="form-control" id="newTaskDueModal" placeholder="e.g. 28 May" /></div>
+        <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="newTaskAssigneeModal" value="${escapeHtml(myName)}" /></div>
+        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="newTaskDueModal" /></div>
         <div class="form-group"><label>Column</label>
           <select class="form-control" id="newTaskColModal"><option value="todo">To Do</option><option value="inprogress">In Progress</option><option value="done">Done</option></select>
         </div>
-        <button class="btn-primary" style="width:100%" onclick="submitNewTaskModal()">✅ Add Task</button>
-      `
+        <button class="btn-primary" style="width:100%" onclick="submitNewTaskModal()">✅ Add Task</button>`
     },
     uploadDoc: {
       title: '📁 Upload Document',
       body: `
-        <div class="form-group"><label>Document Name *</label><input type="text" class="form-control" id="uploadDocName" placeholder="e.g. Balance Sheet FY24-25.pdf" /></div>
-        <div class="form-group"><label>Client</label><select class="form-control" id="uploadDocClient"><option>Internal</option>${clientOptions}</select></div>
+        <div class="form-group"><label>Document Name *</label><input type="text" class="form-control" id="uploadDocName" placeholder="e.g. Balance Sheet FY25-26.pdf" /></div>
+        <div class="form-group"><label>Client</label><select class="form-control" id="uploadDocClient"><option value="">Internal</option>${STATE.clients.map(c=>`<option>${escapeHtml(c.name)}</option>`).join('')}</select></div>
         <div class="form-group"><label>Type</label>
-          <select class="form-control" id="uploadDocType"><option value="PDF">PDF</option><option value="Excel">Excel</option><option value="Word">Word</option><option value="Image">Image</option></select>
+          <select class="form-control" id="uploadDocType"><option>PDF</option><option>Excel</option><option>Word</option><option>Image</option></select>
         </div>
         <div class="form-group"><label>File Size</label><input type="text" class="form-control" id="uploadDocSize" placeholder="e.g. 2.4 MB" /></div>
-        <button class="btn-primary" style="width:100%" onclick="submitUploadDoc()">⬆ Upload</button>
-      `
+        <button class="btn-primary" style="width:100%" onclick="submitUploadDoc()">⬆ Upload</button>`
     },
     newEvent: {
       title: '📅 Add Calendar Event',
@@ -2217,8 +2091,7 @@ function openModal(type) {
           <select class="form-control" id="newEventType"><option>GST</option><option>TDS</option><option>ROC</option><option>DSC</option><option>Income Tax</option><option>PF</option><option>Internal</option></select>
         </div>
         <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="newEventDate" /></div>
-        <button class="btn-primary" style="width:100%" onclick="submitNewEvent()">✅ Add Event</button>
-      `
+        <button class="btn-primary" style="width:100%" onclick="submitNewEvent()">✅ Add Event</button>`
     }
   };
   const config = configs[type];
@@ -2240,32 +2113,33 @@ function closeModal() {
 }
 
 async function submitAddClient() {
-  const name = document.getElementById('addClientName') ? document.getElementById('addClientName').value.trim() : '';
+  const name = document.getElementById('addClientName')?.value.trim();
   if (!name) { showToast('Client name is required'); return; }
   const body = {
     name,
-    pan: document.getElementById('addClientPAN') ? document.getElementById('addClientPAN').value.trim() : '-',
-    type: document.getElementById('addClientType') ? document.getElementById('addClientType').value : 'Individual',
-    gst: document.getElementById('addClientGST') ? document.getElementById('addClientGST').value.trim() : '-',
-    email: document.getElementById('addClientEmail') ? document.getElementById('addClientEmail').value.trim() : '-',
-    phone: document.getElementById('addClientPhone') ? document.getElementById('addClientPhone').value.trim() : '-',
+    pan: document.getElementById('addClientPAN')?.value.trim() || '-',
+    type: document.getElementById('addClientType')?.value || 'Individual',
+    gst: document.getElementById('addClientGST')?.value.trim() || '-',
+    email: document.getElementById('addClientEmail')?.value.trim() || '-',
+    phone: document.getElementById('addClientPhone')?.value.trim() || '-',
     status: 'Active'
   };
   const result = await supabaseInsert('clients', body);
   if (result && result[0]) {
     STATE.clients.unshift(result[0]);
-    closeModal(); renderClientTable(); updateDashboardStats(); populateGSTClientDropdown(); showToast('✅ Client added!');
+    closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client added!');
   } else { showToast('❌ Failed to add client'); }
 }
 
 async function submitROCFiling() {
-  const company = document.getElementById('rocCompany') ? document.getElementById('rocCompany').value.trim() : '';
+  const company = document.getElementById('rocCompany')?.value.trim();
   if (!company) { showToast('Company name required'); return; }
   const body = {
     company,
-    cin: document.getElementById('rocCIN') ? document.getElementById('rocCIN').value.trim() : '-',
-    form: document.getElementById('rocForm') ? document.getElementById('rocForm').value : 'AOC-4',
-    due_date: document.getElementById('rocDue') ? document.getElementById('rocDue').value : 'TBD',
+    cin: document.getElementById('rocCIN')?.value.trim() || '-',
+    form: document.getElementById('rocForm')?.value || 'AOC-4',
+    due_date: document.getElementById('rocDue')?.value || 'TBD',
+    remarks: document.getElementById('rocRemarks')?.value.trim() || '',
     status: 'In Progress'
   };
   const result = await supabaseInsert('roc_filings', body);
@@ -2274,14 +2148,18 @@ async function submitROCFiling() {
 }
 
 async function submitNewAudit() {
-  const client = document.getElementById('auditClient') ? document.getElementById('auditClient').value : '';
-  if (!client || client === 'Select Client') { showToast('Please select a client'); return; }
+  const clientSel = document.getElementById('auditClient');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
   const body = {
-    client,
-    audit_type: document.getElementById('auditType') ? document.getElementById('auditType').value : '',
-    auditor: document.getElementById('auditAuditor') ? document.getElementById('auditAuditor').value : '',
-    start_date: document.getElementById('auditStart') ? document.getElementById('auditStart').value : 'TBD',
-    end_date: document.getElementById('auditEnd') ? document.getElementById('auditEnd').value : 'TBD',
+    client: clientName,
+    client_id: clientId || null,
+    audit_type: document.getElementById('auditType')?.value || '',
+    auditor: document.getElementById('auditAuditor')?.value.trim() || getCurrentUserName(),
+    start_date: document.getElementById('auditStart')?.value || '',
+    end_date: document.getElementById('auditEnd')?.value || '',
+    remarks: document.getElementById('auditRemarks')?.value.trim() || '',
     status: 'In Progress'
   };
   const result = await supabaseInsert('audits', body);
@@ -2290,40 +2168,39 @@ async function submitNewAudit() {
 }
 
 async function submitVaultItem() {
-  const label = document.getElementById('vaultLabel') ? document.getElementById('vaultLabel').value.trim() : '';
+  const label = document.getElementById('vaultLabel')?.value.trim();
   if (!label) { showToast('Label is required'); return; }
   const body = {
     label,
-    folder: document.getElementById('vaultFolder') ? document.getElementById('vaultFolder').value : 'General',
-    url: document.getElementById('vaultUrl') ? document.getElementById('vaultUrl').value.trim() : '',
-    username: document.getElementById('vaultUsername') ? document.getElementById('vaultUsername').value.trim() : '',
-    password: document.getElementById('vaultPassword') ? document.getElementById('vaultPassword').value : '',
-    notes: document.getElementById('vaultNotes') ? document.getElementById('vaultNotes').value.trim() : ''
+    folder: document.getElementById('vaultFolder')?.value || 'General',
+    url: document.getElementById('vaultUrl')?.value.trim() || '',
+    username: document.getElementById('vaultUsername')?.value.trim() || '',
+    password: document.getElementById('vaultPassword')?.value || '',
+    notes: document.getElementById('vaultNotes')?.value.trim() || ''
   };
   const result = await supabaseInsert('vault_credentials', body);
-  if (result && result[0]) {
-    STATE.vaultCredentials.unshift(result[0]);
-    closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('🔐 Credential saved!');
-  } else { showToast('❌ Failed to save credential'); }
+  if (result && result[0]) { STATE.vaultCredentials.unshift(result[0]); closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('🔐 Credential saved!'); }
+  else { showToast('❌ Failed to save credential'); }
 }
 
-async function submitCreateFolder() {
-  const folderName = document.getElementById('newFolderName') ? document.getElementById('newFolderName').value.trim() : '';
+function submitCreateFolder() {
+  const folderName = document.getElementById('newFolderName')?.value.trim();
   if (!folderName) { showToast('Folder name required'); return; }
   STATE.vaultSelectedFolder = folderName;
   closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('📁 Folder created!');
 }
 
 async function submitNewTaskModal() {
-  const title = document.getElementById('newTaskTitleModal') ? document.getElementById('newTaskTitleModal').value.trim() : '';
+  const title = document.getElementById('newTaskTitleModal')?.value.trim();
   if (!title) { showToast('Task title required'); return; }
-  const tagsRaw = document.getElementById('newTaskTagsModal') ? document.getElementById('newTaskTagsModal').value.trim() : '';
+  const tagsRaw = document.getElementById('newTaskTagsModal')?.value.trim();
+  const dueRaw = document.getElementById('newTaskDueModal')?.value;
   const body = {
     title,
-    tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
-    assignee: document.getElementById('newTaskAssigneeModal') ? document.getElementById('newTaskAssigneeModal').value : 'Kamlesh',
-    due_date: document.getElementById('newTaskDueModal') ? document.getElementById('newTaskDueModal').value.trim() : 'TBD',
-    column_name: document.getElementById('newTaskColModal') ? document.getElementById('newTaskColModal').value : 'todo'
+    tags: tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [],
+    assignee: document.getElementById('newTaskAssigneeModal')?.value.trim() || getCurrentUserName(),
+    due_date: dueRaw || 'TBD',
+    column_name: document.getElementById('newTaskColModal')?.value || 'todo'
   };
   const result = await supabaseInsert('tasks', body);
   if (result && result[0]) { STATE.tasks.unshift(result[0]); closeModal(); renderKanban(); showToast('✅ Task added!'); }
@@ -2331,14 +2208,14 @@ async function submitNewTaskModal() {
 }
 
 async function submitUploadDoc() {
-  const name = document.getElementById('uploadDocName') ? document.getElementById('uploadDocName').value.trim() : '';
+  const name = document.getElementById('uploadDocName')?.value.trim();
   if (!name) { showToast('Document name required'); return; }
-  const typeVal = document.getElementById('uploadDocType') ? document.getElementById('uploadDocType').value : 'PDF';
-  const iconMap = { PDF: '📕', Excel: '📗', Word: '📘', Image: '🖼️' };
+  const typeVal = document.getElementById('uploadDocType')?.value || 'PDF';
+  const iconMap = { PDF:'📕', Excel:'📗', Word:'📘', Image:'🖼️' };
   const body = {
-    name, doc_type: typeVal, icon: iconMap[typeVal] || '📄',
-    client_name: document.getElementById('uploadDocClient') ? document.getElementById('uploadDocClient').value : 'Internal',
-    file_size: document.getElementById('uploadDocSize') ? document.getElementById('uploadDocSize').value.trim() : 'Unknown'
+    name, doc_type: typeVal, icon: iconMap[typeVal]||'📄',
+    client_name: document.getElementById('uploadDocClient')?.value || 'Internal',
+    file_size: document.getElementById('uploadDocSize')?.value.trim() || 'Unknown'
   };
   const result = await supabaseInsert('documents', body);
   if (result && result[0]) { STATE.documents.unshift(result[0]); closeModal(); renderDocuments(); showToast('✅ Document uploaded!'); }
@@ -2346,14 +2223,10 @@ async function submitUploadDoc() {
 }
 
 async function submitNewEvent() {
-  const title = document.getElementById('newEventTitle') ? document.getElementById('newEventTitle').value.trim() : '';
-  const dateVal = document.getElementById('newEventDate') ? document.getElementById('newEventDate').value : '';
+  const title = document.getElementById('newEventTitle')?.value.trim();
+  const dateVal = document.getElementById('newEventDate')?.value;
   if (!title || !dateVal) { showToast('Please fill all fields'); return; }
-  const body = {
-    title,
-    event_type: document.getElementById('newEventType') ? document.getElementById('newEventType').value : 'Internal',
-    event_date: dateVal
-  };
+  const body = { title, event_type: document.getElementById('newEventType')?.value || 'Internal', event_date: dateVal };
   const result = await supabaseInsert('calendar_events', body);
   if (result && result[0]) {
     STATE.calendarEvents.push(result[0]);
@@ -2362,7 +2235,7 @@ async function submitNewEvent() {
 }
 
 /* =========================================================
-   28. QUICK ACTION
+   30. QUICK ACTION
    ========================================================= */
 
 function openQuickAction() {
@@ -2381,36 +2254,13 @@ function openQuickAction() {
 }
 
 /* =========================================================
-   29. PROFILE & LOGOUT
+   31. PROFILE & LOGOUT
    ========================================================= */
 
-function loadUserInfo() {
-  const userRaw = localStorage.getItem('witcorp-user');
-  if (!userRaw) return;
-  const user = JSON.parse(userRaw);
-  const name = (user.user_metadata && user.user_metadata.full_name)
-    ? user.user_metadata.full_name
-    : (user.email ? user.email.split('@')[0] : 'User');
-  const initial = name.charAt(0).toUpperCase();
-
-  const initEl = document.getElementById('userInitial');
-  const nameEl = document.getElementById('userDisplayName');
-  const roleEl = document.getElementById('userDisplayRole');
-  const welcomeEl = document.getElementById('welcomeUserName');
-
-  if (initEl) initEl.textContent = initial;
-  if (nameEl) nameEl.textContent = name;
-  if (roleEl) roleEl.textContent = (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'Member';
-  if (welcomeEl) welcomeEl.textContent = name;
-}
-
 function openProfile() {
-  const userRaw = localStorage.getItem('witcorp-user');
-  const user = userRaw ? JSON.parse(userRaw) : {};
-  const name = (user.user_metadata && user.user_metadata.full_name)
-    ? user.user_metadata.full_name
-    : (user.email ? user.email.split('@')[0] : 'User');
-  const email = user.email || 'Not available';
+  const user = getCurrentUser();
+  const name = getCurrentUserName();
+  const email = user?.email || 'Not available';
   const initial = name.charAt(0).toUpperCase();
   openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
@@ -2419,22 +2269,19 @@ function openProfile() {
       <div style="color:var(--text-muted);font-size:13px">WITCORP India Advisors LLP</div>
     </div>
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(email)}</div></div>
-    <div class="form-group"><label>User ID</label><div class="form-control" style="background:var(--bg)">${escapeHtml(user.id || 'N/A')}</div></div>
+    <div class="form-group"><label>User ID</label><div class="form-control" style="background:var(--bg)">${escapeHtml(user?.id||'N/A')}</div></div>
     <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
     <button class="btn-outline" style="width:100%;margin-top:8px;border-color:#ef4444;color:#ef4444" onclick="logout()">🚪 Logout</button>
   `);
 }
 
 async function logout() {
-  if (typeof closeModal === 'function') closeModal();
+  closeModal();
   const token = localStorage.getItem('witcorp-access-token');
   if (token) {
     await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/logout', {
       method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + token
-      }
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer '+token }
     }).catch(() => {});
   }
   localStorage.clear();
@@ -2443,7 +2290,7 @@ async function logout() {
 }
 
 /* =========================================================
-   30. GLOBAL SEARCH
+   32. GLOBAL SEARCH
    ========================================================= */
 
 function handleSearch(query) {
@@ -2451,21 +2298,20 @@ function handleSearch(query) {
   clearTimeout(window._searchTimeout);
   window._searchTimeout = setTimeout(() => {
     const q = query.toLowerCase();
-    const clients = STATE.clients.filter(c => (c.name || '').toLowerCase().includes(q)).length;
-    const tasks = STATE.tasks.filter(t => (t.title || '').toLowerCase().includes(q)).length;
+    const clients = STATE.clients.filter(c=>(c.name||'').toLowerCase().includes(q)).length;
+    const tasks = STATE.tasks.filter(t=>(t.title||'').toLowerCase().includes(q)).length;
     const msg = [];
-    if (clients) msg.push(clients + ' client(s)');
-    if (tasks) msg.push(tasks + ' task(s)');
-    if (msg.length) showToast('Found: ' + msg.join(', '));
+    if (clients) msg.push(clients+' client(s)');
+    if (tasks) msg.push(tasks+' task(s)');
+    if (msg.length) showToast('Found: '+msg.join(', '));
   }, 500);
 }
 
 /* =========================================================
-   31. TOAST
+   33. TOAST
    ========================================================= */
 
 let toastTimeout = null;
-
 function showToast(message) {
   const toast = document.getElementById('toast');
   if (!toast) return;
@@ -2476,30 +2322,19 @@ function showToast(message) {
 }
 
 /* =========================================================
-   32. KEYBOARD & GLOBAL LISTENERS
+   34. KEYBOARD & GLOBAL LISTENERS
    ========================================================= */
 
 function attachGlobalListeners() {
   document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      const gs = document.getElementById('globalSearch');
-      if (gs) gs.focus();
-    }
-    if (e.key === 'Escape') {
-      closeModal();
-      closeNotifications();
-      cancelReply();
-      const menu = document.getElementById('waContextMenu');
-      if (menu) menu.style.display = 'none';
-      if (window.innerWidth <= 768) closeSidebar();
-    }
+    if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k') { e.preventDefault(); const gs=document.getElementById('globalSearch'); if(gs) gs.focus(); }
+    if (e.key==='Escape') { closeModal(); closeNotifications(); cancelReply(); const menu=document.getElementById('waContextMenu'); if(menu) menu.style.display='none'; if(window.innerWidth<=768) closeSidebar(); }
   });
-  window.addEventListener('resize', () => { if (window.innerWidth > 768) closeSidebar(); });
+  window.addEventListener('resize', () => { if(window.innerWidth>768) closeSidebar(); });
 }
 
 /* =========================================================
-   33. NOTIFICATIONS
+   35. NOTIFICATIONS
    ========================================================= */
 
 function openNotifications() {
@@ -2509,22 +2344,19 @@ function openNotifications() {
   const notifList = document.getElementById('notifList');
   if (!notifList) return;
   const notifs = [];
-  STATE.gstReturns.filter(g => g.status === 'Pending').slice(0, 2).forEach(g => {
-    notifs.push({ icon: '📊', text: 'GSTR pending: ' + g.client_name + ' — ' + g.return_type, time: 'Pending' });
+  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => { notifs.push({icon:'📊',text:'GSTR pending: '+g.client_name+' — '+g.return_type,time:'Pending'}); });
+
+  // DSC expiring soon (real-time calculation)
+  STATE.dscRecords.filter(d => { const days=dscDaysLeft(d.expiry_date); return days!==null&&days>=0&&days<=30; }).forEach(d => {
+    notifs.push({icon:'⚠️',text:'DSC expiring: '+d.client_name+' in '+dscDaysLeft(d.expiry_date)+' days',time:'Alert'});
   });
-  STATE.dscRecords.filter(d => (d.days_left || 99) <= 30).forEach(d => {
-    notifs.push({ icon: '⚠️', text: 'DSC expiring: ' + d.client_name + ' in ' + d.days_left + ' days', time: 'Alert' });
-  });
-  STATE.tasks.filter(t => t.column_name === 'todo' && (t.tags || []).includes('High')).slice(0, 2).forEach(t => {
-    notifs.push({ icon: '🔴', text: 'High priority: ' + t.title, time: 'Task' });
-  });
-  notifList.innerHTML = (notifs.length ? notifs : [{ icon: '✅', text: 'No new notifications', time: '' }]).map(n => `
+  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => { notifs.push({icon:'🔴',text:'High priority: '+t.title,time:'Task'}); });
+  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅',text:'No new notifications',time:''}]).map(n=>`
     <div class="notif-item">
       <div class="notif-icon">${n.icon}</div>
       <div><div class="notif-text">${escapeHtml(n.text)}</div><div class="notif-time">${escapeHtml(n.time)}</div></div>
-    </div>
-  `).join('');
-  const dot = document.querySelector('.notif-dot');
+    </div>`).join('');
+  const dot = document.getElementById('notifCount');
   if (dot) dot.textContent = notifs.length || '0';
 }
 
@@ -2535,35 +2367,31 @@ function closeNotifications() {
 }
 
 /* =========================================================
-   34. UTILITY
+   36. UTILITY
    ========================================================= */
 
 function escapeHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  if (str===null||str===undefined) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function formatAmount(num) {
   if (!num) return '0';
-  if (num >= 100000) return (num / 100000).toFixed(1) + 'L';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  if (num>=100000) return (num/100000).toFixed(1)+'L';
+  if (num>=1000) return (num/1000).toFixed(1)+'K';
   return num.toLocaleString('en-IN');
 }
 
 function statusBadge(status) {
   const map = {
-    'Active': 'badge-success', 'Inactive': 'badge-danger', 'Pending': 'badge-warning',
-    'Filed': 'badge-success', 'Overdue': 'badge-danger', 'In Progress': 'badge-info',
-    'In Review': 'badge-purple', 'Completed': 'badge-success', 'Expiring Soon': 'badge-warning', 'Expired': 'badge-danger'
+    'Active':'badge-success','Inactive':'badge-danger','Pending':'badge-warning',
+    'Filed':'badge-success','Overdue':'badge-danger','In Progress':'badge-info',
+    'In Review':'badge-purple','Completed':'badge-success','Expiring Soon':'badge-warning',
+    'Expired':'badge-danger','Valid':'badge-success','Pending Renewal':'badge-warning'
   };
-  return `<span class="badge ${map[status] || 'badge-info'}">${escapeHtml(status)}</span>`;
+  return `<span class="badge ${map[status]||'badge-info'}">${escapeHtml(status||'-')}</span>`;
 }
 
 /* =========================================================
-   END OF app_enhanced.js — WITCORP Enterprise Edition
+   END OF app_enhanced.js — WITCORP Fixed Edition
    ========================================================= */
