@@ -1,10 +1,12 @@
 /* =============================================================
    WITCORP DASHBOARD - app_enhanced.js
-   FULLY FIXED VERSION v2:
+   FULLY FIXED VERSION v3:
    ✅ updated_by column shown in ALL tables with correct headers
+   ✅ updated_at shown everywhere with correct variable names
    ✅ ROC — client dropdown from Client Management
    ✅ TDS — client dropdown from Client Management
    ✅ DSC fixed, real-time sync, all bugs removed
+   ✅ contact_person added in clients
    ============================================================= */
 
 /* =========================================================
@@ -277,6 +279,7 @@ function renderVaultCredentials() {
         ${cred.url ? `<div><strong>URL:</strong> ${escapeHtml(cred.url.substring(0, 40))}${cred.url.length > 40 ? '...' : ''}</div>` : ''}
         ${cred.username ? `<div><strong>Username:</strong> ${escapeHtml(cred.username)}</div>` : ''}
         ${cred.updated_by ? `<div style="font-size:11px;color:var(--text-muted)">Updated by: ${escapeHtml(cred.updated_by)}</div>` : ''}
+        ${cred.updated_at ? `<div style="font-size:11px;color:var(--text-muted)">🕐 ${formatDateTime(cred.updated_at)}</div>` : ''}
         <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Added ${new Date(cred.created_at).toLocaleDateString()}</div>
       </div>
     </div>
@@ -300,6 +303,7 @@ function viewVaultItem(id) {
     </div></div>
     ${cred.notes ? `<div class="form-group"><label>Notes</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.notes)}</div></div>` : ''}
     ${cred.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.updated_by)}</div></div>` : ''}
+    ${cred.updated_at ? `<div class="form-group"><label>Last Updated At</label><div class="form-control" style="background:var(--bg)">🕐 ${formatDateTime(cred.updated_at)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
@@ -336,7 +340,7 @@ async function saveVaultEdit(id) {
   const ok = await supabaseUpdate('vault_credentials', id, updated);
   if (ok) {
     const idx = STATE.vaultCredentials.findIndex(c => c.id === id);
-    if (idx !== -1) STATE.vaultCredentials[idx] = { ...STATE.vaultCredentials[idx], ...updated, updated_by: getCurrentUserEmail() };
+    if (idx !== -1) STATE.vaultCredentials[idx] = { ...STATE.vaultCredentials[idx], ...updated, updated_by: getCurrentUserEmail(), updated_at: new Date().toISOString() };
     closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('✅ Credential updated!');
   } else { showToast('❌ Update failed'); }
 }
@@ -675,7 +679,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderVaultCredentials();
   populateAllClientDropdowns();
 
-  // Real-time polling every 5 seconds for team chat
   setInterval(async () => {
     await renderTeamContacts();
     if (STATE.activeChatContact) await renderTeamMessages();
@@ -756,22 +759,12 @@ async function loadAllData() {
 }
 
 /* =========================================================
-   10. CLIENT DROPDOWNS — ALL PAGES COVERED
+   10. CLIENT DROPDOWNS
    ========================================================= */
 
 function populateAllClientDropdowns() {
   const clientOptions = getClientOptionsHtml(true);
-
-  // All dropdown IDs across every page
-  const dropdownIds = [
-    'gstClientSel',    // GST page
-    'itrClientSel',    // Income Tax page
-    'auditClientSel',  // Audit modal
-    'tdsClientSel',    // TDS page
-    'rocClientSel',    // ROC page
-    'dscClientSel',    // DSC page (if used)
-  ];
-
+  const dropdownIds = ['gstClientSel','itrClientSel','auditClientSel','tdsClientSel','rocClientSel','dscClientSel'];
   dropdownIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = clientOptions;
@@ -808,7 +801,6 @@ function navigate(page) {
   if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
   if (page === 'gst') renderGSTPage();
   if (page === 'dsc') renderDSCAlerts();
-  // Re-populate dropdowns on every page navigation
   populateAllClientDropdowns();
 }
 
@@ -849,7 +841,7 @@ function initRightPanelMobile() {
 document.addEventListener('DOMContentLoaded', initRightPanelMobile);
 
 /* =========================================================
-   13. DATE
+   13. DATE & DATETIME
    ========================================================= */
 
 function setCurrentDate() {
@@ -866,6 +858,7 @@ function formatDateTime(isoString) {
   const d = new Date(isoString);
   return d.toLocaleDateString('en-IN') + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
+
 /* =========================================================
    14. DASHBOARD STATS
    ========================================================= */
@@ -990,7 +983,7 @@ function renderClientTable() {
   const pageItems = filtered.slice(start, start+perPage);
 
   if (!pageItems.length) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No clients found</div><div class="empty-state-sub">Try adjusting filters or add a new client</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No clients found</div><div class="empty-state-sub">Try adjusting filters or add a new client</div></div></td></tr>`;
   } else {
     tbody.innerHTML = pageItems.map(c => `
       <tr>
@@ -1002,7 +995,10 @@ function renderClientTable() {
         <td>${escapeHtml(c.email||'-')}</td>
         <td>${escapeHtml(c.phone||'-')}</td>
         <td>${statusBadge(c.status)}</td>
-        <td class="updated-by-cell"><span class="updated-by-badge">${escapeHtml(c.updated_by||'-')}</span></td>
+        <td class="updated-by-cell">
+          <span class="updated-by-badge">${escapeHtml(c.updated_by||'-')}</span>
+          ${c.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(c.updated_at)}</span>` : ''}
+        </td>
         <td>
           <button class="btn-outline" style="padding:5px 10px;font-size:11.5px;margin-right:4px" onclick="viewClient(${c.id})">View</button>
           <button class="btn-outline" style="padding:5px 10px;font-size:11.5px;margin-right:4px" onclick="editClient(${c.id})">Edit</button>
@@ -1025,6 +1021,7 @@ function viewClient(id) {
   if (!c) return;
   openModalWithContent(`👥 ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.name)}</div></div>
+    <div class="form-group"><label>Contact Person</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.contact_person||'-')}</div></div>
     <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan||'-')}</div></div>
     <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.type||'-')}</div></div>
     <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.gst||'-')}</div></div>
@@ -1032,7 +1029,7 @@ function viewClient(id) {
     <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone||'-')}</div></div>
     <div class="form-group"><label>Status</label><div>${statusBadge(c.status)}</div></div>
     ${c.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.updated_by)}</div></div>` : ''}
-    ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    ${c.updated_at ? `<div class="form-group"><label>Last Updated At</label><div class="form-control" style="background:var(--bg)">🕐 ${formatDateTime(c.updated_at)}</div></div>` : ''}
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>
   `);
 }
@@ -1042,6 +1039,7 @@ function editClient(id) {
   if (!c) return;
   openModalWithContent(`✏️ Edit — ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeHtml(c.name)}" /></div>
+    <div class="form-group"><label>Contact Person</label><input type="text" class="form-control" id="editClientContact" value="${escapeHtml(c.contact_person||'')}" placeholder="Enter contact person" /></div>
     <div class="form-group"><label>PAN</label><input type="text" class="form-control" id="editClientPAN" value="${escapeHtml(c.pan||'')}" /></div>
     <div class="form-group"><label>Type</label>
       <select class="form-control" id="editClientType">
@@ -1064,7 +1062,9 @@ async function saveClientEdit(id) {
   const name = document.getElementById('editClientName')?.value.trim();
   if (!name) { showToast('Client name required'); return; }
   const updated = {
-    name, pan: document.getElementById('editClientPAN')?.value.trim(),
+    name,
+    contact_person: document.getElementById('editClientContact')?.value.trim() || '',
+    pan: document.getElementById('editClientPAN')?.value.trim(),
     type: document.getElementById('editClientType')?.value,
     email: document.getElementById('editClientEmail')?.value.trim(),
     phone: document.getElementById('editClientPhone')?.value.trim(),
@@ -1074,8 +1074,7 @@ async function saveClientEdit(id) {
   const ok = await supabaseUpdate('clients', id, updated);
   if (ok) {
     const idx = STATE.clients.findIndex(c => c.id === id);
-    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated, updated_by: getCurrentUserEmail() };
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated, updated_by: getCurrentUserEmail(), updated_at: new Date().toISOString() };
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client updated!');
   } else { showToast('❌ Update failed.'); }
 }
@@ -1147,7 +1146,7 @@ function renderGSTPage() {
             <div class="gst-item-name">${escapeHtml(g.client_name)}</div>
             <div class="gst-item-sub">${escapeHtml(g.return_type)} • ${escapeHtml(g.period)} ${g.remarks ? '• '+escapeHtml(g.remarks) : ''}</div>
             ${g.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(g.updated_by)}</div>` : ''}
-            ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+            ${g.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(g.updated_at)}</div>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             ${statusBadge(g.status)}
@@ -1221,8 +1220,7 @@ async function saveGSTEdit(id) {
   const ok = await supabaseUpdate('gst_returns', id, { status, remarks });
   if (ok) {
     const idx = STATE.gstReturns.findIndex(g => g.id === id);
-    if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; STATE.gstReturns[idx].updated_by = getCurrentUserEmail(); }
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; STATE.gstReturns[idx].updated_by = getCurrentUserEmail(); STATE.gstReturns[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderGSTPage(); showToast('✅ GST return updated!');
   }
 }
@@ -1233,7 +1231,7 @@ async function deleteGSTReturn(id) {
 }
 
 /* =========================================================
-   17. ROC FILINGS — FIXED: client dropdown + updated_by column
+   17. ROC FILINGS
    ========================================================= */
 
 const ROC_FORMS = [
@@ -1258,8 +1256,10 @@ function renderROCTable() {
       <td>${escapeHtml(r.due_date||'-')}</td>
       <td>${statusBadge(r.status)}</td>
       <td class="remarks-cell" title="${escapeHtml(r.remarks||'')}">${escapeHtml(r.remarks||'-')}</td>
-      <td class="updated-by-cell"><span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span></td>
-      ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+      <td class="updated-by-cell">
+        <span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span>
+        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
+      </td>
       <td>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteROC(${r.id})">Delete</button>
@@ -1288,8 +1288,7 @@ async function saveROCStatus(id) {
   const ok = await supabaseUpdate('roc_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.rocFilings.findIndex(r => r.id === id);
-    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; STATE.rocFilings[idx].updated_by = getCurrentUserEmail(); }
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; STATE.rocFilings[idx].updated_by = getCurrentUserEmail(); STATE.rocFilings[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderROCTable(); showToast('✅ ROC status updated');
   }
 }
@@ -1299,7 +1298,6 @@ async function deleteROC(id) {
   if (ok) { STATE.rocFilings = STATE.rocFilings.filter(r => r.id !== id); renderROCTable(); showToast('🗑️ ROC filing deleted'); }
 }
 
-// FIXED: ROC submit now uses client dropdown
 async function submitROCFiling() {
   const clientSel = document.getElementById('rocClientSel');
   const companyEl = document.getElementById('rocCompany');
@@ -1308,7 +1306,6 @@ async function submitROCFiling() {
   const dueEl = document.getElementById('rocDue');
   const remarksEl = document.getElementById('rocRemarks2');
 
-  // Use client dropdown if available and selected, else fallback to manual company input
   let companyName = '';
   if (clientSel && clientSel.value) {
     companyName = getClientNameById(clientSel.value);
@@ -1316,7 +1313,7 @@ async function submitROCFiling() {
     companyName = companyEl.value.trim();
   }
   if (!companyName) { showToast('Please select a client or enter company name'); return; }
-   const dueVal = dueEl?.value;
+  const dueVal = dueEl?.value;
   if (!dueVal) { showToast('Please select a due date'); return; }
 
   const cinVal = cinEl?.value.trim().toUpperCase() || '';
@@ -1362,7 +1359,7 @@ function renderITRList() {
         <div class="gst-item-sub">${escapeHtml(itr.form)} • AY ${escapeHtml(itr.assessment_year)} • Filed: ${escapeHtml(itr.filed_date||'-')}</div>
         ${itr.remarks ? `<div class="gst-item-sub" style="color:var(--text-muted)">📝 ${escapeHtml(itr.remarks)}</div>` : ''}
         ${itr.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(itr.updated_by)}</div>` : ''}
-        ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+        ${itr.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(itr.updated_at)}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         ${statusBadge(itr.status)}
@@ -1393,8 +1390,7 @@ async function saveITREdit(id) {
   const ok = await supabaseUpdate('itr_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.itrFilings.findIndex(i => i.id === id);
-    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; STATE.itrFilings[idx].updated_by = getCurrentUserEmail(); }
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; STATE.itrFilings[idx].updated_by = getCurrentUserEmail(); STATE.itrFilings[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderITRList(); showToast('✅ ITR updated!');
   }
 }
@@ -1435,7 +1431,7 @@ async function deleteITR(id) {
 }
 
 /* =========================================================
-   19. TDS RETURNS — FIXED: client dropdown + updated_by column
+   19. TDS RETURNS
    ========================================================= */
 
 function renderTDSTable() {
@@ -1454,8 +1450,10 @@ function renderTDSTable() {
       <td>₹ ${formatAmount(t.amount||0)}</td>
       <td>${escapeHtml(t.challan_no||'-')}</td>
       <td>${statusBadge(t.status)}</td>
-      <td class="updated-by-cell"><span class="updated-by-badge">${escapeHtml(t.updated_by||'-')}</span></td>
-      ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+      <td class="updated-by-cell">
+        <span class="updated-by-badge">${escapeHtml(t.updated_by||'-')}</span>
+        ${t.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(t.updated_at)}</span>` : ''}
+      </td>
       <td>
         <button class="btn-outline" style="padding:4px 8px;font-size:11px;margin-right:4px" onclick="editTDS(${t.id})">✏️</button>
         <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteTDS(${t.id})">✕</button>
@@ -1484,13 +1482,11 @@ async function saveTDSEdit(id) {
   const ok = await supabaseUpdate('tds_returns', id, { status, remarks });
   if (ok) {
     const idx = STATE.tdsReturns.findIndex(t => t.id === id);
-    if (idx !== -1) { STATE.tdsReturns[idx].status = status; STATE.tdsReturns[idx].remarks = remarks; STATE.tdsReturns[idx].updated_by = getCurrentUserEmail(); }
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) { STATE.tdsReturns[idx].status = status; STATE.tdsReturns[idx].remarks = remarks; STATE.tdsReturns[idx].updated_by = getCurrentUserEmail(); STATE.tdsReturns[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderTDSTable(); showToast('✅ TDS updated!');
   }
 }
 
-// FIXED: submitTDS now uses client dropdown
 async function submitTDS() {
   const clientSel = document.getElementById('tdsClientSel');
   const deductorEl = document.getElementById('tdsDeductor');
@@ -1500,7 +1496,6 @@ async function submitTDS() {
   const amountEl = document.getElementById('tdsAmount');
   const challanEl = document.getElementById('tdsChallan');
 
-  // Get client name from dropdown, fallback to deductor field
   let clientName = '';
   let clientId = null;
   if (clientSel && clientSel.value) {
@@ -1510,7 +1505,7 @@ async function submitTDS() {
   const deductor = deductorEl?.value.trim();
   if (!clientName && !deductor) { showToast('Please select a client or enter deductor name'); return; }
 
- const tanVal = tanEl?.value.trim().toUpperCase() || '';
+  const tanVal = tanEl?.value.trim().toUpperCase() || '';
   if (tanVal && !isValidFormat(tanVal, 'tan')) { showToast('❌ Invalid TAN format. Use ABCD12345E'); return; }
   const body = {
     client_name: clientName || deductor,
@@ -1534,7 +1529,7 @@ async function deleteTDS(id) {
 }
 
 /* =========================================================
-   20. AUDIT — updated_by column shown
+   20. AUDIT
    ========================================================= */
 
 function renderAuditTable() {
@@ -1552,8 +1547,10 @@ function renderAuditTable() {
       <td>${escapeHtml(a.start_date||'-')}</td>
       <td>${escapeHtml(a.end_date||'-')}</td>
       <td>${statusBadge(a.status)}</td>
-      <td class="updated-by-cell"><span class="updated-by-badge">${escapeHtml(a.updated_by||'-')}</span></td>
-      ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+      <td class="updated-by-cell">
+        <span class="updated-by-badge">${escapeHtml(a.updated_by||'-')}</span>
+        ${a.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(a.updated_at)}</span>` : ''}
+      </td>
       <td>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editAuditStatus(${a.id})">Update</button>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteAudit(${a.id})">Delete</button>
@@ -1582,8 +1579,7 @@ async function saveAuditStatus(id) {
   const ok = await supabaseUpdate('audits', id, { status, remarks });
   if (ok) {
     const idx = STATE.audits.findIndex(a => a.id === id);
-    if (idx !== -1) { STATE.audits[idx].status = status; STATE.audits[idx].remarks = remarks; STATE.audits[idx].updated_by = getCurrentUserEmail(); }
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) { STATE.audits[idx].status = status; STATE.audits[idx].remarks = remarks; STATE.audits[idx].updated_by = getCurrentUserEmail(); STATE.audits[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderAuditTable(); showToast('✅ Audit status updated');
   }
 }
@@ -1594,7 +1590,7 @@ async function deleteAudit(id) {
 }
 
 /* =========================================================
-   21. DSC — flexible field mapping, updated_by shown
+   21. DSC
    ========================================================= */
 
 function dscDaysLeft(expiryDate) {
@@ -1670,8 +1666,7 @@ async function saveDSCEdit(id) {
   const ok = await supabaseUpdate('dsc_records', id, { status, expiry_date, remarks });
   if (ok) {
     const idx = STATE.dscRecords.findIndex(d => d.id === id);
-    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; STATE.dscRecords[idx].updated_by = getCurrentUserEmail(); }
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; STATE.dscRecords[idx].updated_by = getCurrentUserEmail(); STATE.dscRecords[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderDSCAlerts(); showToast('✅ DSC updated!');
   }
 }
@@ -1704,9 +1699,7 @@ async function submitDSC() {
 
   let result = await supabaseInsert('dsc_records', body);
 
-  // Fallback with alternate schema field names
   if (!result || !result[0]) {
-    console.warn('DSC insert failed with standard fields, trying alternate schema...');
     const altBody = {
       name: clientName,
       pan_number: panEl?.value.trim() || '',
@@ -1729,7 +1722,6 @@ async function submitDSC() {
     if (expiryEl) expiryEl.value = '';
     if (remarksEl) remarksEl.value = '';
   } else {
-    console.error('DSC submission failed. Check Supabase table schema for dsc_records.');
     showToast('❌ DSC submission failed — check console for details');
   }
 }
@@ -1756,7 +1748,7 @@ function renderAccountingList() {
         <div class="gst-item-name">${escapeHtml(t.narration)}</div>
         <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
         ${t.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(t.updated_by)}</div>` : ''}
-        ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+        ${t.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(t.updated_at)}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
@@ -1819,7 +1811,7 @@ function renderKanban() {
           <span>📅 ${escapeHtml(t.due_date||'TBD')}</span>
         </div>
         ${t.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(t.updated_by)}</div>` : ''}
-        ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+        ${t.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(t.updated_at)}</div>` : ''}
       </div>`).join('') || `<div class="empty-state" style="padding:20px 10px"><div class="empty-state-text" style="font-size:13px">No tasks here</div></div>`;
     container.ondragover = (e) => e.preventDefault();
     container.ondrop = (e) => dropTask(e, col);
@@ -1837,7 +1829,7 @@ async function dropTask(e, targetCol) {
     await supabaseUpdate('tasks', draggedTaskId, { column_name: targetCol });
     task.column_name = targetCol;
     task.updated_by = getCurrentUserEmail();
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    task.updated_at = new Date().toISOString();
     renderKanban();
     showToast('✅ Task moved to ' + columnLabel(targetCol));
   }
@@ -1888,7 +1880,7 @@ function openTaskDetail(id) {
       </select>
     </div>
     ${task.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg)">${escapeHtml(task.updated_by)}</div></div>` : ''}
-    ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    ${task.updated_at ? `<div class="form-group"><label>Last Updated At</label><div class="form-control" style="background:var(--bg)">🕐 ${formatDateTime(task.updated_at)}</div></div>` : ''}
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn-primary" style="flex:1" onclick="updateTask(${task.id})">💾 Save</button>
       <button class="btn-outline" style="flex:1;border-color:#ef4444;color:#ef4444" onclick="deleteTask(${task.id})">🗑️ Delete</button>
@@ -1909,8 +1901,7 @@ async function updateTask(id) {
   const ok = await supabaseUpdate('tasks', id, updated);
   if (ok) {
     const idx = STATE.tasks.findIndex(t => t.id === id);
-    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated, updated_by: getCurrentUserEmail() };
-     ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated, updated_by: getCurrentUserEmail(), updated_at: new Date().toISOString() };
     closeModal(); renderKanban(); showToast('✅ Task updated!');
   }
 }
@@ -2123,10 +2114,9 @@ function renderActivity() {
   const el = document.getElementById('activityList');
   if (!el) return;
   const activities = [];
-  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => { activities.push({icon:'✅',color:'green',text:'GSTR filed for '+g.client_name,time:g.filed_date||'Recently',by:g.updated_by||''}); });
-  STATE.itrFilings.filter(i=>i.status==='Filed').slice(0,2).forEach(i => { activities.push({icon:'💰',color:'blue',text:'ITR filed for '+i.client_name,time:i.filed_date||'Recently',by:i.updated_by||''}); });
-  STATE.tasks.filter(t=>t.column_name==='done').slice(0,2).forEach(t => { activities.push({icon:'✅',color:'orange',text:t.title,time:'Completed',by:t.updated_by||''}); });
-   ${d.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(d.updated_at)}</div>` : ''}
+  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => { activities.push({icon:'✅',color:'green',text:'GSTR filed for '+g.client_name,time:g.updated_at ? formatDateTime(g.updated_at) : (g.filed_date||'Recently'),by:g.updated_by||''}); });
+  STATE.itrFilings.filter(i=>i.status==='Filed').slice(0,2).forEach(i => { activities.push({icon:'💰',color:'blue',text:'ITR filed for '+i.client_name,time:i.updated_at ? formatDateTime(i.updated_at) : (i.filed_date||'Recently'),by:i.updated_by||''}); });
+  STATE.tasks.filter(t=>t.column_name==='done').slice(0,2).forEach(t => { activities.push({icon:'✅',color:'orange',text:t.title,time:t.updated_at ? formatDateTime(t.updated_at) : 'Completed',by:t.updated_by||''}); });
   el.innerHTML = activities.length ? activities.slice(0,6).map(a=>`
     <div class="activity-item">
       <div class="activity-dot ${a.color}">${a.icon}</div>
@@ -2160,7 +2150,6 @@ function openModal(type) {
         <button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>`
     },
     gstReturn: { title:'📊 File GST Return', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">📊</div><p style="margin:12px 0">Use the GST Dashboard form below</p><button class="btn-primary" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button></div>` },
-    // FIXED: ROC now has client dropdown
     rocFiling: {
       title: '🏛️ New ROC Filing',
       body: `
@@ -2504,11 +2493,9 @@ function closeNotifications() {
 }
 
 /* =========================================================
-   36. UTILITY
+   36. UTILITY & FORMAT VALIDATORS
    ========================================================= */
-/* =========================================================
-   FORMAT VALIDATORS — auto-capitalize + correct length
-   ========================================================= */
+
 const FORMAT_RULES = {
   pan: { regex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, len: 10, example: 'ABCDE1234F' },
   tan: { regex: /^[A-Z]{4}[0-9]{5}[A-Z]{1}$/, len: 10, example: 'ABCD12345E' },
@@ -2529,15 +2516,17 @@ function attachFormatField(inputId, ruleKey) {
 }
 
 function isValidFormat(value, ruleKey) {
-  if (!value) return true; // empty allowed unless marked required separately
+  if (!value) return true;
   const rule = FORMAT_RULES[ruleKey];
   return rule.regex.test(value.toUpperCase());
 }
+
 function isJunkText(value, minLen = 3) {
   if (!value) return false;
   const trimmed = value.trim();
   return trimmed.length > 0 && trimmed.length < minLen;
 }
+
 function escapeHtml(str) {
   if (str===null||str===undefined) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -2561,12 +2550,9 @@ function statusBadge(status) {
 }
 
 /* =========================================================
-   END OF app_enhanced.js — WITCORP FIXED v2
-   ✅ updated_by column header added in Clients table HTML
-   ✅ updated_by shown in ROC, TDS, Audit tables
-   ✅ ROC — client dropdown (rocClientSel) with manual fallback
-   ✅ TDS — client dropdown (tdsClientSel) with deductor fallback
-   ✅ TDS table now shows client_name column
-   ✅ All dropdowns populated via populateAllClientDropdowns()
-   ✅ All bugs fixed, no functions removed
+   END OF app_enhanced.js — WITCORP FIXED v3
+   ✅ updated_at sahi variable se har jagah fix kiya
+   ✅ contact_person add/edit/view mein add kiya
+   ✅ renderActivity mein updated_at use kiya
+   ✅ saari syntax errors hatayi
    ========================================================= */
