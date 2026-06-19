@@ -644,12 +644,15 @@ function checkStrength(val) {
 
 // ===== INIT ON PAGE LOAD =====
 document.addEventListener('DOMContentLoaded', async () => {
-  const params = new URLSearchParams(window.location.search);
+ const params = new URLSearchParams(window.location.search);
+
+  // not_approved check — PEHLE, recovery se pehle
+  const errorParam = params.get('error');
+  if (errorParam === 'not_approved') {
+    showAuthError('⏳ Your account is pending approval. Contact Admin.');
+  }
+
   if (params.get('type') === 'recovery') {
-    const errorParam = params.get('error');
-if (errorParam === 'not_approved') {
-  showAuthError('⏳ Your Account is Pending with approval.Contact Admin.');
-}
     const hash = window.location.hash;
     if (hash) {
       const hp = new URLSearchParams(hash.replace('#', ''));
