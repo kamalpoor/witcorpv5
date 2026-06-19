@@ -827,7 +827,7 @@ function navigate(page) {
   if (window.innerWidth <= 768) closeSidebar();
   closeNotifications();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (page === 'reports') setTimeout(renderBarChart, 100);
+  if (page === 'reports') { setTimeout(renderBarChart, 100); setTimeout(updateDashboardStats, 200); }
   if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
   if (page === 'gst') renderGSTPage();
   if (page === 'dsc') renderDSCAlerts();
@@ -988,6 +988,10 @@ function updateDashboardStats() {
   if (ovItems[0]) ovItems[0].textContent = done;
   if (ovItems[1]) ovItems[1].textContent = inprog;
   if (ovItems[2]) ovItems[2].textContent = todo;
+   if (donutChart) {
+  if (!STATE.tasks.length) {
+    donutChart.style.background = `conic-gradient(var(--border) 0% 100%)`;
+  } else {
   const donutChart = document.querySelector('#page-reports .donut-chart');
   if (donutChart && STATE.tasks.length) {
     const doneP = done/STATE.tasks.length*100;
