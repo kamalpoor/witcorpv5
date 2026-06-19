@@ -646,6 +646,10 @@ function checkStrength(val) {
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   if (params.get('type') === 'recovery') {
+    const errorParam = params.get('error');
+if (errorParam === 'not_approved') {
+  showAuthError('⏳ Your Account is Pending with approval.Contact Admin.');
+}
     const hash = window.location.hash;
     if (hash) {
       const hp = new URLSearchParams(hash.replace('#', ''));
