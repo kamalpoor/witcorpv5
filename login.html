@@ -401,9 +401,27 @@ async function loginWithEmail(email, password) {
     return;
   }
   saveSession(result.data);
-  window.location.replace('index.html');
-}
 
+  // ✅ APPROVAL CHECK
+  const token = result.data.access_token;
+  const userId = result.data.user?.id;
+  const profileRes = await fetch(
+    SUPABASE_URL + '/rest/v1/profiles?id=eq.' + userId + '&select=status',
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token } }
+  );
+  const profile = await profileRes.json();
+  const status = profile?.[0]?.status;
+
+  if (status === 'approved') {
+    window.location.replace('index.html');
+  } else if (status === 'pending') {
+    clearSession();
+    showAuthError('⏳ Account pending approval hai. Admin se contact karo.');
+  } else {
+    clearSession();
+    showAuthError('🚫 Access block hai. Admin se contact karo.');
+  }
+}
 // ===== GOOGLE LOGIN =====
 function loginWithGoogle() {
   const redirectTo = encodeURIComponent('https://kamalpoor.github.io/witcorpv5/');
