@@ -450,28 +450,38 @@ async function logout() {
 
 async function requireAuth() {
   try {
-    // Check OAuth callback first
     const isCallback = await handleOAuthCallback();
-    if (isCallback) { 
-      redirectToDashboard(); 
-      return; 
-    }
+    if (isCallback) { redirectToDashboard(); return; }
 
-    // Check for recovery page
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('type') === 'recovery') {
       window.location.href = 'login.html?type=recovery';
       return;
     }
 
-    // Verify session
     const user = await getSession();
     if (!user) {
       const refreshed = await refreshToken();
-      if (!refreshed) { 
-        window.location.href = 'login.html'; 
-      }
+      if (!refreshed) { window.location.href = 'login.html'; }
+      return;
     }
+
+    // ✅ APPROVAL CHECK — har page load par check karo
+    let token = null;
+    try { token = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+
+    const profileRes = await fetch(
+      SUPABASE_URL + '/rest/v1/profiles?id=eq.' + user.id + '&select=status',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token } }
+    );
+    const profile = await profileRes.json();
+    const status = profile?.[0]?.status;
+
+    if (status !== 'approved') {
+      clearSession();
+      window.location.href = 'login.html';
+    }
+
   } catch (e) {
     console.error('[requireAuth]', e);
     window.location.href = 'login.html';
