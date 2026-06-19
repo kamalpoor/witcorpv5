@@ -956,6 +956,11 @@ function updateDashboardStats() {
 
   const donutCenter = document.querySelector('#page-reports .donut-center');
   if (donutCenter) donutCenter.textContent = pct+'%';
+   // Workspace Overview update
+  const ovItems = document.querySelectorAll('.overview-item strong');
+  if (ovItems[0]) ovItems[0].textContent = done;
+  if (ovItems[1]) ovItems[1].textContent = inprog;
+  if (ovItems[2]) ovItems[2].textContent = todo;
   const donutChart = document.querySelector('#page-reports .donut-chart');
   if (donutChart && STATE.tasks.length) {
     const doneP = done/STATE.tasks.length*100;
