@@ -1494,11 +1494,13 @@ async function submitTDS() {
   const deductor = deductorEl?.value.trim();
   if (!clientName && !deductor) { showToast('Please select a client or enter deductor name'); return; }
 
+ const tanVal = tanEl?.value.trim().toUpperCase() || '';
+  if (tanVal && !isValidFormat(tanVal, 'tan')) { showToast('❌ Invalid TAN format. Use ABCD12345E'); return; }
   const body = {
     client_name: clientName || deductor,
     client_id: clientId,
     deductor: deductor || clientName,
-    tan: tanEl?.value.trim() || '',
+    tan: tanVal,
     quarter: quarterSel?.value || '',
     form_type: formSel?.value || '',
     amount: parseFloat(amountEl?.value)||0,
