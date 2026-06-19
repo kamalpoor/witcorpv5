@@ -246,7 +246,7 @@ function renderVaultFolders() {
   if (!sidebar) return;
   const uniqueFolders = [...new Set(['General', ...STATE.vaultCredentials.map(c => c.folder || 'General')])];
   sidebar.innerHTML = uniqueFolders.map(folder => `
-    <div class="vault-folder ${STATE.vaultSelectedFolder === folder ? 'active' : ''}" onclick="selectVaultFolder('${escapeHtml(folder)}')">
+    <div class="vault-folder ${STATE.vaultSelectedFolder === folder ? 'active' : ''}" onclick="event.stopPropagation();selectVaultFolder('${escapeHtml(folder)}')">
       <span style="font-size:16px;margin-right:8px">📁</span>
       <span>${escapeHtml(folder)}</span>
       <span class="folder-count">${STATE.vaultCredentials.filter(c => (c.folder || 'General') === folder).length}</span>
@@ -2235,7 +2235,7 @@ function openModal(type) {
     <div class="form-group"><label>Username / Login ID</label><input type="text" class="form-control" id="vaultUsername" placeholder="Enter username or email" /></div>
     <div class="form-group"><label>Password</label>
       <div style="display:flex;gap:8px">
-        <input type="password" class="form-control" id="vaultPassword" placeholder="Enter password" style="flex:1" />
+        <input type="password" class="form-control" id="vaultPassword" placeholder="Enter password" style="flex:1" autocomplete="new-password" />
         <button class="btn-outline" style="padding:8px 12px;white-space:nowrap" onclick="togglePasswordView('vaultPassword')">👁️ Show</button>
       </div>
     </div>
