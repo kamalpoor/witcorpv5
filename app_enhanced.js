@@ -506,7 +506,7 @@ async function renderTeamContacts() {
     return `
       <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
-          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>
           <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${isOnline ? '#10b981' : '#9ca3af'};border:2px solid var(--surface)"></div>
         </div>
         <div style="flex:1;overflow:hidden;margin-left:10px">
