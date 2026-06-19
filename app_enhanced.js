@@ -2606,12 +2606,55 @@ function handleSearch(query) {
       </div>`
     )}
 
-    ${section('🏛️','ROC Filings', roc, 'roc', r => `
-      <div
+   ${section('🏛️','ROC Filings', roc, 'roc', r => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('roc');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-size:20px">🏛️</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(r.company)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(r.form||'')} • CIN: ${escapeHtml(r.cin||'-')}</div>
+        </div>
+        ${statusBadge(r.status)}
+      </div>`
+    )}
+
+    ${section('✍️','DSC Records', dsc, 'dsc', d => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('dsc');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-size:20px">✍️</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(d.client_name||d.name||'-')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">PAN: ${escapeHtml(d.pan||'-')} • Expiry: ${escapeHtml(d.expiry_date||'-')}</div>
+        </div>
+        ${statusBadge(d.status)}
+      </div>`
+    )}
+
+    ${section('🛡️','Audits', audits, 'audit', a => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('audit');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-size:20px">🛡️</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(a.client)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(a.audit_type||'')} • ${escapeHtml(a.auditor||'')}</div>
+        </div>
+        ${statusBadge(a.status)}
+      </div>`
+    )}
+
+    ${section('✅','Tasks', tasks, 'tasks', t => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('tasks');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="font-size:20px">✅</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(t.title)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">👤 ${escapeHtml(t.assignee||'-')} • Due: ${escapeHtml(t.due_date||'TBD')}</div>
+        </div>
+        <span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--primary-glow);color:var(--primary)">${columnLabel(t.column_name)}</span>
+      </div>`
+    )}
+  `;
+  modal.style.display = 'block';
+}
 
 /* =========================================================
    33. TOAST
-   ========================================================= */
 
 let toastTimeout = null;
 function showToast(message) {
