@@ -2230,9 +2230,11 @@ function closeModal() {
 async function submitAddClient() {
   const name = document.getElementById('addClientName')?.value.trim();
   if (!name) { showToast('Client name is required'); return; }
+  const panVal = document.getElementById('addClientPAN')?.value.trim().toUpperCase() || '';
+  if (panVal && !isValidFormat(panVal, 'pan')) { showToast('❌ Invalid PAN format. Use ABCDE1234F'); return; }
   const body = {
     name,
-    pan: document.getElementById('addClientPAN')?.value.trim() || '-',
+    pan: panVal || '-',
     type: document.getElementById('addClientType')?.value || 'Individual',
     gst: document.getElementById('addClientGST')?.value.trim() || '-',
     email: document.getElementById('addClientEmail')?.value.trim() || '-',
