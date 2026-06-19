@@ -42,7 +42,7 @@ var supabase = supabaseQuery;
 async function supabaseInsert(table, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}`;
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-  const enriched = { ...body, updated_by: getCurrentUserEmail() || getCurrentUserName() };
+  const enriched = { ...body, updated_by: getCurrentUserName() || getCurrentUserEmail() };
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -80,7 +80,7 @@ async function supabaseInsert(table, body) {
 async function supabaseUpdate(table, id, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`;
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-  const enriched = { ...body, updated_by: getCurrentUserEmail() || getCurrentUserName() };
+  const enriched = { ...body, updated_by: getCurrentUserName() || getCurrentUserEmail() };
   try {
     const res = await fetch(url, {
       method: 'PATCH',
@@ -170,6 +170,9 @@ function getCurrentUserName() {
 function getCurrentUserEmail() {
   const user = getCurrentUser();
   return user ? (user.email || '') : '';
+}
+function getUpdatedByLabel() {
+  return getCurrentUserName() || getCurrentUserEmail() || 'User';
 }
 
 function loadUserInfo() {
@@ -340,7 +343,7 @@ async function saveVaultEdit(id) {
   const ok = await supabaseUpdate('vault_credentials', id, updated);
   if (ok) {
     const idx = STATE.vaultCredentials.findIndex(c => c.id === id);
-    if (idx !== -1) STATE.vaultCredentials[idx] = { ...STATE.vaultCredentials[idx], ...updated, updated_by: getCurrentUserEmail(), updated_at: new Date().toISOString() };
+    if (idx !== -1) STATE.vaultCredentials[idx] = { ...STATE.vaultCredentials[idx], ...updated, updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString() };
     closeModal(); renderVaultFolders(); renderVaultCredentials(); showToast('✅ Credential updated!');
   } else { showToast('❌ Update failed'); }
 }
@@ -1074,7 +1077,7 @@ async function saveClientEdit(id) {
   const ok = await supabaseUpdate('clients', id, updated);
   if (ok) {
     const idx = STATE.clients.findIndex(c => c.id === id);
-    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated, updated_by: getCurrentUserEmail(), updated_at: new Date().toISOString() };
+    if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated, updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString() };
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client updated!');
   } else { showToast('❌ Update failed.'); }
 }
@@ -1901,7 +1904,7 @@ async function updateTask(id) {
   const ok = await supabaseUpdate('tasks', id, updated);
   if (ok) {
     const idx = STATE.tasks.findIndex(t => t.id === id);
-    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated, updated_by: getCurrentUserEmail(), updated_at: new Date().toISOString() };
+    if (idx !== -1) STATE.tasks[idx] = { ...STATE.tasks[idx], ...updated, updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString() };
     closeModal(); renderKanban(); showToast('✅ Task updated!');
   }
 }
@@ -2396,13 +2399,55 @@ function openProfile() {
       <div style="font-weight:700;font-size:16px">${escapeHtml(name)}</div>
       <div style="color:var(--text-muted);font-size:13px">WITCORP India Advisors LLP</div>
     </div>
+    <div class="form-group"><label>Full Name</label><input type="text" class="form-control" id="profileNameInput" value="${escapeHtml(name)}" placeholder="Enter your name" /></div>
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(email)}</div></div>
     <div class="form-group"><label>User ID</label><div class="form-control" style="background:var(--bg)">${escapeHtml(user?.id||'N/A')}</div></div>
     <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveProfileName()">💾 Save Name</button>
     <button class="btn-outline" style="width:100%;margin-top:8px;border-color:#ef4444;color:#ef4444" onclick="logout()">🚪 Logout</button>
   `);
 }
 
+async function saveProfileName() {
+  const newName = document.getElementById('profileNameInput')?.value.trim();
+  if (!newName) { showToast('Name cannot be empty'); return; }
+
+  const user = getCurrentUser();
+  if (!user) { showToast('❌ User not found'); return; }
+
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  try {
+    // Update Supabase Auth user_metadata
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ data: { full_name: newName } })
+    });
+
+    if (!res.ok) { showToast('❌ Failed to update name'); return; }
+
+    const updatedUser = await res.json();
+    localStorage.setItem('witcorp-user', JSON.stringify(updatedUser));
+
+    // Also update profiles table if it has a full_name column
+    if (user.id) {
+      await supabaseQuery('profiles', { method: 'PATCH', filters: `id=eq.${user.id}`, body: { full_name: newName } }).catch(() => {});
+    }
+
+    STATE.currentUser = updatedUser;
+    loadUserInfo();
+    closeModal();
+    showToast('✅ Name updated!');
+  } catch (e) {
+    console.error('saveProfileName error:', e);
+    showToast('❌ Update failed');
+  }
+}
 async function logout() {
   closeModal();
   const token = localStorage.getItem('witcorp-access-token');
