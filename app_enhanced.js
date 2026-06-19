@@ -2908,7 +2908,63 @@ async function saveAccEntry(id) {
     closeModal(); renderAccEntries(); renderAccClientStats(); showToast('✅ Entry updated!');
   }
 }
+function searchTeamMessages(query) {
+  const q = (query||'').trim().toLowerCase();
+  const clearBtn = document.getElementById('msgSearchClear');
+  if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+  
+  if (!q) { renderTeamMessages(); return; }
 
+  const el = document.getElementById('teamMessages');
+  if (!el) return;
+  const myEmail = getCurrentUserEmail();
+
+  const filtered = STATE.teamMessages.filter(m =>
+    (m.message||'').toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:40px 20px">
+      <div style="font-size:32px;margin-bottom:8px">🔍</div>
+      <div>No messages found for "<strong>${escapeHtml(query)}</strong>"</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(m => {
+    const isOwn = m.sender_email === myEmail;
+    const timeStr = new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}).replace(' ','');
+    const senderInitial = m.sender_email.charAt(0).toUpperCase();
+    
+    // Highlight matching text
+    const highlighted = escapeHtml(m.message).replace(
+      new RegExp(escapeHtml(q), 'gi'),
+      match => `<mark style="background:#fbbf24;color:#000;border-radius:3px;padding:0 2px">${match}</mark>`
+    );
+
+    return `
+      <div class="chat-msg ${isOwn ? 'user' : ''}">
+        ${!isOwn ? `<div class="msg-avatar" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">${senderInitial}</div>` : ''}
+        <div class="msg-content">
+          <div style="background:${isOwn?'var(--primary)':'var(--surface)'};color:${isOwn?'#fff':'var(--text)'};padding:8px 14px;border-radius:${isOwn?'14px 14px 4px 14px':'14px 14px 14px 4px'};word-break:break-word;display:inline-block;max-width:100%">
+            ${highlighted}
+          </div>
+          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn?'right':'left'}">${timeStr}</div>
+        </div>
+        ${isOwn ? `<div class="msg-avatar" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">${senderInitial}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearMsgSearch() {
+  const input = document.getElementById('msgSearchInput');
+  const clearBtn = document.getElementById('msgSearchClear');
+  if (input) input.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  renderTeamMessages();
+}
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v3
    ✅ updated_at sahi variable se har jagah fix kiya
