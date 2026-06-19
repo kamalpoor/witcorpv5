@@ -17,80 +17,46 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>W</text></svg>" />
 
-  <!-- ===== AUTH GUARD ===== -->
+  <!-- AUTH GUARD -->
   <script src="auth.js"></script>
   <script>
     (async function () {
       const isCallback = await handleOAuthCallback();
-      if (isCallback) {
-        window.location.replace('index.html');
-        return;
-      }
+      if (isCallback) { window.location.replace('index.html'); return; }
       const token = localStorage.getItem('witcorp-access-token');
-      if (!token) {
-        window.location.replace('login.html');
-        return;
-      }
+      if (!token) { window.location.replace('login.html'); return; }
       const res = await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/user', {
-        headers: {
-          'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw',
-          'Authorization': 'Bearer ' + token
-        }
+        headers: { 'apikey': 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw', 'Authorization': 'Bearer ' + token }
       });
-      if (!res.ok) {
-        localStorage.clear();
-        window.location.replace('login.html');
-      }
+      if (!res.ok) { localStorage.clear(); window.location.replace('login.html'); }
     })();
   </script>
 
-  <!-- ===== INLINE FIXES ===== -->
   <script>
-    /* ── Dark Mode Toggle (FIXED) ── */
     function toggleDarkMode() {
       const isDark = document.body.classList.toggle('force-dark');
       localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
-      document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) {
-        btn.textContent = isDark ? '☀️' : '🌙';
-      });
+      document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) { btn.textContent = isDark ? '☀️' : '🌙'; });
     }
-
     function setTheme(themeName) {
-      var themes = [
-        'theme-violet','theme-blue','theme-emerald','theme-rose',
-        'theme-amber','theme-cyan','theme-dark','theme-midnight',
-        'theme-forest','theme-sunset','theme-sakura','theme-gold'
-      ];
+      var themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
       themes.forEach(function(t) { document.body.classList.remove(t); });
       document.body.classList.add(themeName);
       localStorage.setItem('witcorp-body-theme', themeName);
-      document.querySelectorAll('.swatch').forEach(function(s) {
-        s.classList.toggle('active', s.dataset.theme === themeName);
-      });
+      document.querySelectorAll('.swatch').forEach(function(s) { s.classList.toggle('active', s.dataset.theme === themeName); });
     }
-
     document.addEventListener('DOMContentLoaded', function() {
-      /* Restore dark mode */
       var savedDark = localStorage.getItem('witcorp-dark-mode');
       if (savedDark === '1') {
         document.body.classList.add('force-dark');
-        document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) {
-          btn.textContent = '☀️';
-        });
+        document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) { btn.textContent = '☀️'; });
       }
-      /* Restore body theme */
       var savedTheme = localStorage.getItem('witcorp-body-theme');
       if (savedTheme) setTheme(savedTheme);
     });
-
     function filterClientType(value) {
-      if (typeof STATE !== 'undefined') {
-        STATE.filters.clients.type = value;
-        STATE.pagination.clients.page = 1;
-        if (typeof renderClientTable === 'function') renderClientTable();
-      }
+      if (typeof STATE !== 'undefined') { STATE.filters.clients.type = value; STATE.pagination.clients.page = 1; if (typeof renderClientTable === 'function') renderClientTable(); }
     }
-
     function loadUserInfoExtended() {
       var userRaw = localStorage.getItem('witcorp-user');
       if (!userRaw) return;
@@ -112,81 +78,43 @@
 
 <body class="theme-violet">
 
-<!-- ========== MOBILE SIDEBAR OVERLAY ========== -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-<!-- ========== SIDEBAR ========== -->
+<!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon" style="background:conic-gradient(#f0a500,#f5d060,#ffe082,#f0a500,#c47f00,#f0a500);padding:3px;border-radius:14px;animation:spinBorder 3s linear infinite;display:flex;align-items:center;justify-content:center;width:46px;height:46px;">
       <img src="logo.png" alt="W" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#1e1b4b;display:block;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-size:20px;font-weight:800;color:#f0a500\'>W</span>'" />
     </div>
-    <div class="logo-text">
-      <span class="logo-name">Witcorp Hub</span>
-    </div>
+    <div class="logo-text"><span class="logo-name">Witcorp Hub</span></div>
   </div>
 
   <nav class="sidebar-nav">
     <div class="nav-section-label">Main</div>
-    <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
-      <span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span>
-    </a>
-    <a class="nav-item" data-page="clients" onclick="navigate('clients')">
-      <span class="nav-icon">👥</span><span class="nav-label">Client Management</span>
-    </a>
-    <a class="nav-item" data-page="gst" onclick="navigate('gst')">
-      <span class="nav-icon">📊</span><span class="nav-label">GST Dashboard</span>
-    </a>
-    <a class="nav-item" data-page="roc" onclick="navigate('roc')">
-      <span class="nav-icon">🏛️</span><span class="nav-label">ROC Filings</span>
-    </a>
+    <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" data-page="clients" onclick="navigate('clients')"><span class="nav-icon">👥</span><span class="nav-label">Client Management</span></a>
+    <a class="nav-item" data-page="gst" onclick="navigate('gst')"><span class="nav-icon">📊</span><span class="nav-label">GST Dashboard</span></a>
+    <a class="nav-item" data-page="roc" onclick="navigate('roc')"><span class="nav-icon">🏛️</span><span class="nav-label">ROC Filings</span></a>
 
     <div class="nav-section-label">Tax &amp; Compliance</div>
-    <a class="nav-item" data-page="incometax" onclick="navigate('incometax')">
-      <span class="nav-icon">💰</span><span class="nav-label">Income Tax</span>
-    </a>
-    <a class="nav-item" data-page="tds" onclick="navigate('tds')">
-      <span class="nav-icon">🧾</span><span class="nav-label">TDS Returns</span>
-    </a>
-    <a class="nav-item" data-page="audit" onclick="navigate('audit')">
-      <span class="nav-icon">🛡️</span><span class="nav-label">Audit &amp; Assurance</span>
-    </a>
+    <a class="nav-item" data-page="incometax" onclick="navigate('incometax')"><span class="nav-icon">💰</span><span class="nav-label">Income Tax</span></a>
+    <a class="nav-item" data-page="tds" onclick="navigate('tds')"><span class="nav-icon">🧾</span><span class="nav-label">TDS Returns</span></a>
+    <a class="nav-item" data-page="audit" onclick="navigate('audit')"><span class="nav-icon">🛡️</span><span class="nav-label">Audit &amp; Assurance</span></a>
 
     <div class="nav-section-label">Tools</div>
-    <a class="nav-item" data-page="dsc" onclick="navigate('dsc')">
-      <span class="nav-icon">✍️</span><span class="nav-label">DSC &amp; eSign</span>
-    </a>
-    <a class="nav-item" data-page="vault" onclick="navigate('vault')">
-      <span class="nav-icon">🔐</span><span class="nav-label">Vault</span>
-      <span class="nav-badge">New</span>
-    </a>
-    <a class="nav-item" data-page="accounting" onclick="navigate('accounting')">
-      <span class="nav-icon">🧮</span><span class="nav-label">Accounting Hub</span>
-    </a>
-    <a class="nav-item" data-page="tasks" onclick="navigate('tasks')">
-      <span class="nav-icon">✅</span><span class="nav-label">Task Manager</span>
-    </a>
-    <a class="nav-item" data-page="reports" onclick="navigate('reports')">
-      <span class="nav-icon">📈</span><span class="nav-label">Reports &amp; Insights</span>
-    </a>
-    <a class="nav-item" data-page="ai" onclick="navigate('ai')">
-      <span class="nav-icon">🤖</span><span class="nav-label">AI Assistant</span>
-      <span class="nav-badge">New</span>
-    </a>
+    <a class="nav-item" data-page="dsc" onclick="navigate('dsc')"><span class="nav-icon">✍️</span><span class="nav-label">DSC &amp; eSign</span></a>
+    <a class="nav-item" data-page="vault" onclick="navigate('vault')"><span class="nav-icon">🔐</span><span class="nav-label">Vault</span><span class="nav-badge">New</span></a>
+    <a class="nav-item" data-page="accounting" onclick="navigate('accounting')"><span class="nav-icon">🧮</span><span class="nav-label">Accounting Hub</span></a>
+    <a class="nav-item" data-page="tasks" onclick="navigate('tasks')"><span class="nav-icon">✅</span><span class="nav-label">Task Manager</span></a>
+    <a class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="nav-icon">📈</span><span class="nav-label">Reports &amp; Insights</span></a>
+    <a class="nav-item" data-page="ai" onclick="navigate('ai')"><span class="nav-icon">🤖</span><span class="nav-label">AI Assistant</span><span class="nav-badge">New</span></a>
 
     <div class="nav-section-label">Other</div>
-    <a class="nav-item" data-page="documents" onclick="navigate('documents')">
-      <span class="nav-icon">📁</span><span class="nav-label">Documents</span>
-    </a>
-    <a class="nav-item" data-page="calendar" onclick="navigate('calendar')">
-      <span class="nav-icon">📅</span><span class="nav-label">Calendar</span>
-    </a>
-    <a class="nav-item" data-page="teamchat" onclick="navigate('teamchat')">
-      <span class="nav-icon">💬</span><span class="nav-label">Team Chat</span>
-    </a>
+    <a class="nav-item" data-page="documents" onclick="navigate('documents')"><span class="nav-icon">📁</span><span class="nav-label">Documents</span></a>
+    <a class="nav-item" data-page="calendar" onclick="navigate('calendar')"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></a>
+    <a class="nav-item" data-page="teamchat" onclick="navigate('teamchat')"><span class="nav-icon">💬</span><span class="nav-label">Team Chat</span></a>
   </nav>
 
-  <!-- Theme Swatches -->
   <div class="theme-section">
     <div class="theme-label">Theme</div>
     <div class="theme-swatches">
@@ -206,7 +134,7 @@
   </div>
 </aside>
 
-<!-- ========== MAIN WRAPPER ========== -->
+<!-- MAIN WRAPPER -->
 <div class="main-wrapper">
 
   <!-- TOP BAR -->
@@ -219,9 +147,7 @@
     </div>
     <div class="topbar-actions">
       <button class="topbar-btn" onclick="openAI()">✨ Ask AI</button>
-      <button class="topbar-btn icon-btn" onclick="openNotifications()">
-        🔔 <span class="notif-dot" id="notifCount">0</span>
-      </button>
+      <button class="topbar-btn icon-btn" onclick="openNotifications()">🔔 <span class="notif-dot" id="notifCount">0</span></button>
       <button class="topbar-btn icon-btn" id="toggleRightPanel" onclick="toggleRightPanel()" title="Show Panel" style="display:none">📋</button>
       <button class="topbar-btn icon-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
       <div class="user-avatar" onclick="openProfile()" id="userAvatarBtn" style="cursor:pointer;display:flex;align-items:center;gap:8px">
@@ -237,7 +163,7 @@
   <!-- PAGE CONTENT -->
   <main class="page-content" id="pageContent">
 
-    <!-- ===== DASHBOARD ===== -->
+    <!-- DASHBOARD -->
     <section class="page active" id="page-dashboard">
       <div class="page-header">
         <div>
@@ -253,101 +179,40 @@
       <div class="stats-grid">
         <div class="stat-card" onclick="navigate('clients')">
           <div class="stat-icon purple">👥</div>
-          <div class="stat-info">
-            <div class="stat-number">0</div>
-            <div class="stat-label">Total Clients</div>
-            <div class="stat-trend up">↑ Active clients</div>
-          </div>
+          <div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Clients</div><div class="stat-trend up">↑ Active clients</div></div>
         </div>
         <div class="stat-card" onclick="navigate('gst')">
           <div class="stat-icon green">📊</div>
-          <div class="stat-info">
-            <div class="stat-number">0</div>
-            <div class="stat-label">GST Returns Filed</div>
-            <div class="stat-trend up">This month</div>
-          </div>
+          <div class="stat-info"><div class="stat-number">0</div><div class="stat-label">GST Returns Filed</div><div class="stat-trend up">This month</div></div>
         </div>
         <div class="stat-card" onclick="navigate('tasks')">
           <div class="stat-icon orange">✅</div>
-          <div class="stat-info">
-            <div class="stat-number">0</div>
-            <div class="stat-label">Pending Tasks</div>
-            <div class="stat-trend down">Open tasks</div>
-          </div>
+          <div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending Tasks</div><div class="stat-trend down">Open tasks</div></div>
         </div>
         <div class="stat-card" onclick="navigate('calendar')">
           <div class="stat-icon red">⏰</div>
-          <div class="stat-info">
-            <div class="stat-number">0</div>
-            <div class="stat-label">Upcoming Due</div>
-            <div class="stat-trend neutral">Due in next 7 days</div>
-          </div>
+          <div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Upcoming Due</div><div class="stat-trend neutral">Due in next 7 days</div></div>
         </div>
         <div class="stat-card" onclick="navigate('calendar')">
           <div class="stat-icon blue">📋</div>
-          <div class="stat-info">
-            <div class="stat-number">00</div>
-            <div class="stat-label">Today's Filings</div>
-            <div class="stat-trend neutral">Due today</div>
-          </div>
+          <div class="stat-info"><div class="stat-number">00</div><div class="stat-label">Today's Filings</div><div class="stat-trend neutral">Due today</div></div>
         </div>
       </div>
 
       <div class="section-title">All Modules</div>
       <div class="modules-grid">
-        <div class="module-card" onclick="navigate('clients')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">👥</div>
-          <div class="module-info"><div class="module-name">Client Management</div><div class="module-desc">Manage all your clients &amp; contacts</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('gst')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#34d399,#059669)">📊</div>
-          <div class="module-info"><div class="module-name">GST Dashboard</div><div class="module-desc">Track &amp; file GST returns</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('roc')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#60a5fa,#2563eb)">🏛️</div>
-          <div class="module-info"><div class="module-name">ROC Filings</div><div class="module-desc">Company filings &amp; compliance</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('incometax')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#fbbf24,#d97706)">💰</div>
-          <div class="module-info"><div class="module-name">Income Tax</div><div class="module-desc">ITR &amp; Tax Management</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('tds')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#c084fc,#9333ea)">🧾</div>
-          <div class="module-info"><div class="module-name">TDS Returns</div><div class="module-desc">Manage TDS filings</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('audit')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">🛡️</div>
-          <div class="module-info"><div class="module-name">Audit &amp; Assurance</div><div class="module-desc">Plan &amp; manage audits</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('dsc')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#4ade80,#16a34a)">✍️</div>
-          <div class="module-info"><div class="module-name">DSC &amp; eSign</div><div class="module-desc">Digital signature services</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('vault')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#f97316,#dc2626)">🔐</div>
-          <div class="module-info"><div class="module-name">Vault</div><div class="module-desc">Secure password manager</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('accounting')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#f472b6,#db2777)">🧮</div>
-          <div class="module-info"><div class="module-name">Accounting Hub</div><div class="module-desc">Accounting &amp; bookkeeping</div></div>
-          <span class="module-arrow">›</span>
-        </div>
-        <div class="module-card" onclick="navigate('tasks')">
-          <div class="module-icon" style="background:linear-gradient(135deg,#fde68a,#f59e0b)">✅</div>
-          <div class="module-info"><div class="module-name">Task Manager</div><div class="module-desc">Tasks &amp; team collaboration</div></div>
-          <span class="module-arrow">›</span>
-        </div>
+        <div class="module-card" onclick="navigate('clients')"><div class="module-icon" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">👥</div><div class="module-info"><div class="module-name">Client Management</div><div class="module-desc">Manage all your clients &amp; contacts</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('gst')"><div class="module-icon" style="background:linear-gradient(135deg,#34d399,#059669)">📊</div><div class="module-info"><div class="module-name">GST Dashboard</div><div class="module-desc">Track &amp; file GST returns</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('roc')"><div class="module-icon" style="background:linear-gradient(135deg,#60a5fa,#2563eb)">🏛️</div><div class="module-info"><div class="module-name">ROC Filings</div><div class="module-desc">Company filings &amp; compliance</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('incometax')"><div class="module-icon" style="background:linear-gradient(135deg,#fbbf24,#d97706)">💰</div><div class="module-info"><div class="module-name">Income Tax</div><div class="module-desc">ITR &amp; Tax Management</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('tds')"><div class="module-icon" style="background:linear-gradient(135deg,#c084fc,#9333ea)">🧾</div><div class="module-info"><div class="module-name">TDS Returns</div><div class="module-desc">Manage TDS filings</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('audit')"><div class="module-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">🛡️</div><div class="module-info"><div class="module-name">Audit &amp; Assurance</div><div class="module-desc">Plan &amp; manage audits</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('dsc')"><div class="module-icon" style="background:linear-gradient(135deg,#4ade80,#16a34a)">✍️</div><div class="module-info"><div class="module-name">DSC &amp; eSign</div><div class="module-desc">Digital signature services</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('vault')"><div class="module-icon" style="background:linear-gradient(135deg,#f97316,#dc2626)">🔐</div><div class="module-info"><div class="module-name">Vault</div><div class="module-desc">Secure password manager</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('accounting')"><div class="module-icon" style="background:linear-gradient(135deg,#f472b6,#db2777)">🧮</div><div class="module-info"><div class="module-name">Accounting Hub</div><div class="module-desc">Accounting &amp; bookkeeping</div></div><span class="module-arrow">›</span></div>
+        <div class="module-card" onclick="navigate('tasks')"><div class="module-icon" style="background:linear-gradient(135deg,#fde68a,#f59e0b)">✅</div><div class="module-info"><div class="module-name">Task Manager</div><div class="module-desc">Tasks &amp; team collaboration</div></div><span class="module-arrow">›</span></div>
       </div>
 
-      <!-- AI Banner -->
       <div class="ai-banner" onclick="navigate('ai')">
         <div class="ai-globe">🌐</div>
         <div class="ai-text">
@@ -364,7 +229,7 @@
       </div>
     </section>
 
-    <!-- ===== CLIENT MANAGEMENT ===== -->
+    <!-- CLIENT MANAGEMENT -->
     <section class="page" id="page-clients">
       <div class="page-header">
         <div><h1>👥 Client Management</h1><p>Manage all your clients &amp; contacts</p></div>
@@ -373,27 +238,15 @@
       <div class="filter-bar">
         <input type="text" placeholder="Search clients..." class="filter-input" id="clientSearch" oninput="filterClients(this.value)" />
         <select class="filter-select" onchange="filterClientStatus(this.value)">
-          <option value="">All Status</option>
-          <option>Active</option>
-          <option>Inactive</option>
-          <option>Pending</option>
+          <option value="">All Status</option><option>Active</option><option>Inactive</option><option>Pending</option>
         </select>
         <select class="filter-select" onchange="filterClientType(this.value)">
-          <option value="">All Types</option>
-          <option>Individual</option>
-          <option>Company</option>
-          <option>LLP</option>
-          <option>Partnership</option>
+          <option value="">All Types</option><option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option>
         </select>
       </div>
       <div class="table-wrapper">
         <table class="data-table" id="clientTable">
-          <thead>
-            <tr>
-              <th>Client Name</th><th>PAN/TAN</th><th>Type</th><th>GST No.</th>
-              <th>Email</th><th>Phone</th><th>Status</th><th>Actions</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Client Name</th><th>PAN/TAN</th><th>Type</th><th>GST No.</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody id="clientTableBody"></tbody>
         </table>
       </div>
@@ -404,7 +257,7 @@
       </div>
     </section>
 
-    <!-- ===== GST DASHBOARD ===== -->
+    <!-- GST DASHBOARD — FIXED: proper IDs, period auto-year, no internal events, registration added -->
     <section class="page" id="page-gst">
       <div class="page-header">
         <div><h1>📊 GST Dashboard</h1><p>Track &amp; file GST returns</p></div>
@@ -422,7 +275,7 @@
           <div class="gst-return-list" id="gstReturnList"></div>
         </div>
         <div class="card">
-          <div class="card-title">Upcoming Filings</div>
+          <div class="card-title">Upcoming Filings <span style="font-size:11px;color:var(--text-muted)">(GST/TDS/ROC only)</span></div>
           <div class="upcoming-list" id="gstUpcoming"></div>
         </div>
       </div>
@@ -430,41 +283,45 @@
         <div class="card-title">File New GST Return</div>
         <div class="form-grid">
           <div class="form-group">
-            <label>Client Name</label>
-            <select class="form-control" id="gstClientSel">
-              <option value="">Select Client</option>
-            </select>
+            <label>Client Name *</label>
+            <select class="form-control" id="gstClientSel"><option value="">Select Client</option></select>
           </div>
           <div class="form-group">
             <label>Return Type</label>
-            <select class="form-control">
-              <option>GSTR-1</option><option>GSTR-3B</option><option>GSTR-9</option><option>GSTR-2A</option>
+            <select class="form-control" id="gstReturnType">
+              <option>GSTR-1</option><option>GSTR-2B</option><option>GSTR-3B</option><option>GSTR-9</option><option>GSTR-9C</option>
+              <option>GSTR-2A</option><option>GSTR-4</option><option>GSTR-5</option><option>GSTR-6</option>
+              <option>GSTR-7</option><option>GSTR-8</option><option>GSTR-10</option>
+              <option>GST Registration New</option><option>GST Registration Amendment</option><option>GST Cancellation</option>
+              <option>GST Revocation</option><option>GST LUT</option><option>GST Refund</option>
             </select>
           </div>
           <div class="form-group">
             <label>Period</label>
-            <select class="form-control">
-              <option>May 2025</option><option>April 2025</option><option>March 2025</option>
-            </select>
+            <select class="form-control" id="gstPeriodSel"><!-- populated by JS --></select>
           </div>
           <div class="form-group">
             <label>GSTIN</label>
-            <input type="text" class="form-control" placeholder="Enter GSTIN" />
+            <input type="text" class="form-control" id="gstGSTIN" placeholder="Enter GSTIN" />
           </div>
           <div class="form-group">
             <label>Total Turnover (₹)</label>
-            <input type="number" class="form-control" placeholder="Enter amount" />
+            <input type="number" class="form-control" id="gstTurnover" placeholder="Enter amount" />
           </div>
           <div class="form-group">
             <label>Tax Liability (₹)</label>
-            <input type="number" class="form-control" placeholder="Enter amount" />
+            <input type="number" class="form-control" id="gstTaxLiability" placeholder="Enter amount" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Remarks</label>
+            <input type="text" class="form-control" id="gstRemarks" placeholder="Optional remarks..." />
           </div>
         </div>
         <button class="btn-primary" onclick="submitGSTReturn()">Submit Return</button>
       </div>
     </section>
 
-    <!-- ===== ROC FILINGS ===== -->
+    <!-- ROC FILINGS — FIXED: full forms list + remarks column -->
     <section class="page" id="page-roc">
       <div class="page-header">
         <div><h1>🏛️ ROC Filings</h1><p>Company filings &amp; compliance</p></div>
@@ -480,14 +337,14 @@
         <div class="card-title">ROC Filing Tracker</div>
         <div class="table-wrapper">
           <table class="data-table">
-            <thead><tr><th>Company</th><th>CIN</th><th>Form</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Company</th><th>CIN</th><th>Form</th><th>Due Date</th><th>Status</th><th>Remarks</th><th>Action</th></tr></thead>
             <tbody id="rocTableBody"></tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- ===== INCOME TAX ===== -->
+    <!-- INCOME TAX — FIXED: correct AY, remarks, proper IDs -->
     <section class="page" id="page-incometax">
       <div class="page-header">
         <div><h1>💰 Income Tax</h1><p>ITR &amp; Tax Management</p></div>
@@ -502,12 +359,27 @@
       <div class="two-col">
         <div class="card">
           <div class="card-title">File New ITR</div>
-          <div class="form-group"><label>Client Name</label><select class="form-control"><option value="">Select Client</option></select></div>
-          <div class="form-group"><label>Assessment Year</label><select class="form-control"><option>2025-26</option><option>2024-25</option><option>2023-24</option></select></div>
-          <div class="form-group"><label>ITR Form</label><select class="form-control"><option>ITR-1 (Sahaj)</option><option>ITR-2</option><option>ITR-3</option><option>ITR-4 (Sugam)</option></select></div>
-          <div class="form-group"><label>Gross Income (₹)</label><input type="number" class="form-control" placeholder="Enter gross income" /></div>
-          <div class="form-group"><label>Tax Deducted (₹)</label><input type="number" class="form-control" placeholder="Enter TDS amount" /></div>
-          <div class="form-group"><label>Deductions (80C, 80D etc.)</label><input type="number" class="form-control" placeholder="Total deductions" /></div>
+          <div class="form-group">
+            <label>Client Name *</label>
+            <select class="form-control" id="itrClientSel"><option value="">Select Client</option></select>
+          </div>
+          <div class="form-group">
+            <label>Assessment Year</label>
+            <select class="form-control" id="itrAssessmentYear">
+              <!-- populated by JS with correct current year -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label>ITR Form</label>
+            <select class="form-control" id="itrForm">
+              <option>ITR-1 (Sahaj)</option><option>ITR-2</option><option>ITR-3</option><option>ITR-4 (Sugam)</option>
+              <option>ITR-5</option><option>ITR-6</option><option>ITR-7</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Gross Income (₹)</label><input type="number" class="form-control" id="itrGrossIncome" placeholder="Enter gross income" /></div>
+          <div class="form-group"><label>Tax Deducted (₹)</label><input type="number" class="form-control" id="itrTaxDeducted" placeholder="Enter TDS amount" /></div>
+          <div class="form-group"><label>Deductions (80C, 80D etc.)</label><input type="number" class="form-control" id="itrDeductions" placeholder="Total deductions" /></div>
+          <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="itrRemarks" placeholder="Optional remarks..." /></div>
           <button class="btn-primary" onclick="submitITR()">Calculate &amp; File ITR</button>
         </div>
         <div class="card">
@@ -517,7 +389,7 @@
       </div>
     </section>
 
-    <!-- ===== TDS RETURNS ===== -->
+    <!-- TDS RETURNS — FIXED: proper IDs -->
     <section class="page" id="page-tds">
       <div class="page-header">
         <div><h1>🧾 TDS Returns</h1><p>Manage TDS filings</p></div>
@@ -532,12 +404,20 @@
       <div class="card">
         <div class="card-title">TDS Filing Form</div>
         <div class="form-grid">
-          <div class="form-group"><label>Deductor Name</label><input type="text" class="form-control" placeholder="Company/Individual name" /></div>
-          <div class="form-group"><label>TAN Number</label><input type="text" class="form-control" placeholder="Enter TAN" /></div>
-          <div class="form-group"><label>Quarter</label><select class="form-control"><option>Q1 (Apr-Jun)</option><option>Q2 (Jul-Sep)</option><option>Q3 (Oct-Dec)</option><option>Q4 (Jan-Mar)</option></select></div>
-          <div class="form-group"><label>Form Type</label><select class="form-control"><option>24Q (Salary)</option><option>26Q (Non-Salary)</option><option>27Q (Foreign)</option><option>27EQ (TCS)</option></select></div>
-          <div class="form-group"><label>TDS Amount (₹)</label><input type="number" class="form-control" placeholder="Enter TDS amount" /></div>
-          <div class="form-group"><label>Challan No.</label><input type="text" class="form-control" placeholder="BSR Code / Challan" /></div>
+          <div class="form-group"><label>Deductor Name *</label><input type="text" class="form-control" id="tdsDeductor" placeholder="Company/Individual name" /></div>
+          <div class="form-group"><label>TAN Number</label><input type="text" class="form-control" id="tdsTAN" placeholder="Enter TAN" /></div>
+          <div class="form-group"><label>Quarter</label>
+            <select class="form-control" id="tdsQuarter">
+              <option>Q1 (Apr-Jun)</option><option>Q2 (Jul-Sep)</option><option>Q3 (Oct-Dec)</option><option>Q4 (Jan-Mar)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Form Type</label>
+            <select class="form-control" id="tdsFormType">
+              <option>24Q (Salary)</option><option>26Q (Non-Salary)</option><option>27Q (Foreign)</option><option>27EQ (TCS)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>TDS Amount (₹)</label><input type="number" class="form-control" id="tdsAmount" placeholder="Enter TDS amount" /></div>
+          <div class="form-group"><label>Challan No.</label><input type="text" class="form-control" id="tdsChallan" placeholder="BSR Code / Challan" /></div>
         </div>
         <button class="btn-primary" onclick="submitTDS()">Submit TDS Return</button>
       </div>
@@ -545,14 +425,14 @@
         <div class="card-title">Recent TDS Filings</div>
         <div class="table-wrapper">
           <table class="data-table">
-            <thead><tr><th>Deductor</th><th>TAN</th><th>Quarter</th><th>Form</th><th>Amount</th><th>Status</th></tr></thead>
+            <thead><tr><th>Deductor</th><th>TAN</th><th>Quarter</th><th>Form</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="tdsTableBody"></tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- ===== AUDIT & ASSURANCE ===== -->
+    <!-- AUDIT & ASSURANCE — FIXED: real logged-in user in auditor -->
     <section class="page" id="page-audit">
       <div class="page-header">
         <div><h1>🛡️ Audit &amp; Assurance</h1><p>Plan &amp; manage audits</p></div>
@@ -575,7 +455,7 @@
       </div>
     </section>
 
-    <!-- ===== DSC & ESIGN ===== -->
+    <!-- DSC & ESIGN — FIXED: expiry date input, remarks, real-time days left -->
     <section class="page" id="page-dsc">
       <div class="page-header">
         <div><h1>✍️ DSC &amp; eSign</h1><p>Digital signature services</p></div>
@@ -589,22 +469,30 @@
       </div>
       <div class="two-col">
         <div class="card">
-          <div class="card-title">Request New DSC</div>
-          <div class="form-group"><label>Client Name</label><input type="text" class="form-control" placeholder="Enter client name" /></div>
-          <div class="form-group"><label>PAN Number</label><input type="text" class="form-control" placeholder="Enter PAN" /></div>
-          <div class="form-group"><label>DSC Type</label><select class="form-control"><option>Class 2</option><option>Class 3</option><option>DGFT</option></select></div>
-          <div class="form-group"><label>Validity</label><select class="form-control"><option>1 Year</option><option>2 Years</option><option>3 Years</option></select></div>
-          <div class="form-group"><label>Purpose</label><select class="form-control"><option>Income Tax</option><option>GST</option><option>MCA/ROC</option><option>Tender</option></select></div>
-          <button class="btn-primary" onclick="submitDSC()">Request DSC</button>
+          <div class="card-title">Add DSC Record</div>
+          <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="dscClientName" placeholder="Enter client name" /></div>
+          <div class="form-group"><label>PAN Number</label><input type="text" class="form-control" id="dscPAN" placeholder="Enter PAN" /></div>
+          <div class="form-group"><label>DSC Type</label>
+            <select class="form-control" id="dscType"><option>Class 2</option><option>Class 3</option><option>DGFT</option><option>eSign</option></select>
+          </div>
+          <div class="form-group"><label>Validity</label>
+            <select class="form-control" id="dscValidity"><option>1 Year</option><option>2 Years</option><option>3 Years</option></select>
+          </div>
+          <div class="form-group"><label>Purpose</label>
+            <select class="form-control" id="dscPurpose"><option>Income Tax</option><option>GST</option><option>MCA/ROC</option><option>Tender</option><option>EPFO</option><option>Banking</option></select>
+          </div>
+          <div class="form-group"><label>Expiry Date *</label><input type="date" class="form-control" id="dscExpiry" /></div>
+          <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="dscRemarks" placeholder="Optional remarks..." /></div>
+          <button class="btn-primary" onclick="submitDSC()">Add DSC Record</button>
         </div>
         <div class="card">
-          <div class="card-title">DSC Expiry Alerts</div>
+          <div class="card-title">DSC Records &amp; Expiry Tracker</div>
           <div id="dscAlertList"></div>
         </div>
       </div>
     </section>
 
-    <!-- ===== VAULT ===== -->
+    <!-- VAULT -->
     <section class="page" id="page-vault">
       <div class="page-header">
         <div><h1>🔐 Vault</h1><p>Secure password &amp; credentials manager</p></div>
@@ -621,7 +509,7 @@
       </div>
     </section>
 
-    <!-- ===== ACCOUNTING HUB ===== -->
+    <!-- ACCOUNTING HUB — FIXED: proper IDs -->
     <section class="page" id="page-accounting">
       <div class="page-header">
         <div><h1>🧮 Accounting Hub</h1><p>Accounting &amp; bookkeeping</p></div>
@@ -637,10 +525,12 @@
         <div class="card">
           <div class="card-title">Add Journal Entry</div>
           <div class="form-group"><label>Date</label><input type="date" class="form-control" /></div>
-          <div class="form-group"><label>Voucher Type</label><select class="form-control"><option>Payment</option><option>Receipt</option><option>Journal</option><option>Contra</option><option>Sales</option><option>Purchase</option></select></div>
-          <div class="form-group"><label>Account Head (Dr)</label><input type="text" class="form-control" placeholder="Debit account" /></div>
-          <div class="form-group"><label>Account Head (Cr)</label><input type="text" class="form-control" placeholder="Credit account" /></div>
-          <div class="form-group"><label>Amount (₹)</label><input type="number" class="form-control" placeholder="Enter amount" /></div>
+          <div class="form-group"><label>Voucher Type</label>
+            <select class="form-control"><option>Payment</option><option>Receipt</option><option>Journal</option><option>Contra</option><option>Sales</option><option>Purchase</option></select>
+          </div>
+          <div class="form-group"><label>Account Head (Dr)</label><input type="text" class="form-control" id="accDebit" placeholder="Debit account" /></div>
+          <div class="form-group"><label>Account Head (Cr)</label><input type="text" class="form-control" id="accCredit" placeholder="Credit account" /></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" class="form-control" id="accAmount" placeholder="Enter amount" /></div>
           <div class="form-group"><label>Narration</label><textarea class="form-control" rows="2" placeholder="Entry description"></textarea></div>
           <button class="btn-primary" onclick="submitJournalEntry()">Post Entry</button>
         </div>
@@ -651,7 +541,7 @@
       </div>
     </section>
 
-    <!-- ===== TASK MANAGER ===== -->
+    <!-- TASK MANAGER -->
     <section class="page" id="page-tasks">
       <div class="page-header">
         <div><h1>✅ Task Manager</h1><p>Tasks &amp; team collaboration</p></div>
@@ -682,7 +572,7 @@
       </div>
     </section>
 
-    <!-- ===== REPORTS ===== -->
+    <!-- REPORTS -->
     <section class="page" id="page-reports">
       <div class="page-header">
         <div><h1>📈 Reports &amp; Insights</h1><p>Analytics &amp; reports</p></div>
@@ -695,10 +585,7 @@
         <div class="stat-card"><div class="stat-icon orange">⭐</div><div class="stat-info"><div class="stat-number">0%</div><div class="stat-label">Task Completion</div></div></div>
       </div>
       <div class="two-col">
-        <div class="card">
-          <div class="card-title">Monthly Performance</div>
-          <div class="bar-chart" id="barChart"></div>
-        </div>
+        <div class="card"><div class="card-title">Monthly Performance</div><div class="bar-chart" id="barChart"></div></div>
         <div class="card">
           <div class="card-title">Task Completion</div>
           <div class="donut-wrapper">
@@ -723,11 +610,9 @@
       </div>
     </section>
 
-    <!-- ===== AI ASSISTANT ===== -->
+    <!-- AI ASSISTANT -->
     <section class="page" id="page-ai">
-      <div class="page-header">
-        <div><h1>🤖 AI Assistant</h1><p>Ask anything about your workspace</p></div>
-      </div>
+      <div class="page-header"><div><h1>🤖 AI Assistant</h1><p>Ask anything about your workspace</p></div></div>
       <div class="ai-chat-container">
         <div class="chat-messages" id="chatMessages">
           <div class="chat-msg bot">
@@ -750,7 +635,7 @@
       </div>
     </section>
 
-    <!-- ===== DOCUMENTS ===== -->
+    <!-- DOCUMENTS -->
     <section class="page" id="page-documents">
       <div class="page-header">
         <div><h1>📁 Documents</h1><p>All your important files</p></div>
@@ -759,12 +644,11 @@
       <div class="filter-bar">
         <input type="text" placeholder="Search documents..." class="filter-input" />
         <select class="filter-select"><option>All Types</option><option>PDF</option><option>Excel</option><option>Word</option><option>Image</option></select>
-        <select class="filter-select"><option>All Clients</option></select>
       </div>
       <div class="docs-grid" id="docsGrid"></div>
     </section>
 
-    <!-- ===== CALENDAR ===== -->
+    <!-- CALENDAR -->
     <section class="page" id="page-calendar">
       <div class="page-header">
         <div><h1>📅 Calendar</h1><p>Due dates &amp; important events</p></div>
@@ -773,12 +657,10 @@
       <div class="calendar-wrapper">
         <div class="cal-header">
           <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
-          <span class="cal-title" id="calTitle">May 2025</span>
+          <span class="cal-title" id="calTitle">June 2026</span>
           <button class="cal-nav" onclick="changeMonth(1)">›</button>
         </div>
-        <div class="cal-grid-header">
-          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-        </div>
+        <div class="cal-grid-header"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
         <div class="cal-grid" id="calGrid"></div>
       </div>
       <div class="card" style="margin-top:1rem">
@@ -787,11 +669,9 @@
       </div>
     </section>
 
-    <!-- ===== TEAM CHAT ===== -->
+    <!-- TEAM CHAT -->
     <section class="page" id="page-teamchat">
-      <div class="page-header">
-        <div><h1>💬 Team Chat</h1><p>Real-time team collaboration</p></div>
-      </div>
+      <div class="page-header"><div><h1>💬 Team Chat</h1><p>Real-time team collaboration</p></div></div>
       <div class="chat-layout">
         <div class="chat-sidebar">
           <div class="chat-search">
@@ -814,11 +694,10 @@
             <div style="text-align:center;color:var(--text-muted);padding:40px 20px">Select a contact or start a new chat</div>
           </div>
           <div class="chat-typing-indicator" id="typingIndicator" style="display:none;padding:8px 12px;font-size:12px;color:var(--text-muted)">
-            <span id="typingName"></span> is typing
-            <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+            <span id="typingName"></span> is typing...
           </div>
           <div class="chat-input-bar">
-            <input type="text" id="teamChatInput" placeholder="Type a message..." onkeydown="handleChatKeypress(event)" oninput="notifyTyping()" />
+            <input type="text" id="teamChatInput" placeholder="Type a message..." onkeydown="handleChatKeypress(event)" />
             <div class="chat-input-actions">
               <button class="chat-action-btn" title="Emoji" onclick="openEmojiPicker()">😊</button>
               <button class="btn-primary" onclick="sendTeamMessage()">Send</button>
@@ -826,20 +705,17 @@
           </div>
         </div>
       </div>
-
-      <!-- Emoji Picker -->
       <div id="emojiPickerModal" style="display:none;position:fixed;bottom:100px;right:20px;background:var(--surface);border-radius:12px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;width:300px;max-height:300px;overflow-y:auto">
         <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px" id="emojiGrid"></div>
       </div>
     </section>
 
-    <!-- WhatsApp-style message context menu (hidden by default) -->
-    <div id="waMessageMenu" class="wa-msg-menu" style="display:none;"></div>
+    <div id="waMessageMenu" style="display:none;"></div>
 
   </main>
 </div>
 
-<!-- ========== RIGHT PANEL ========== -->
+<!-- RIGHT PANEL -->
 <aside class="right-panel" id="rightPanel">
   <div class="card">
     <div class="card-title">Upcoming Due Dates <button class="view-all" onclick="navigate('calendar')">View All</button></div>
@@ -860,8 +736,8 @@
   </div>
 </aside>
 
-<!-- ========== MODALS ========== -->
-<div class="modal-overlay" id="modalOverlay" onclick="event.target.id === 'modalOverlay' && closeModal()">
+<!-- MODALS -->
+<div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalBox" onclick="event.stopPropagation()">
     <div class="modal-header">
       <h3 id="modalTitle">Modal</h3>
@@ -871,28 +747,42 @@
   </div>
 </div>
 
-<!-- ========== NOTIFICATION PANEL ========== -->
+<!-- NOTIFICATION PANEL -->
 <div class="notif-panel" id="notifPanel">
-  <div class="notif-header">
-    <h3>Notifications</h3>
-    <button onclick="closeNotifications()">✕</button>
-  </div>
+  <div class="notif-header"><h3>Notifications</h3><button onclick="closeNotifications()">✕</button></div>
   <div class="notif-list" id="notifList"></div>
 </div>
 
-<!-- ========== TOAST ========== -->
+<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- ========== APP SCRIPT ========== -->
+<!-- SCRIPT: Populate AY dropdown after DOM loads -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Populate Assessment Year dropdown with correct years
+    var ayEl = document.getElementById('itrAssessmentYear');
+    if (ayEl) {
+      var currentYear = new Date().getFullYear();
+      var opts = '';
+      for (var i = 0; i < 5; i++) {
+        var y = currentYear + 1 - i;
+        var label = y + '-' + String(y+1).slice(2);
+        var selected = i === 0 ? 'selected' : '';
+        opts += '<option value="' + label + '" ' + selected + '>' + label + '</option>';
+      }
+      ayEl.innerHTML = opts;
+    }
+  });
+</script>
+
+<!-- APP SCRIPT -->
 <script src="app_enhanced.js"></script>
 
-<!-- ========== SERVICE WORKER ========== -->
+<!-- SERVICE WORKER -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js')
-        .then(function(reg) { console.log('[SW] Registered:', reg.scope); })
-        .catch(function(err) { console.warn('[SW] Registration failed:', err); });
+      navigator.serviceWorker.register('./sw.js').catch(function(err) { console.warn('[SW] Registration failed:', err); });
     });
   }
 </script>
