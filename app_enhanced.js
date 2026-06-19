@@ -990,6 +990,7 @@ function renderClientTable() {
     tbody.innerHTML = pageItems.map(c => `
       <tr>
         <td><strong>${escapeHtml(c.name)}</strong></td>
+        <td>${escapeHtml(c.contact_person||'-')}</td>
         <td>${escapeHtml(c.pan||'-')}</td>
         <td>${escapeHtml(c.type||'-')}</td>
         <td>${escapeHtml(c.gst||'-')}</td>
