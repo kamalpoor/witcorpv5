@@ -1434,11 +1434,11 @@ function renderTDSTable() {
   tbody.innerHTML = STATE.tdsReturns.map(t => `
     <tr>
       <td><strong>${escapeHtml(t.client_name || t.deductor || '-')}</strong></td>
-      <td>${escapeHtml(t.deductor || '-')}</td>
       <td>${escapeHtml(t.tan||'-')}</td>
       <td>${escapeHtml(t.quarter||'-')}</td>
       <td>${escapeHtml(t.form_type||'-')}</td>
       <td>₹ ${formatAmount(t.amount||0)}</td>
+      <td>${escapeHtml(t.challan_no||'-')}</td>
       <td>${statusBadge(t.status)}</td>
       <td class="updated-by-cell"><span class="updated-by-badge">${escapeHtml(t.updated_by||'-')}</span></td>
       <td>
