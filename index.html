@@ -189,6 +189,15 @@
       <button class="topbar-btn" onclick="openAI()">✨ Ask AI</button>
       <button class="topbar-btn icon-btn" onclick="openNotifications()">🔔 <span class="notif-dot" id="notifCount">0</span></button>
       <button class="topbar-btn icon-btn" id="toggleRightPanel" onclick="toggleRightPanel()" title="Show Panel" style="display:none">📋</button>
+      <div style="position:relative">
+        <button class="topbar-btn icon-btn" onclick="toggleOnlinePanel()" title="Who's Online" id="onlinePanelBtn">
+          👥 <span id="onlineCount" style="background:#10b981;color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:2px">1</span>
+        </button>
+        <div id="onlinePanel" style="display:none;position:absolute;top:48px;right:0;width:220px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:999;overflow:hidden;">
+          <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px">🟢 Online Now</div>
+          <div id="onlinePanelList" style="max-height:280px;overflow-y:auto;padding:6px 0"></div>
+        </div>
+      </div>
       <button class="topbar-btn icon-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
      <div class="user-avatar" onclick="openProfile()" id="userAvatarBtn" style="cursor:pointer;display:flex;align-items:center;gap:8px">
         <div style="position:relative;flex-shrink:0">
