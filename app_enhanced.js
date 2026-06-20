@@ -567,7 +567,8 @@ async function renderTeamContacts() {
     const name = p.full_name || p.email.split('@')[0];
     const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
     const isActive = p.email === STATE.activeChatContact;
-    const isOnline = STATE.userPresence[p.email]?.is_online || false;
+    const myEmail = getCurrentUserEmail();
+    const isOnline = p.email === myEmail ? true : (STATE.userPresence[p.email]?.is_online || false);
     return `
       <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
