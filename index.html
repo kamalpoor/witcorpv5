@@ -834,25 +834,25 @@
 
 <!-- APP SCRIPT -->
 <script src="app_enhanced.js"></script>
-
-<!-- SERVICE WORKER -->
+<!-- SERVICE WORKER -->  ← ✅ YEH SECTION
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js')
-  .then(function(reg) {
-    reg.addEventListener('updatefound', function() {
-      var newWorker = reg.installing;
-      newWorker.addEventListener('statechange', function() {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          window.location.reload();
-        }
-      });
+      navigator.serviceWorker.register('./sw.js')  ← REGISTER
+        .then(function(reg) {                       ← THEN
+          reg.addEventListener('updatefound', function() {
+            var newWorker = reg.installing;
+            newWorker.addEventListener('statechange', function() {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            });
+          });
+        })
+        .catch(function(err) {                      ← CATCH (REGISTER PE)
+          console.warn('[SW] Registration failed:', err); 
+        });
     });
-  })
-  .catch(function(err) {  // ← YEH SAHI HAI! .register() ke promise pe lagaya
-    console.warn('[SW] Registration failed:', err); 
-  });
   }
 </script>
 
