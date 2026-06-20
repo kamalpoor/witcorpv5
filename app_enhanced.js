@@ -811,6 +811,40 @@ async function loadAllData() {
 /* =========================================================
    10. CLIENT DROPDOWNS
    ========================================================= */
+function onClientTypeChange() {
+  const type = document.getElementById('addClientType')?.value;
+  const group = document.getElementById('cinLlpinGroup');
+  const label = document.getElementById('cinLlpinLabel');
+  if (!group || !label) return;
+  if (type === 'Company') {
+    group.style.display = 'block';
+    label.textContent = 'CIN';
+    document.getElementById('addClientCIN').placeholder = 'U12345MH2020PTC123456';
+  } else if (type === 'LLP') {
+    group.style.display = 'block';
+    label.textContent = 'LLPIN';
+    document.getElementById('addClientCIN').placeholder = 'AAA-1234';
+  } else {
+    group.style.display = 'none';
+  }
+}
+function onEditClientTypeChange() {
+  const type = document.getElementById('editClientType')?.value;
+  const group = document.getElementById('editCinLlpinGroup');
+  const label = document.getElementById('editCinLlpinLabel');
+  if (!group || !label) return;
+  if (type === 'Company') {
+    group.style.display = 'block';
+    label.textContent = 'CIN';
+    document.getElementById('editClientCIN').placeholder = 'U12345MH2020PTC123456';
+  } else if (type === 'LLP') {
+    group.style.display = 'block';
+    label.textContent = 'LLPIN';
+    document.getElementById('editClientCIN').placeholder = 'AAA-1234';
+  } else {
+    group.style.display = 'none';
+  }
+}
 
 function populateAllClientDropdowns() {
   const clientOptions = getClientOptionsHtml(true);
@@ -1056,8 +1090,10 @@ function renderClientTable() {
       <tr>
         <td><strong>${escapeHtml(c.name)}</strong></td>
         <td>${escapeHtml(c.contact_person||'-')}</td>
-        <td>${escapeHtml(c.pan||'-')}</td>
         <td>${escapeHtml(c.type||'-')}</td>
+        <td>${escapeHtml(c.pan||'-')}</td>
+        <td>${escapeHtml(c.tan||'-')}</td>
+        <td>${c.type==='Company'||c.type==='LLP' ? escapeHtml(c.cin||'-') : '-'}</td>
         <td>${escapeHtml(c.gst||'-')}</td>
         <td>${escapeHtml(c.email||'-')}</td>
         <td>${escapeHtml(c.phone||'-')}</td>
@@ -1089,8 +1125,10 @@ function viewClient(id) {
   openModalWithContent(`👥 ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.name)}</div></div>
     <div class="form-group"><label>Contact Person</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.contact_person||'-')}</div></div>
-    <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan||'-')}</div></div>
     <div class="form-group"><label>Type</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.type||'-')}</div></div>
+    <div class="form-group"><label>PAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.pan||'-')}</div></div>
+    <div class="form-group"><label>TAN</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.tan||'-')}</div></div>
+    ${c.type==='Company'||c.type==='LLP' ? `<div class="form-group"><label>${c.type==='LLP'?'LLPIN':'CIN'}</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.cin||'-')}</div></div>` : ''}
     <div class="form-group"><label>GST Number</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.gst||'-')}</div></div>
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.email||'-')}</div></div>
     <div class="form-group"><label>Phone</label><div class="form-control" style="background:var(--bg)">${escapeHtml(c.phone||'-')}</div></div>
@@ -1107,11 +1145,20 @@ function editClient(id) {
   openModalWithContent(`✏️ Edit — ${escapeHtml(c.name)}`, `
     <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeHtml(c.name)}" /></div>
     <div class="form-group"><label>Contact Person</label><input type="text" class="form-control" id="editClientContact" value="${escapeHtml(c.contact_person||'')}" placeholder="Enter contact person" /></div>
-    <div class="form-group"><label>PAN</label><input type="text" class="form-control" id="editClientPAN" value="${escapeHtml(c.pan||'')}" /></div>
-    <div class="form-group"><label>Type</label>
-      <select class="form-control" id="editClientType">
+   <div class="form-group"><label>Type</label>
+      <select class="form-control" id="editClientType" onchange="onEditClientTypeChange()">
         ${['Individual','Company','LLP','Partnership'].map(t=>`<option ${c.type===t?'selected':''}>${t}</option>`).join('')}
       </select>
+    </div>
+    <div class="form-group"><label>PAN</label>
+      <input type="text" class="form-control" id="editClientPAN" value="${escapeHtml(c.pan||'')}" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div class="form-group"><label>TAN</label>
+      <input type="text" class="form-control" id="editClientTAN" value="${escapeHtml(c.tan||'')}" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div class="form-group" id="editCinLlpinGroup" style="display:${c.type==='Company'||c.type==='LLP'?'block':'none'}">
+      <label id="editCinLlpinLabel">${c.type==='LLP'?'LLPIN':'CIN'}</label>
+      <input type="text" class="form-control" id="editClientCIN" value="${escapeHtml(c.cin||'')}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
     </div>
     <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(c.email||'')}" /></div>
     <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(c.phone||'')}" /></div>
@@ -1128,10 +1175,12 @@ function editClient(id) {
 async function saveClientEdit(id) {
   const name = document.getElementById('editClientName')?.value.trim();
   if (!name) { showToast('Client name required'); return; }
-  const updated = {
+ const updated = {
     name,
     contact_person: document.getElementById('editClientContact')?.value.trim() || '',
-    pan: document.getElementById('editClientPAN')?.value.trim(),
+    pan: document.getElementById('editClientPAN')?.value.trim() || '-',
+    tan: document.getElementById('editClientTAN')?.value.trim() || '-',
+    cin: document.getElementById('editClientCIN')?.value.trim() || '-',
     type: document.getElementById('editClientType')?.value,
     email: document.getElementById('editClientEmail')?.value.trim(),
     phone: document.getElementById('editClientPhone')?.value.trim(),
@@ -2226,10 +2275,21 @@ function openModal(type) {
         <div class="form-grid">
           <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="addClientName" placeholder="Enter client name" /></div>
           <div class="form-group"><label>Contact Person</label><input type="text" class="form-control" id="addClientContact" placeholder="Enter contact person name" /></div>
-          <div class="form-group"><label>PAN / TAN</label><input type="text" class="form-control" id="addClientPAN" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" /></div>
-          <div class="form-group"><label>Type</label>
-            <select class="form-control" id="addClientType"><option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option></select>
-          </div>
+         <div class="form-group"><label>Type</label>
+          <select class="form-control" id="addClientType" onchange="onClientTypeChange()">
+            <option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option>
+          </select>
+        </div>
+        <div class="form-group"><label>PAN</label>
+          <input type="text" class="form-control" id="addClientPAN" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+        </div>
+        <div class="form-group"><label>TAN</label>
+          <input type="text" class="form-control" id="addClientTAN" placeholder="ABCD12345E" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+        </div>
+        <div class="form-group" id="cinLlpinGroup" style="display:none">
+          <label id="cinLlpinLabel">CIN</label>
+          <input type="text" class="form-control" id="addClientCIN" placeholder="U12345MH2020PTC123456" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+        </div>
           <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="addClientGST" placeholder="Enter GSTIN (optional)" /></div>
           <div class="form-group"><label>Email</label><input type="text" class="form-control" id="addClientEmail" placeholder="Enter email" /></div>
           <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="addClientPhone" placeholder="Enter phone" /></div>
@@ -2389,11 +2449,18 @@ async function submitAddClient() {
   if (!name) { showToast('Client name is required'); return; }
   const panVal = document.getElementById('addClientPAN')?.value.trim().toUpperCase() || '';
   if (panVal && !isValidFormat(panVal, 'pan')) { showToast('❌ Invalid PAN format. Use ABCDE1234F'); return; }
+ const tanVal = document.getElementById('addClientTAN')?.value.trim().toUpperCase() || '';
+  if (tanVal && !isValidFormat(tanVal, 'tan')) { showToast('❌ Invalid TAN format. Use ABCD12345E'); return; }
+  const cinVal = document.getElementById('addClientCIN')?.value.trim().toUpperCase() || '';
+  const clientType = document.getElementById('addClientType')?.value || 'Individual';
+
   const body = {
     name,
     contact_person: document.getElementById('addClientContact')?.value.trim() || '',
     pan: panVal || '-',
-    type: document.getElementById('addClientType')?.value || 'Individual',
+    tan: tanVal || '-',
+    cin: cinVal || '-',
+    type: clientType,
     gst: document.getElementById('addClientGST')?.value.trim() || '-',
     email: document.getElementById('addClientEmail')?.value.trim() || '-',
     phone: document.getElementById('addClientPhone')?.value.trim() || '-',
