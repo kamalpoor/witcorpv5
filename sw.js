@@ -4,7 +4,7 @@
    Version: v4 — Matches full codebase (index, login, splash, app, auth, style)
    ============================================================= */
 
-const CACHE_NAME = 'witcorp-v5';
+const CACHE_NAME = 'witcorp-v6';
 
 const STATIC_ASSETS = [
   './',
