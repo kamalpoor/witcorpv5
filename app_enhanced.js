@@ -1696,6 +1696,7 @@ function renderDSCAlerts() {
         <div style="width:42px;height:42px;border-radius:10px;background:${days !== null && days < 0 ? '#fee2e2' : urgent ? '#fef3c7' : 'var(--primary-glow)'};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">✍️</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">${escapeHtml(clientName)} <span style="font-size:12px;font-weight:500;color:var(--text-muted);">(${escapeHtml(dscType)})</span></div>
+          ${d.individual_name ? `<div style="font-size:12px;color:var(--primary);font-weight:600;margin-bottom:4px;">👤 ${escapeHtml(d.individual_name)}</div>` : ''}
           <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:4px;">
             <span>📋 <strong style="color:var(--text)">Purpose:</strong> ${escapeHtml(purpose)}</span>
             <span>📅 <strong style="color:var(--text)">Expiry:</strong> ${escapeHtml(expiryDate)}</span>
@@ -1743,7 +1744,18 @@ async function saveDSCEdit(id) {
   }
 }
 
+function onDscClientChange() {
+  const sel = document.getElementById('dscClientSel');
+  const nameEl = document.getElementById('dscClientName');
+  if (sel && sel.value && nameEl && !nameEl.value) {
+    // auto fill nahi karna — user khud individual name daale
+  }
+}
+
 async function submitDSC() {
+  const clientSel = document.getElementById('dscClientSel');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
   const clientEl = document.getElementById('dscClientName');
   const panEl = document.getElementById('dscPAN');
   const typeSel = document.getElementById('dscType');
@@ -1752,14 +1764,17 @@ async function submitDSC() {
   const expiryEl = document.getElementById('dscExpiry');
   const remarksEl = document.getElementById('dscRemarks');
 
-  const clientName = clientEl?.value.trim();
-  if (!clientName) { showToast('Please enter client name'); return; }
+  const individualName = clientEl?.value.trim();
+  if (!clientName) { showToast('Please select a client'); return; }
+  if (!individualName) { showToast('Please enter individual name'); return; }
   if (!expiryEl?.value) { showToast('Please enter expiry date'); return; }
 
   showToast('⏳ Saving DSC record...');
 
   const body = {
     client_name: clientName,
+    client_id: clientId || null,
+    individual_name: individualName,
     pan: panEl?.value.trim() || '',
     dsc_type: typeSel?.value || 'Class 3',
     validity: validitySel?.value || '2 Years',
