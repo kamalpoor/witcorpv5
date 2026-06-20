@@ -905,7 +905,18 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js').catch(function(err) { console.warn('[SW] Registration failed:', err); });
+      navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        // Naya version aaya kya, check karo
+        reg.addEventListener('updatefound', function() {
+          var newWorker = reg.installing;
+          newWorker.addEventListener('statechange', function() {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Naya version mil gaya — page apne aap refresh ho jayega
+              window.location.reload();
+            }
+          });
+        });
+      }).catch(function(err) { console.warn('[SW] Registration failed:', err); });
     });
   }
 </script>
