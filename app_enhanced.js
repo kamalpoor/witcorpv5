@@ -755,6 +755,12 @@ setInterval(async () => {
     await fetchAllPresence();
     await renderTeamContacts();
     if (STATE.activeChatContact) await renderTeamMessages();
+    // Online count update karo
+    const myEmail = getCurrentUserEmail();
+    if (myEmail) STATE.userPresence[myEmail] = { is_online: true };
+    const onlineCount = Object.values(STATE.userPresence).filter(p => p.is_online).length;
+    const countEl = document.getElementById('onlineCount');
+    if (countEl) countEl.textContent = Math.max(onlineCount, 1);
   }, 5000);
 });
 
@@ -3573,6 +3579,69 @@ async function submitNewDir3() {
     closeModal(); renderDir3Table(); showToast('✅ DIR-3 KYC added!');
   } else { showToast('❌ Failed'); }
 }
+function toggleOnlinePanel() {
+  const panel = document.getElementById('onlinePanel');
+  if (!panel) return;
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderOnlinePanel();
+}
+
+async function renderOnlinePanel() {
+  const list = document.getElementById('onlinePanelList');
+  const countEl = document.getElementById('onlineCount');
+  if (!list) return;
+
+  await fetchAllPresence();
+
+  const myEmail = getCurrentUserEmail();
+  STATE.userPresence[myEmail] = { is_online: true };
+
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=*`, {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+  });
+  const profiles = res.ok ? await res.json() : [];
+
+  const onlineUsers = profiles.filter(p => {
+    if (p.email === myEmail) return true;
+    return STATE.userPresence[p.email]?.is_online || false;
+  });
+
+  if (countEl) countEl.textContent = onlineUsers.length || 1;
+
+  if (!profiles.length) {
+    list.innerHTML = `<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:12px">No team members</div>`;
+    return;
+  }
+
+  list.innerHTML = profiles.map(p => {
+    const name = p.full_name || p.email?.split('@')[0] || 'User';
+    const initial = name.charAt(0).toUpperCase();
+    const isMe = p.email === myEmail;
+    const isOnline = isMe ? true : (STATE.userPresence[p.email]?.is_online || false);
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;transition:background .15s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <div style="position:relative;flex-shrink:0">
+          <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px">${initial}</div>
+          <div style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;background:${isOnline ? '#10b981' : '#9ca3af'};border:2px solid var(--surface)"></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600;color:var(--text)">${escapeHtml(name)} ${isMe ? '<span style="font-size:10px;color:var(--primary)">(You)</span>' : ''}</div>
+          <div style="font-size:11px;color:${isOnline ? '#10b981' : 'var(--text-muted)'}">● ${isOnline ? 'Online' : 'Offline'}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Panel band karo bahar click karne pe
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('onlinePanel');
+  const btn = document.getElementById('onlinePanelBtn');
+  if (panel && btn && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
    ✅ updated_at sahi variable se har jagah fix kiya
