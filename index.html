@@ -130,6 +130,9 @@
     <a class="nav-item" data-page="incometax" onclick="navigate('incometax')"><span class="nav-icon">💰</span><span class="nav-label">Income Tax</span></a>
     <a class="nav-item" data-page="tds" onclick="navigate('tds')"><span class="nav-icon">🧾</span><span class="nav-label">TDS Returns</span></a>
     <a class="nav-item" data-page="audit" onclick="navigate('audit')"><span class="nav-icon">🛡️</span><span class="nav-label">Audit &amp; Assurance</span></a>
+    <a class="nav-item" data-page="professionaltax" onclick="navigate('professionaltax')"><span class="nav-icon">🏷️</span><span class="nav-label">Professional Tax</span></a>
+    <a class="nav-item" data-page="payroll" onclick="navigate('payroll')"><span class="nav-icon">👨‍💼</span><span class="nav-label">Payroll</span></a>
+    <a class="nav-item" data-page="dir3kyc" onclick="navigate('dir3kyc')"><span class="nav-icon">📝</span><span class="nav-label">DIR-3 KYC</span></a>
 
     <div class="nav-section-label">Tools</div>
     <a class="nav-item" data-page="dsc" onclick="navigate('dsc')"><span class="nav-icon">✍️</span><span class="nav-label">DSC &amp; eSign</span></a>
@@ -492,6 +495,74 @@
         </div>
       </div>
     </section>
+    <!-- PROFESSIONAL TAX -->
+<section class="page" id="page-professionaltax">
+  <div class="page-header">
+    <div><h1>🏷️ Professional Tax</h1><p>Manage PT filings for clients</p></div>
+    <button class="btn-primary" onclick="openModal('newPT')">+ New PT Filing</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number" id="ptFiled">0</div><div class="stat-label">Filed This Month</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number" id="ptPending">0</div><div class="stat-label">Pending</div></div></div>
+    <div class="stat-card"><div class="stat-icon red">❗</div><div class="stat-info"><div class="stat-number" id="ptOverdue">0</div><div class="stat-label">Overdue</div></div></div>
+    <div class="stat-card"><div class="stat-icon blue">👥</div><div class="stat-info"><div class="stat-number" id="ptTotal">0</div><div class="stat-label">Total Records</div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">PT Filing Tracker</div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Client Name</th><th>State</th><th>PT No.</th><th>Period</th><th>Amount (₹)</th><th>Due Date</th><th>Status</th><th>Remarks</th><th>Updated By</th><th>Actions</th></tr></thead>
+        <tbody id="ptTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- PAYROLL -->
+<section class="page" id="page-payroll">
+  <div class="page-header">
+    <div><h1>👨‍💼 Payroll</h1><p>Client-wise payroll management</p></div>
+    <button class="btn-primary" onclick="openModal('newPayroll')">+ New Payroll Entry</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number" id="payrollProcessed">0</div><div class="stat-label">Processed</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number" id="payrollPending">0</div><div class="stat-label">Pending</div></div></div>
+    <div class="stat-card"><div class="stat-icon blue">💰</div><div class="stat-info"><div class="stat-number" id="payrollTotal">₹ 0</div><div class="stat-label">Total Salary Paid</div></div></div>
+    <div class="stat-card"><div class="stat-icon purple">👥</div><div class="stat-info"><div class="stat-number" id="payrollClients">0</div><div class="stat-label">Active Clients</div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Payroll Records</div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Client Name</th><th>Month/Year</th><th>Employees</th><th>Gross Salary (₹)</th><th>PF Amount (₹)</th><th>ESI Amount (₹)</th><th>Net Salary (₹)</th><th>Status</th><th>Remarks</th><th>Updated By</th><th>Actions</th></tr></thead>
+        <tbody id="payrollTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- DIR-3 KYC -->
+<section class="page" id="page-dir3kyc">
+  <div class="page-header">
+    <div><h1>📝 DIR-3 KYC</h1><p>Director KYC filings</p></div>
+    <button class="btn-primary" onclick="openModal('newDir3')">+ New DIR-3 KYC</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number" id="dir3Filed">0</div><div class="stat-label">Filed</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number" id="dir3Pending">0</div><div class="stat-label">Pending</div></div></div>
+    <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><div class="stat-number" id="dir3Overdue">0</div><div class="stat-label">Overdue</div></div></div>
+    <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number" id="dir3Total">0</div><div class="stat-label">Total Directors</div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">DIR-3 KYC Tracker</div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Client Name</th><th>Director Name</th><th>DIN</th><th>Financial Year</th><th>Filing Date</th><th>Due Date</th><th>Status</th><th>Remarks</th><th>Updated By</th><th>Actions</th></tr></thead>
+        <tbody id="dir3TableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
 
     <!-- DSC & ESIGN — FIXED: expiry date input, remarks, real-time days left -->
     <section class="page" id="page-dsc">
