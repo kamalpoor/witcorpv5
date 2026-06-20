@@ -2241,14 +2241,54 @@ function renderEventList() {
   const el = document.getElementById('eventList');
   if (!el) return;
   const sorted = [...STATE.calendarEvents].sort((a,b) => new Date(a.event_date)-new Date(b.event_date));
-  el.innerHTML = sorted.length ? sorted.map(e=>`
-    <div class="upcoming-item" style="margin-bottom:10px">
-      <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="gst-item-sub fw-bold">${escapeHtml(e.event_date)}</div>
-        <button class="btn-outline" style="padding:3px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteEvent(${e.id})">✕</button>
+  
+  const typeIcon = { 
+    'GST':'📊', 'TDS':'🧾', 'ROC':'🏛️', 'DSC':'✍️', 
+    'Income Tax':'💰', 'Professional Tax':'🏷️', 'Payroll':'👨‍💼',
+    'DIR-3 KYC':'📝', 'PF':'🏦', 'Internal':'📌', 'Meeting':'📅'
+  };
+
+  el.innerHTML = sorted.length ? sorted.map(e => {
+    const icon = typeIcon[e.event_type] || '📅';
+    const isMeeting = e.event_type === 'Meeting';
+    const today = new Date();
+    const eventDate = new Date(e.event_date);
+    const diff = Math.ceil((eventDate - today) / (1000*60*60*24));
+    const diffLabel = diff < 0 ? `${Math.abs(diff)}d ago` : diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `In ${diff} days`;
+    const diffColor = diff < 0 ? '#ef4444' : diff <= 2 ? '#f59e0b' : '#10b981';
+
+    return `
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="display:flex;gap:12px;align-items:flex-start;flex:1">
+          <div style="width:38px;height:38px;border-radius:10px;background:var(--primary-glow);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:13.5px;color:var(--text)">${escapeHtml(e.title)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;font-size:12px;color:var(--text-muted)">
+              <span>🏷️ ${escapeHtml(e.event_type||'General')}</span>
+              <span>📅 ${escapeHtml(e.event_date)} ${e.event_time ? '⏰ '+e.event_time : ''}</span>
+              ${e.location ? `<span>📍 ${escapeHtml(e.location)}</span>` : ''}
+            </div>
+            ${e.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">📋 ${escapeHtml(e.description)}</div>` : ''}
+            ${e.attendees ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">👥 ${escapeHtml(e.attendees)}</div>` : ''}
+            <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">
+              🖊️ <strong>${escapeHtml(e.created_by || e.updated_by || '-')}</strong>
+              ${e.updated_at ? `· 🕐 ${formatDateTime(e.updated_at)}` : e.created_at ? `· 🕐 ${formatDateTime(e.created_at)}` : ''}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+          <span style="font-size:11px;font-weight:700;color:${diffColor};background:${diffColor}22;padding:2px 8px;border-radius:99px">${diffLabel}</span>
+          <div style="display:flex;gap:6px">
+            ${isMeeting ? `
+              <button class="btn-outline" style="padding:4px 8px;font-size:11px" onclick="reshareEvent(${e.id})">📤 Share</button>
+            ` : ''}
+            <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteEvent(${e.id})">🗑️</button>
+          </div>
+        </div>
       </div>
-    </div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No events</div></div>';
+    </div>`;
+  }).join('') : '<div class="empty-state"><div class="empty-state-text">No events scheduled</div></div>';
 }
 
 async function deleteEvent(id) {
@@ -2273,9 +2313,13 @@ function renderDueDates() {
     const diff = Math.ceil((d-today)/(1000*60*60*24));
     const sub = diff===0?'Due Today':diff===1?'Due Tomorrow':'Due in '+diff+' days';
     const urgent = diff<=1;
-    return `<div class="due-item">
+   return `<div class="due-item">
       <div class="due-date-badge"><div class="due-date-num">${d.getDate()}</div><div class="due-date-mon">${MONTH_NAMES[d.getMonth()].slice(0,3)}</div></div>
-      <div style="flex:1"><div class="due-title">${escapeHtml(e.title)}</div><div class="due-sub ${urgent?'red':''}">${sub}</div></div>
+      <div style="flex:1">
+        <div class="due-title">${escapeHtml(e.title)}</div>
+        <div class="due-sub ${urgent?'red':''}">${sub}</div>
+        ${e.created_by ? `<div style="font-size:10px;color:var(--text-muted)">🖊️ ${escapeHtml(e.created_by)}</div>` : ''}
+      </div>
     </div>`;
   }).join('') : '<div class="empty-state"><div class="empty-state-text">No upcoming dates</div></div>';
 }
@@ -3695,14 +3739,17 @@ async function submitNewEvent() {
   const desc = document.getElementById('meetingDesc')?.value.trim() || '';
   const attendees = document.getElementById('meetingAttendees')?.value.trim() || '';
 
-  const body = {
+ const body = {
     title,
     event_type: typeVal,
     event_date: dateVal,
     event_time: timeVal || null,
     location: location || null,
     description: desc || null,
-    attendees: attendees || null
+    attendees: attendees || null,
+    created_by: getUpdatedByLabel(),
+    updated_by: getUpdatedByLabel(),
+    updated_at: new Date().toISOString()
   };
 
   const result = await supabaseInsert('calendar_events', body);
@@ -3760,6 +3807,18 @@ function showMeetingShareModal(title, date, time, location, desc, attendees) {
       </div>
     </div>
   `);
+}
+function reshareEvent(id) {
+  const e = STATE.calendarEvents.find(x => x.id === id);
+  if (!e) return;
+  showMeetingShareModal(
+    e.title,
+    e.event_date,
+    e.event_time || '',
+    e.location || '',
+    e.description || '',
+    e.attendees || ''
+  );
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
