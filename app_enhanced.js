@@ -3183,9 +3183,9 @@ function renderPTTable() {
       <td>${escapeHtml(r.due_date||'-')}</td>
       <td>${statusBadge(r.status)}</td>
       <td class="remarks-cell">${escapeHtml(r.remarks||'-')}</td>
-      <td class="updated-by-cell">
+     <td class="updated-by-cell">
         <span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span>
-        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
+        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : r.created_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.created_at)}</span>` : ''}
       </td>
       <td>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editPT(${r.id})">✏️</button>
@@ -3286,9 +3286,9 @@ function renderPayrollTable() {
       <td>₹ ${formatAmount(r.net_salary||0)}</td>
       <td>${statusBadge(r.status)}</td>
       <td class="remarks-cell">${escapeHtml(r.remarks||'-')}</td>
-      <td class="updated-by-cell">
+     <td class="updated-by-cell">
         <span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span>
-        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
+        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : r.created_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.created_at)}</span>` : ''}
       </td>
       <td>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editPayroll(${r.id})">✏️</button>
