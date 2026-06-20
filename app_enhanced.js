@@ -1,6 +1,6 @@
 /* =============================================================
    WITCORP DASHBOARD - app_enhanced.js
-   FULLY FIXED VERSION v5:
+   FULLY FIXED VERSION v3:
    ✅ updated_by column shown in ALL tables with correct headers
    ✅ updated_at shown everywhere with correct variable names
    ✅ ROC — client dropdown from Client Management
