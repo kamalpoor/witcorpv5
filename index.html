@@ -834,12 +834,13 @@
 
 <!-- APP SCRIPT -->
 <script src="app_enhanced.js"></script>
-<!-- SERVICE WORKER -->  ← ✅ YEH SECTION
+
+<!-- SERVICE WORKER -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js')  ← REGISTER
-        .then(function(reg) {                       ← THEN
+      navigator.serviceWorker.register('./sw.js')
+        .then(function(reg) {
           reg.addEventListener('updatefound', function() {
             var newWorker = reg.installing;
             newWorker.addEventListener('statechange', function() {
@@ -849,7 +850,7 @@
             });
           });
         })
-        .catch(function(err) {                      ← CATCH (REGISTER PE)
+        .catch(function(err) { 
           console.warn('[SW] Registration failed:', err); 
         });
     });
