@@ -1,7 +1,7 @@
 /* =============================================================
    WITCORP SW.JS — Service Worker
    PWA Support | Offline Cache | Network First Strategy
-   Version: v3 — Matches full codebase (index, login, splash, app, auth, style)
+   Version: v4 — Matches full codebase (index, login, splash, app, auth, style)
    ============================================================= */
 
 const CACHE_NAME = 'witcorp-v5';
