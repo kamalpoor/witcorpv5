@@ -1,5 +1,5 @@
 /* =============================================================
-   WITCORP AUTH SYSTEM — auth.js (PRODUCTION v3)
+   WITCORP AUTH SYSTEM — auth.js (PRODUCTION v5)
    Supabase Auth | Google OAuth PKCE | Email/Password | Forgot Password
    Fully debugged and tested
    ============================================================= */
