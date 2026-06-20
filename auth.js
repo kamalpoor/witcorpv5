@@ -1,13 +1,10 @@
 /* =============================================================
-   WITCORP AUTH SYSTEM — auth.js (PRODUCTION v3.1 FIXED)
+   WITCORP AUTH SYSTEM — auth.js (PRODUCTION v3)
    Supabase Auth | Google OAuth PKCE | Email/Password | Forgot Password
-   ✅ All errors fixed
+   Fully debugged and tested
    ============================================================= */
-
 var SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
-var REDIRECT_URL = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/') + '/';
-
 /* =========================================================
    AUTH API HELPER
    ========================================================= */
@@ -157,7 +154,7 @@ async function loginWithEmail(email, password) {
 
 function loginWithGoogle() {
   try {
-    const redirectTo = encodeURIComponent(REDIRECT_URL);
+    const redirectTo = encodeURIComponent('https://kamalpoor.github.io/witcorpv5/');
     const url = SUPABASE_URL + '/auth/v1/authorize?provider=google&redirect_to=' + redirectTo;
     window.location.href = url;
   } catch (e) {
@@ -172,6 +169,7 @@ function loginWithGoogle() {
 
 async function handleOAuthCallback() {
   try {
+    // NEW: PKCE flow with ?code=...
     const searchParams = new URLSearchParams(window.location.search);
     const code = searchParams.get('code');
 
@@ -195,6 +193,7 @@ async function handleOAuthCallback() {
         if (data.access_token) {
           saveSession(data);
           
+          // Clean URL
           try { 
             window.history.replaceState({}, document.title, window.location.pathname); 
           } catch(e) {}
@@ -207,6 +206,7 @@ async function handleOAuthCallback() {
       return false;
     }
 
+    // OLD: Implicit flow with #access_token=...
     const hash = window.location.hash;
     if (!hash) return false;
 
@@ -229,6 +229,7 @@ async function handleOAuthCallback() {
         return false;
       }
 
+      // Decode JWT payload
       const payload = JSON.parse(
         atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
       );
@@ -245,6 +246,7 @@ async function handleOAuthCallback() {
         user: user
       });
 
+      // Fetch full user profile
       try {
         const uRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
           headers: {
@@ -261,6 +263,7 @@ async function handleOAuthCallback() {
         console.error('[handleOAuthCallback] Could not fetch full user:', ue);
       }
 
+      // Clean URL
       try { 
         window.history.replaceState({}, document.title, window.location.pathname); 
       } catch(e) {}
@@ -334,7 +337,7 @@ async function sendPasswordReset(email) {
   hideForgotMessages();
 
   try {
-    const redirectTo = REDIRECT_URL + 'login.html?type=recovery';
+    const redirectTo = 'https://kamalpoor.github.io/witcorpv5/login.html?type=recovery';
     const result = await authRequest('recover', {
       email: email,
       gotrue_meta_security: {},
@@ -438,7 +441,7 @@ async function logout() {
   }
 
   clearSession();
-  window.location.replace(REDIRECT_URL + 'login.html');
+  window.location.replace('login.html');
 }
 
 /* =========================================================
@@ -448,54 +451,52 @@ async function logout() {
 async function requireAuth() {
   try {
     const isCallback = await handleOAuthCallback();
-    
-    if (isCallback) {
-      let cbToken = null;
-      try { cbToken = localStorage.getItem('witcorp-access-token'); } catch(e) {}
-      
-      if (!cbToken) { window.location.href = REDIRECT_URL + 'login.html'; return; }
+if (isCallback) {
+  let cbToken = null;
+  try { cbToken = localStorage.getItem('witcorp-access-token'); } catch(e) {}
+  
+  if (!cbToken) { window.location.href = 'login.html'; return; }
 
-      const userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + cbToken }
-      });
+  // Token se fresh user fetch karo
+  const userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + cbToken }
+  });
 
-      if (!userRes.ok) { clearSession(); window.location.href = REDIRECT_URL + 'login.html'; return; }
+  if (!userRes.ok) { clearSession(); window.location.href = 'login.html'; return; }
 
-      const cbUser = await userRes.json();
-      try { localStorage.setItem('witcorp-user', JSON.stringify(cbUser)); } catch(e) {}
+  const cbUser = await userRes.json();
+  try { localStorage.setItem('witcorp-user', JSON.stringify(cbUser)); } catch(e) {}
 
-      const cbRes = await fetch(
-        SUPABASE_URL + '/rest/v1/profiles?id=eq.' + cbUser.id + '&select=status',
-        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + cbToken } }
-      );
-      const cbProfile = await cbRes.json();
-      const cbStatus = cbProfile?.[0]?.status;
+  // Ab profiles check karo
+  const cbRes = await fetch(
+    SUPABASE_URL + '/rest/v1/profiles?id=eq.' + cbUser.id + '&select=status',
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + cbToken } }
+  );
+  const cbProfile = await cbRes.json();
+  const cbStatus = cbProfile?.[0]?.status;
 
-      if (cbStatus === 'approved') {
-        return true;
-      } else {
-        clearSession();
-        window.location.href = REDIRECT_URL + 'login.html?error=not_approved';
-        return;
-      }
-    }
-
+  if (cbStatus === 'approved') {
+    redirectToDashboard();
+  } else {
+    clearSession();
+    window.location.href = 'login.html?error=not_approved';
+  }
+  return;
+}
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('type') === 'recovery') {
-      window.location.href = REDIRECT_URL + 'login.html?type=recovery';
+      window.location.href = 'login.html?type=recovery';
       return;
     }
 
     const user = await getSession();
     if (!user) {
       const refreshed = await refreshToken();
-      if (!refreshed) { 
-        window.location.href = REDIRECT_URL + 'login.html'; 
-        return;
-      }
-      return true;
+      if (!refreshed) { window.location.href = 'login.html'; }
+      return;
     }
 
+    // ✅ APPROVAL CHECK — har page load par check karo
     let token = null;
     try { token = localStorage.getItem('witcorp-access-token'); } catch(e) {}
 
@@ -508,20 +509,17 @@ async function requireAuth() {
 
     if (status !== 'approved') {
       clearSession();
-      window.location.href = REDIRECT_URL + 'login.html';
-      return;
+      window.location.href = 'login.html';
     }
-
-    return true;
 
   } catch (e) {
     console.error('[requireAuth]', e);
-    window.location.href = REDIRECT_URL + 'login.html';
+    window.location.href = 'login.html';
   }
 }
 
 function redirectToDashboard() {
-  window.location.replace(REDIRECT_URL + 'index.html');
+  window.location.replace('index.html');
 }
 
 /* =========================================================
@@ -532,6 +530,7 @@ async function getUserDisplayName() {
   const user = getCurrentUser();
   if (!user) return 'User';
 
+  // Try profiles table
   let token = null;
   try { 
     token = localStorage.getItem('witcorp-access-token'); 
@@ -561,10 +560,12 @@ async function getUserDisplayName() {
     }
   }
 
+  // Fallback: user_metadata
   const meta = user.user_metadata || {};
   if (meta.full_name) return meta.full_name;
   if (meta.name) return meta.name;
 
+  // Fallback: email prefix
   if (user.email) return user.email.split('@')[0];
 
   return 'User';
@@ -577,6 +578,7 @@ async function getUserDisplayName() {
 async function openProfileModal() {
   let user = getCurrentUser();
 
+  // Refresh user data
   let token = null;
   try { 
     token = localStorage.getItem('witcorp-access-token'); 
@@ -606,6 +608,7 @@ async function openProfileModal() {
   const email = (user && user.email) ? user.email : 'Not available';
   const uid = (user && user.id) ? user.id : 'N/A';
 
+  // Count clients
   let clientCount = '—';
   if (token) {
     try {
@@ -630,9 +633,11 @@ async function openProfileModal() {
 
   const initial = displayName.charAt(0).toUpperCase() || 'U';
 
+  // Remove existing modal
   const existing = document.getElementById('witcorp-profile-modal');
   if (existing) existing.remove();
 
+  // Create modal
   const modal = document.createElement('div');
   modal.id = 'witcorp-profile-modal';
   modal.style.cssText = [
@@ -840,7 +845,7 @@ function showResetSuccess() {
   if (el) el.style.display = 'block';
   const e = document.getElementById('resetError');
   if (e) e.style.display = 'none';
-  setTimeout(function () { window.location.replace(REDIRECT_URL + 'index.html'); }, 2000);
+  setTimeout(function () { window.location.replace('index.html'); }, 2000);
 }
 
 function showToastAuth(msg) {
@@ -852,5 +857,5 @@ function showToastAuth(msg) {
 }
 
 /* =========================================================
-   END OF auth.js (v3.1 FIXED)
+   END OF auth.js (v3)
    ========================================================= */
