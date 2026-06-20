@@ -720,6 +720,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderVaultFolders();
   renderVaultCredentials();
   populateAllClientDropdowns();
+  renderPTTable();
+  renderPayrollTable();
+  renderDir3Table();
 
   setInterval(async () => {
     await renderTeamContacts();
@@ -770,7 +773,7 @@ function showPageLoader(show) {
 
 async function loadAllData() {
   try {
-    const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events] = await Promise.all([
+    const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events, pt, payroll, dir3] = await Promise.all([
       supabaseQuery('clients', { order: 'created_at.desc' }),
       supabaseQuery('gst_returns', { order: 'created_at.desc' }),
       supabaseQuery('roc_filings', { order: 'created_at.desc' }),
@@ -782,6 +785,9 @@ async function loadAllData() {
       supabaseQuery('tasks', { order: 'created_at.desc' }),
       supabaseQuery('documents', { order: 'created_at.desc' }),
       supabaseQuery('calendar_events', { order: 'event_date.asc' }),
+      supabaseQuery('professional_tax', { order: 'created_at.desc' }),
+      supabaseQuery('payroll_entries', { order: 'created_at.desc' }),
+      supabaseQuery('dir3_kyc', { order: 'created_at.desc' }),
     ]);
     STATE.clients = Array.isArray(clients) ? clients : [];
     STATE.gstReturns = Array.isArray(gst) ? gst : [];
@@ -794,12 +800,14 @@ async function loadAllData() {
     STATE.tasks = Array.isArray(tasks) ? tasks : [];
     STATE.documents = Array.isArray(docs) ? docs : [];
     STATE.calendarEvents = Array.isArray(events) ? events : [];
+    STATE.ptFilings = Array.isArray(pt) ? pt : [];
+    STATE.payrollEntries = Array.isArray(payroll) ? payroll : [];
+    STATE.dir3Filings = Array.isArray(dir3) ? dir3 : [];
   } catch (e) {
     console.error('loadAllData error:', e);
     showToast('Database connection failed. Check console.');
   }
 }
-
 /* =========================================================
    10. CLIENT DROPDOWNS
    ========================================================= */
@@ -840,9 +848,12 @@ function navigate(page) {
   closeNotifications();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (page === 'reports') { setTimeout(renderBarChart, 100); setTimeout(updateDashboardStats, 200); }
-  if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
+ if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
   if (page === 'gst') renderGSTPage();
   if (page === 'dsc') renderDSCAlerts();
+  if (page === 'professionaltax') renderPTTable();
+  if (page === 'payroll') renderPayrollTable();
+  if (page === 'dir3kyc') renderDir3Table();
   populateAllClientDropdowns();
 }
 
@@ -2289,7 +2300,7 @@ function openModal(type) {
         <div class="form-group"><label>File Size</label><input type="text" class="form-control" id="uploadDocSize" placeholder="e.g. 2.4 MB" /></div>
         <button class="btn-primary" style="width:100%" onclick="submitUploadDoc()">⬆ Upload</button>`
     },
-    newEvent: {
+  newEvent: {
       title: '📅 Add Calendar Event',
       body: `
         <div class="form-group"><label>Event Title *</label><input type="text" class="form-control" id="newEventTitle" placeholder="Enter event title" /></div>
@@ -2298,6 +2309,46 @@ function openModal(type) {
         </div>
         <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="newEventDate" /></div>
         <button class="btn-primary" style="width:100%" onclick="submitNewEvent()">✅ Add Event</button>`
+    },
+    newPT: {
+      title: '🏷️ New PT Filing',
+      body: `
+        <div class="form-group"><label>Client *</label><select class="form-control" id="ptClientSel">${getClientOptionsHtml()}</select></div>
+        <div class="form-group"><label>State</label><input type="text" class="form-control" id="ptState" placeholder="e.g. Maharashtra" /></div>
+        <div class="form-group"><label>PT Number</label><input type="text" class="form-control" id="ptNumber" placeholder="PT registration number" /></div>
+        <div class="form-group"><label>Period</label><input type="text" class="form-control" id="ptPeriod" placeholder="e.g. April 2026" /></div>
+        <div class="form-group"><label>Amount (₹)</label><input type="number" class="form-control" id="ptAmount" placeholder="Enter PT amount" /></div>
+        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="ptDueDate" /></div>
+        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="ptRemarks" placeholder="Optional remarks..." /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewPT()">✅ Add PT Filing</button>`
+    },
+    newPayroll: {
+      title: '👨‍💼 New Payroll Entry',
+      body: `
+        <div class="form-group"><label>Client *</label><select class="form-control" id="payrollClientSel">${getClientOptionsHtml()}</select></div>
+        <div class="form-group"><label>Month/Year</label><input type="month" class="form-control" id="payrollMonthYear" /></div>
+        <div class="form-group"><label>No. of Employees</label><input type="number" class="form-control" id="payrollEmpCount" placeholder="0" /></div>
+        <div class="form-group"><label>Gross Salary (₹)</label><input type="number" class="form-control" id="payrollGross" placeholder="0" /></div>
+        <div class="form-group"><label>PF Amount (₹)</label><input type="number" class="form-control" id="payrollPF" placeholder="0" /></div>
+        <div class="form-group"><label>ESI Amount (₹)</label><input type="number" class="form-control" id="payrollESI" placeholder="0" /></div>
+        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="payrollRemarks" placeholder="Optional remarks..." /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewPayroll()">✅ Add Payroll Entry</button>`
+    },
+    newDir3: {
+      title: '📝 New DIR-3 KYC',
+      body: `
+        <div class="form-group"><label>Client *</label><select class="form-control" id="dir3ClientSel">${getClientOptionsHtml()}</select></div>
+        <div class="form-group"><label>Director Name *</label><input type="text" class="form-control" id="dir3DirectorName" placeholder="Enter director name" /></div>
+        <div class="form-group"><label>DIN</label><input type="text" class="form-control" id="dir3DIN" maxlength="8" placeholder="00000000" /></div>
+        <div class="form-group"><label>Financial Year</label>
+          <select class="form-control" id="dir3FY">
+            ${getAssessmentYears().map(y=>`<option>${y}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="dir3DueDate" /></div>
+        <div class="form-group"><label>Filing Date</label><input type="date" class="form-control" id="dir3FilingDate" /></div>
+        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="dir3Remarks" placeholder="Optional remarks..." /></div>
+        <button class="btn-primary" style="width:100%" onclick="submitNewDir3()">✅ Add DIR-3 KYC</button>`
     }
   };
   const config = configs[type];
@@ -3094,7 +3145,319 @@ async function refreshDashboard() {
   renderVaultFolders();
   renderVaultCredentials();
   populateAllClientDropdowns();
+  renderPTTable();
+  renderPayrollTable();
+  renderDir3Table();
   showToast('✅ Data refreshed!');
+}
+/* =========================================================
+   PROFESSIONAL TAX
+   ========================================================= */
+
+async function loadPTData() {
+  const data = await supabaseQuery('professional_tax', { order: 'created_at.desc' });
+  STATE.ptFilings = Array.isArray(data) ? data : [];
+}
+
+function renderPTTable() {
+  const tbody = document.getElementById('ptTableBody');
+  if (!tbody) return;
+  const data = STATE.ptFilings || [];
+  
+  document.getElementById('ptFiled') && (document.getElementById('ptFiled').textContent = data.filter(x=>x.status==='Filed').length);
+  document.getElementById('ptPending') && (document.getElementById('ptPending').textContent = data.filter(x=>x.status==='Pending').length);
+  document.getElementById('ptOverdue') && (document.getElementById('ptOverdue').textContent = data.filter(x=>x.status==='Overdue').length);
+  document.getElementById('ptTotal') && (document.getElementById('ptTotal').textContent = data.length);
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">🏷️</div><div class="empty-state-text">No PT filings yet</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td><strong>${escapeHtml(r.client_name||'-')}</strong></td>
+      <td>${escapeHtml(r.state||'-')}</td>
+      <td>${escapeHtml(r.pt_number||'-')}</td>
+      <td>${escapeHtml(r.period||'-')}</td>
+      <td>₹ ${formatAmount(r.amount||0)}</td>
+      <td>${escapeHtml(r.due_date||'-')}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td class="remarks-cell">${escapeHtml(r.remarks||'-')}</td>
+      <td class="updated-by-cell">
+        <span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span>
+        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
+      </td>
+      <td>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editPT(${r.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deletePT(${r.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function editPT(id) {
+  const r = (STATE.ptFilings||[]).find(x=>x.id===id);
+  if (!r) return;
+  openModalWithContent(`✏️ Edit PT — ${escapeHtml(r.client_name)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editPtStatus">
+        ${['Filed','Pending','Overdue'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editPtRemarks" value="${escapeHtml(r.remarks||'')}" /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="savePTEdit(${id})">💾 Save</button>
+  `);
+}
+
+async function savePTEdit(id) {
+  const status = document.getElementById('editPtStatus')?.value;
+  const remarks = document.getElementById('editPtRemarks')?.value.trim();
+  const ok = await supabaseUpdate('professional_tax', id, {status, remarks});
+  if (ok) {
+    const idx = (STATE.ptFilings||[]).findIndex(x=>x.id===id);
+    if (idx!==-1) { STATE.ptFilings[idx].status=status; STATE.ptFilings[idx].remarks=remarks; STATE.ptFilings[idx].updated_by=getUpdatedByLabel(); STATE.ptFilings[idx].updated_at=new Date().toISOString(); }
+    closeModal(); renderPTTable(); showToast('✅ PT updated!');
+  }
+}
+
+async function deletePT(id) {
+  if (!confirm('Delete this PT filing?')) return;
+  const ok = await supabaseDelete('professional_tax', id);
+  if (ok) { STATE.ptFilings = (STATE.ptFilings||[]).filter(x=>x.id!==id); renderPTTable(); showToast('🗑️ Deleted'); }
+}
+
+async function submitNewPT() {
+  const clientSel = document.getElementById('ptClientSel');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
+  const body = {
+    client_name: clientName,
+    client_id: clientId,
+    state: document.getElementById('ptState')?.value.trim()||'',
+    pt_number: document.getElementById('ptNumber')?.value.trim()||'',
+    period: document.getElementById('ptPeriod')?.value.trim()||'',
+    amount: parseFloat(document.getElementById('ptAmount')?.value)||0,
+    due_date: document.getElementById('ptDueDate')?.value||'',
+    remarks: document.getElementById('ptRemarks')?.value.trim()||'',
+    status: 'Pending'
+  };
+  const result = await supabaseInsert('professional_tax', body);
+  if (result && result[0]) {
+    if (!STATE.ptFilings) STATE.ptFilings = [];
+    STATE.ptFilings.unshift(result[0]);
+    closeModal(); renderPTTable(); showToast('✅ PT Filing added!');
+  } else { showToast('❌ Failed'); }
+}
+
+/* =========================================================
+   PAYROLL
+   ========================================================= */
+
+async function loadPayrollData() {
+  const data = await supabaseQuery('payroll_entries', { order: 'created_at.desc' });
+  STATE.payrollEntries = Array.isArray(data) ? data : [];
+}
+
+function renderPayrollTable() {
+  const tbody = document.getElementById('payrollTableBody');
+  if (!tbody) return;
+  const data = STATE.payrollEntries || [];
+
+  const totalSalary = data.filter(x=>x.status==='Processed').reduce((s,x)=>s+(x.net_salary||0),0);
+  const uniqueClients = [...new Set(data.map(x=>x.client_id))].length;
+
+  document.getElementById('payrollProcessed') && (document.getElementById('payrollProcessed').textContent = data.filter(x=>x.status==='Processed').length);
+  document.getElementById('payrollPending') && (document.getElementById('payrollPending').textContent = data.filter(x=>x.status==='Pending').length);
+  document.getElementById('payrollTotal') && (document.getElementById('payrollTotal').textContent = '₹ '+formatAmount(totalSalary));
+  document.getElementById('payrollClients') && (document.getElementById('payrollClients').textContent = uniqueClients);
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="empty-state-icon">👨‍💼</div><div class="empty-state-text">No payroll entries yet</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td><strong>${escapeHtml(r.client_name||'-')}</strong></td>
+      <td>${escapeHtml(r.month_year||'-')}</td>
+      <td>${r.employee_count||0}</td>
+      <td>₹ ${formatAmount(r.gross_salary||0)}</td>
+      <td>₹ ${formatAmount(r.pf_amount||0)}</td>
+      <td>₹ ${formatAmount(r.esi_amount||0)}</td>
+      <td>₹ ${formatAmount(r.net_salary||0)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td class="remarks-cell">${escapeHtml(r.remarks||'-')}</td>
+      <td class="updated-by-cell">
+        <span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span>
+        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
+      </td>
+      <td>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editPayroll(${r.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deletePayroll(${r.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function editPayroll(id) {
+  const r = (STATE.payrollEntries||[]).find(x=>x.id===id);
+  if (!r) return;
+  openModalWithContent(`✏️ Edit Payroll — ${escapeHtml(r.client_name)}`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editPayrollStatus">
+        ${['Processed','Pending','On Hold'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editPayrollRemarks" value="${escapeHtml(r.remarks||'')}" /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="savePayrollEdit(${id})">💾 Save</button>
+  `);
+}
+
+async function savePayrollEdit(id) {
+  const status = document.getElementById('editPayrollStatus')?.value;
+  const remarks = document.getElementById('editPayrollRemarks')?.value.trim();
+  const ok = await supabaseUpdate('payroll_entries', id, {status, remarks});
+  if (ok) {
+    const idx = (STATE.payrollEntries||[]).findIndex(x=>x.id===id);
+    if (idx!==-1) { STATE.payrollEntries[idx].status=status; STATE.payrollEntries[idx].remarks=remarks; STATE.payrollEntries[idx].updated_by=getUpdatedByLabel(); STATE.payrollEntries[idx].updated_at=new Date().toISOString(); }
+    closeModal(); renderPayrollTable(); showToast('✅ Payroll updated!');
+  }
+}
+
+async function deletePayroll(id) {
+  if (!confirm('Delete this payroll entry?')) return;
+  const ok = await supabaseDelete('payroll_entries', id);
+  if (ok) { STATE.payrollEntries = (STATE.payrollEntries||[]).filter(x=>x.id!==id); renderPayrollTable(); showToast('🗑️ Deleted'); }
+}
+
+async function submitNewPayroll() {
+  const clientSel = document.getElementById('payrollClientSel');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
+  const gross = parseFloat(document.getElementById('payrollGross')?.value)||0;
+  const pf = parseFloat(document.getElementById('payrollPF')?.value)||0;
+  const esi = parseFloat(document.getElementById('payrollESI')?.value)||0;
+  const net = gross - pf - esi;
+  const body = {
+    client_name: clientName,
+    client_id: clientId,
+    month_year: document.getElementById('payrollMonthYear')?.value||'',
+    employee_count: parseInt(document.getElementById('payrollEmpCount')?.value)||0,
+    gross_salary: gross,
+    pf_amount: pf,
+    esi_amount: esi,
+    net_salary: net,
+    remarks: document.getElementById('payrollRemarks')?.value.trim()||'',
+    status: 'Pending'
+  };
+  const result = await supabaseInsert('payroll_entries', body);
+  if (result && result[0]) {
+    if (!STATE.payrollEntries) STATE.payrollEntries = [];
+    STATE.payrollEntries.unshift(result[0]);
+    closeModal(); renderPayrollTable(); showToast('✅ Payroll entry added!');
+  } else { showToast('❌ Failed'); }
+}
+
+/* =========================================================
+   DIR-3 KYC
+   ========================================================= */
+
+async function loadDir3Data() {
+  const data = await supabaseQuery('dir3_kyc', { order: 'created_at.desc' });
+  STATE.dir3Filings = Array.isArray(data) ? data : [];
+}
+
+function renderDir3Table() {
+  const tbody = document.getElementById('dir3TableBody');
+  if (!tbody) return;
+  const data = STATE.dir3Filings || [];
+
+  document.getElementById('dir3Filed') && (document.getElementById('dir3Filed').textContent = data.filter(x=>x.status==='Filed').length);
+  document.getElementById('dir3Pending') && (document.getElementById('dir3Pending').textContent = data.filter(x=>x.status==='Pending').length);
+  document.getElementById('dir3Overdue') && (document.getElementById('dir3Overdue').textContent = data.filter(x=>x.status==='Overdue').length);
+  document.getElementById('dir3Total') && (document.getElementById('dir3Total').textContent = data.length);
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-text">No DIR-3 KYC filings yet</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td><strong>${escapeHtml(r.client_name||'-')}</strong></td>
+      <td>${escapeHtml(r.director_name||'-')}</td>
+      <td>${escapeHtml(r.din||'-')}</td>
+      <td>${escapeHtml(r.financial_year||'-')}</td>
+      <td>${escapeHtml(r.filing_date||'-')}</td>
+      <td>${escapeHtml(r.due_date||'-')}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td class="remarks-cell">${escapeHtml(r.remarks||'-')}</td>
+      <td class="updated-by-cell">
+        <span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span>
+        ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
+      </td>
+      <td>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editDir3(${r.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteDir3(${r.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function editDir3(id) {
+  const r = (STATE.dir3Filings||[]).find(x=>x.id===id);
+  if (!r) return;
+  openModalWithContent(`✏️ Edit DIR-3 — ${escapeHtml(r.director_name||'')}`, `
+    <div class="form-group"><label>Filing Date</label><input type="date" class="form-control" id="editDir3Date" value="${r.filing_date||''}" /></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editDir3Status">
+        ${['Filed','Pending','Overdue'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editDir3Remarks" value="${escapeHtml(r.remarks||'')}" /></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveDir3Edit(${id})">💾 Save</button>
+  `);
+}
+
+async function saveDir3Edit(id) {
+  const status = document.getElementById('editDir3Status')?.value;
+  const remarks = document.getElementById('editDir3Remarks')?.value.trim();
+  const filing_date = document.getElementById('editDir3Date')?.value;
+  const ok = await supabaseUpdate('dir3_kyc', id, {status, remarks, filing_date});
+  if (ok) {
+    const idx = (STATE.dir3Filings||[]).findIndex(x=>x.id===id);
+    if (idx!==-1) { STATE.dir3Filings[idx].status=status; STATE.dir3Filings[idx].remarks=remarks; STATE.dir3Filings[idx].filing_date=filing_date; STATE.dir3Filings[idx].updated_by=getUpdatedByLabel(); STATE.dir3Filings[idx].updated_at=new Date().toISOString(); }
+    closeModal(); renderDir3Table(); showToast('✅ DIR-3 updated!');
+  }
+}
+
+async function deleteDir3(id) {
+  if (!confirm('Delete this DIR-3 KYC filing?')) return;
+  const ok = await supabaseDelete('dir3_kyc', id);
+  if (ok) { STATE.dir3Filings = (STATE.dir3Filings||[]).filter(x=>x.id!==id); renderDir3Table(); showToast('🗑️ Deleted'); }
+}
+
+async function submitNewDir3() {
+  const clientSel = document.getElementById('dir3ClientSel');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
+  const dirName = document.getElementById('dir3DirectorName')?.value.trim();
+  if (!dirName) { showToast('Director name required'); return; }
+  const body = {
+    client_name: clientName,
+    client_id: clientId,
+    director_name: dirName,
+    din: document.getElementById('dir3DIN')?.value.trim()||'',
+    financial_year: document.getElementById('dir3FY')?.value||'',
+    due_date: document.getElementById('dir3DueDate')?.value||'',
+    filing_date: document.getElementById('dir3FilingDate')?.value||'',
+    remarks: document.getElementById('dir3Remarks')?.value.trim()||'',
+    status: 'Pending'
+  };
+  const result = await supabaseInsert('dir3_kyc', body);
+  if (result && result[0]) {
+    if (!STATE.dir3Filings) STATE.dir3Filings = [];
+    STATE.dir3Filings.unshift(result[0]);
+    closeModal(); renderDir3Table(); showToast('✅ DIR-3 KYC added!');
+  } else { showToast('❌ Failed'); }
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
