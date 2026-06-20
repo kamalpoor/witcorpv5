@@ -3441,16 +3441,20 @@ async function submitNewDir3() {
   if (!clientName) { showToast('Please select a client'); return; }
   const dirName = document.getElementById('dir3DirectorName')?.value.trim();
   if (!dirName) { showToast('Director name required'); return; }
+  const due = document.getElementById('dir3DueDate')?.value;
+  const filing = document.getElementById('dir3FilingDate')?.value;
+
   const body = {
     client_name: clientName,
     client_id: clientId,
     director_name: dirName,
     din: document.getElementById('dir3DIN')?.value.trim()||'',
     financial_year: document.getElementById('dir3FY')?.value||'',
-    due_date: document.getElementById('dir3DueDate')?.value||'',
-    filing_date: document.getElementById('dir3FilingDate')?.value||'',
+    due_date: due || null,
+    filing_date: filing || null,
     remarks: document.getElementById('dir3Remarks')?.value.trim()||'',
-    status: 'Pending'
+    status: 'Pending',
+    updated_at: new Date().toISOString()
   };
   const result = await supabaseInsert('dir3_kyc', body);
   if (result && result[0]) {
