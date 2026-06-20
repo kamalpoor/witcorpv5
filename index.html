@@ -579,7 +579,14 @@
       <div class="two-col">
         <div class="card">
           <div class="card-title">Add DSC Record</div>
-          <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="dscClientName" placeholder="Enter client name" /></div>
+          <div class="form-group"><label>Client Name *</label>
+            <select class="form-control" id="dscClientSel" onchange="onDscClientChange()">
+              <option value="">Select Client</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Individual Name *</label>
+            <input type="text" class="form-control" id="dscClientName" placeholder="Enter individual/director name" />
+          </div>
           <div class="form-group"><label>PAN Number</label><input type="text" class="form-control" id="dscPAN" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="ABCDE1234F" /></div>
           <div class="form-group"><label>DSC Type</label>
             <select class="form-control" id="dscType"><option>Class 2</option><option>Class 3</option><option>DGFT</option><option>eSign</option></select>
