@@ -194,11 +194,12 @@ if (avatarEl) {
     avatarEl.textContent = initial;
   }
 }
-const els = { userDisplayName: name, userDisplayRole: role, welcomeUserName: name };
-Object.entries(els).forEach(([id, val]) => {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-});
+const nameEl2 = document.getElementById('userDisplayName');
+const roleEl2 = document.getElementById('userDisplayRole');
+const welcomeEl = document.getElementById('welcomeUserName');
+if (nameEl2) nameEl2.textContent = name;
+if (roleEl2) roleEl2.innerHTML = `<span style="color:#10b981;font-size:10px">●</span> Online`;
+if (welcomeEl) welcomeEl.textContent = name;
 }
 
 /* =========================================================
