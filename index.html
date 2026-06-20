@@ -839,17 +839,20 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js').then(function(reg) {
-        reg.addEventListener('updatefound', function() {
-          var newWorker = reg.installing;
-          newWorker.addEventListener('statechange', function() {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              window.location.reload();
-            }
-          });
-        }).catch(function(err) { console.warn('[SW] Registration failed:', err); });
+      navigator.serviceWorker.register('./sw.js')
+  .then(function(reg) {
+    reg.addEventListener('updatefound', function() {
+      var newWorker = reg.installing;
+      newWorker.addEventListener('statechange', function() {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          window.location.reload();
+        }
       });
     });
+  })
+  .catch(function(err) {  // ← YEH SAHI HAI! .register() ke promise pe lagaya
+    console.warn('[SW] Registration failed:', err); 
+  });
   }
 </script>
 
