@@ -61,6 +61,49 @@
     }
   })();
 </script>
+
+  <script>
+    function toggleDarkMode() {
+      const isDark = document.body.classList.toggle('force-dark');
+      localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
+      document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) { btn.textContent = isDark ? '☀️' : '🌙'; });
+    }
+    function setTheme(themeName) {
+      var themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
+      themes.forEach(function(t) { document.body.classList.remove(t); });
+      document.body.classList.add(themeName);
+      localStorage.setItem('witcorp-body-theme', themeName);
+      document.querySelectorAll('.swatch').forEach(function(s) { s.classList.toggle('active', s.dataset.theme === themeName); });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      var savedDark = localStorage.getItem('witcorp-dark-mode');
+      if (savedDark === '1') {
+        document.body.classList.add('force-dark');
+        document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) { btn.textContent = '☀️'; });
+      }
+      var savedTheme = localStorage.getItem('witcorp-body-theme');
+      if (savedTheme) setTheme(savedTheme);
+    });
+    function filterClientType(value) {
+      if (typeof STATE !== 'undefined') { STATE.filters.clients.type = value; STATE.pagination.clients.page = 1; if (typeof renderClientTable === 'function') renderClientTable(); }
+    }
+    function loadUserInfoExtended() {
+      var userRaw = localStorage.getItem('witcorp-user');
+      if (!userRaw) return;
+      var user = JSON.parse(userRaw);
+      var meta = user.user_metadata || {};
+      var name = meta.full_name || (user.email ? user.email.split('@')[0] : 'User');
+      var role = meta.role || 'Member';
+      var initial = name.charAt(0).toUpperCase();
+      var initEl = document.getElementById('userInitial');
+      var nameEl = document.getElementById('userDisplayName');
+      var roleEl = document.getElementById('userDisplayRole');
+      if (initEl) initEl.textContent = initial;
+      if (nameEl) nameEl.textContent = name;
+      if (roleEl) roleEl.textContent = role;
+    }
+    document.addEventListener('DOMContentLoaded', loadUserInfoExtended);
+  </script>
 </head>
 
 <body class="theme-violet">
@@ -252,7 +295,7 @@
       </div>
     </section>
 
-    <!-- GST DASHBOARD -->
+    <!-- GST DASHBOARD — FIXED: proper IDs, period auto-year, no internal events, registration added -->
     <section class="page" id="page-gst">
       <div class="page-header">
         <div><h1>📊 GST Dashboard</h1><p>Track &amp; file GST returns</p></div>
@@ -293,7 +336,7 @@
           </div>
           <div class="form-group">
             <label>Period</label>
-            <select class="form-control" id="gstPeriodSel"></select>
+            <select class="form-control" id="gstPeriodSel"><!-- populated by JS --></select>
           </div>
          <div class="form-group">
          <label>GSTIN</label>
@@ -316,7 +359,7 @@
       </div>
     </section>
 
-    <!-- ROC FILINGS -->
+    <!-- ROC FILINGS — FIXED: full forms list + remarks column -->
     <section class="page" id="page-roc">
       <div class="page-header">
         <div><h1>🏛️ ROC Filings</h1><p>Company filings &amp; compliance</p></div>
@@ -339,7 +382,7 @@
       </div>
     </section>
 
-    <!-- INCOME TAX -->
+    <!-- INCOME TAX — FIXED: correct AY, remarks, proper IDs -->
     <section class="page" id="page-incometax">
       <div class="page-header">
         <div><h1>💰 Income Tax</h1><p>ITR &amp; Tax Management</p></div>
@@ -360,7 +403,9 @@
           </div>
           <div class="form-group">
             <label>Assessment Year</label>
-            <select class="form-control" id="itrAssessmentYear"></select>
+            <select class="form-control" id="itrAssessmentYear">
+              <!-- populated by JS with correct current year -->
+            </select>
           </div>
           <div class="form-group">
             <label>ITR Form</label>
@@ -382,7 +427,7 @@
       </div>
     </section>
 
-    <!-- TDS RETURNS -->
+    <!-- TDS RETURNS — FIXED: proper IDs -->
     <section class="page" id="page-tds">
       <div class="page-header">
         <div><h1>🧾 TDS Returns</h1><p>Manage TDS filings</p></div>
@@ -425,7 +470,7 @@
       </div>
     </section>
 
-    <!-- AUDIT & ASSURANCE -->
+    <!-- AUDIT & ASSURANCE — FIXED: real logged-in user in auditor -->
     <section class="page" id="page-audit">
       <div class="page-header">
         <div><h1>🛡️ Audit &amp; Assurance</h1><p>Plan &amp; manage audits</p></div>
@@ -448,7 +493,7 @@
       </div>
     </section>
 
-    <!-- DSC & ESIGN -->
+    <!-- DSC & ESIGN — FIXED: expiry date input, remarks, real-time days left -->
     <section class="page" id="page-dsc">
       <div class="page-header">
         <div><h1>✍️ DSC &amp; eSign</h1><p>Digital signature services</p></div>
@@ -502,107 +547,107 @@
       </div>
     </section>
 
+    <!-- ACCOUNTING HUB — FIXED: proper IDs -->
     <!-- ACCOUNTING HUB — CLIENT WISE -->
-    <section class="page" id="page-accounting">
-      <div class="page-header">
-        <div><h1>🧮 Accounting Hub</h1><p>Client-wise accounting &amp; bookkeeping</p></div>
-      </div>
+<section class="page" id="page-accounting">
+  <div class="page-header">
+    <div><h1>🧮 Accounting Hub</h1><p>Client-wise accounting & bookkeeping</p></div>
+  </div>
 
-      <!-- Client Selector -->
-      <div class="card" style="margin-bottom:1rem">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <label style="font-weight:600;font-size:14px">Select Client:</label>
-          <select class="form-control" id="accClientSel" style="max-width:280px" onchange="onAccClientChange()">
-            <option value="">-- Select Client --</option>
-          </select>
-          <div id="accClientStats" style="display:flex;gap:10px;flex-wrap:wrap;margin-left:auto"></div>
+  <!-- Client Selector -->
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="font-weight:600;font-size:14px">Select Client:</label>
+      <select class="form-control" id="accClientSel" style="max-width:280px" onchange="onAccClientChange()">
+        <option value="">-- Select Client --</option>
+      </select>
+      <div id="accClientStats" style="display:flex;gap:10px;flex-wrap:wrap;margin-left:auto"></div>
+    </div>
+  </div>
+
+  <!-- Category Tabs -->
+  <div id="accTabsWrapper" style="display:none">
+    <div class="acc-tabs" id="accTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
+      <button class="acc-tab active" onclick="switchAccTab('Sales')">💰 Sales</button>
+      <button class="acc-tab" onclick="switchAccTab('Purchases')">🛒 Purchases</button>
+      <button class="acc-tab" onclick="switchAccTab('Sundry Debtors')">📤 Sundry Debtors</button>
+      <button class="acc-tab" onclick="switchAccTab('Sundry Creditors')">📥 Sundry Creditors</button>
+      <button class="acc-tab" onclick="switchAccTab('Payroll Entries')">👨‍💼 Payroll</button>
+      <button class="acc-tab" onclick="switchAccTab('Bank Statement')">🏦 Bank Statement</button>
+      <button class="acc-tab" onclick="switchAccTab('GST Transfer Entries')">📊 GST Transfer</button>
+      <button class="acc-tab" onclick="switchAccTab('Depreciation Entries')">📉 Depreciation</button>
+      <button class="acc-tab" onclick="switchAccTab('TDS Entries')">🧾 TDS Entries</button>
+      <button class="acc-tab" onclick="switchAccTab('Miscellaneous Ledgers')">📋 Misc Ledgers</button>
+    </div>
+
+    <!-- Add Entry Form -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title" id="accFormTitle">➕ Add Entry</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" class="form-control" id="accDate" />
+        </div>
+        <div class="form-group">
+          <label>Description *</label>
+          <input type="text" class="form-control" id="accDesc" placeholder="Entry description" />
+        </div>
+        <div class="form-group">
+          <label>Debit (₹)</label>
+          <input type="number" class="form-control" id="accDebit" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>Credit (₹)</label>
+          <input type="number" class="form-control" id="accCredit" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>Reference No.</label>
+          <input type="text" class="form-control" id="accRef" placeholder="Invoice/Challan no." />
+        </div>
+        <div class="form-group">
+          <label>Remarks</label>
+          <input type="text" class="form-control" id="accRemarks" placeholder="Optional" />
         </div>
       </div>
+      <button class="btn-primary" onclick="submitAccEntry()">✅ Add Entry</button>
+    </div>
 
-      <!-- Category Tabs -->
-      <div id="accTabsWrapper" style="display:none">
-        <div class="acc-tabs" id="accTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
-          <button class="acc-tab active" onclick="switchAccTab('Sales')">💰 Sales</button>
-          <button class="acc-tab" onclick="switchAccTab('Purchases')">🛒 Purchases</button>
-          <button class="acc-tab" onclick="switchAccTab('Sundry Debtors')">📤 Sundry Debtors</button>
-          <button class="acc-tab" onclick="switchAccTab('Sundry Creditors')">📥 Sundry Creditors</button>
-          <button class="acc-tab" onclick="switchAccTab('Payroll Entries')">👨‍💼 Payroll</button>
-          <button class="acc-tab" onclick="switchAccTab('Bank Statement')">🏦 Bank Statement</button>
-          <button class="acc-tab" onclick="switchAccTab('GST Transfer Entries')">📊 GST Transfer</button>
-          <button class="acc-tab" onclick="switchAccTab('Depreciation Entries')">📉 Depreciation</button>
-          <button class="acc-tab" onclick="switchAccTab('TDS Entries')">🧾 TDS Entries</button>
-          <button class="acc-tab" onclick="switchAccTab('Miscellaneous Ledgers')">📋 Misc Ledgers</button>
-        </div>
-
-        <!-- Add Entry Form -->
-        <div class="card" style="margin-bottom:1rem">
-          <div class="card-title" id="accFormTitle">➕ Add Sales Entry</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Date *</label>
-              <input type="date" class="form-control" id="accDate" />
-            </div>
-            <div class="form-group">
-              <label>Description *</label>
-              <input type="text" class="form-control" id="accDesc" placeholder="Entry description" />
-            </div>
-            <div class="form-group">
-              <label>Debit (₹)</label>
-              <input type="number" class="form-control" id="accDebit" placeholder="0" />
-            </div>
-            <div class="form-group">
-              <label>Credit (₹)</label>
-              <input type="number" class="form-control" id="accCredit" placeholder="0" />
-            </div>
-            <div class="form-group">
-              <label>Reference No.</label>
-              <input type="text" class="form-control" id="accRef" placeholder="Invoice/Challan no." />
-            </div>
-            <div class="form-group">
-              <label>Remarks</label>
-              <input type="text" class="form-control" id="accRemarks" placeholder="Optional" />
-            </div>
-          </div>
-          <button class="btn-primary" onclick="submitAccEntry()">✅ Add Entry</button>
-        </div>
-
-        <!-- Entries Table -->
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div class="card-title" id="accTableTitle" style="margin:0">📋 Sales Entries</div>
-            <div id="accTabStats" style="font-size:13px;color:var(--text-muted)"></div>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Debit (₹)</th>
-                  <th>Credit (₹)</th>
-                  <th>Reference</th>
-                  <th>Remarks</th>
-                  <th>Updated By</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="accEntriesBody"></tbody>
-            </table>
-          </div>
-          <div id="accEntriesEmpty" style="display:none">
-            <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No entries yet</div><div class="empty-state-sub">Add your first entry above</div></div>
-          </div>
-        </div>
+    <!-- Entries Table -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" id="accTableTitle" style="margin:0">Entries</div>
+        <div id="accTabStats" style="font-size:13px;color:var(--text-muted)"></div>
       </div>
-
-      <!-- No client selected -->
-      <div id="accNoClient" style="text-align:center;padding:60px 20px;color:var(--text-muted)">
-        <div style="font-size:48px;margin-bottom:12px">🧮</div>
-        <div style="font-size:16px;font-weight:600;margin-bottom:8px">Select a Client to Begin</div>
-        <div style="font-size:13px">Choose a client from the dropdown above to view and manage their accounting entries</div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Debit (₹)</th>
+              <th>Credit (₹)</th>
+              <th>Reference</th>
+              <th>Remarks</th>
+              <th>Updated By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="accEntriesBody"></tbody>
+        </table>
       </div>
-    </section>
+      <div id="accEntriesEmpty" style="display:none">
+        <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No entries yet</div><div class="empty-state-sub">Add your first entry above</div></div>
+      </div>
+    </div>
+  </div>
 
+  <!-- No client selected -->
+  <div id="accNoClient" style="text-align:center;padding:60px 20px;color:var(--text-muted)">
+    <div style="font-size:48px;margin-bottom:12px">🧮</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:8px">Select a Client to Begin</div>
+    <div style="font-size:13px">Choose a client from the dropdown above to view and manage their accounting entries</div>
+  </div>
+</section>
     <!-- TASK MANAGER -->
     <section class="page" id="page-tasks">
       <div class="page-header">
@@ -788,6 +833,8 @@
       </div>
     </section>
 
+    <div id="waMessageMenu" style="display:none;"></div>
+
   </main>
 </div>
 
@@ -832,6 +879,25 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- SCRIPT: Populate AY dropdown after DOM loads -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Populate Assessment Year dropdown with correct years
+    var ayEl = document.getElementById('itrAssessmentYear');
+    if (ayEl) {
+      var currentYear = new Date().getFullYear();
+      var opts = '';
+      for (var i = 0; i < 5; i++) {
+        var y = currentYear + 1 - i;
+        var label = y + '-' + String(y+1).slice(2);
+        var selected = i === 0 ? 'selected' : '';
+        opts += '<option value="' + label + '" ' + selected + '>' + label + '</option>';
+      }
+      ayEl.innerHTML = opts;
+    }
+  });
+</script>
+
 <!-- APP SCRIPT -->
 <script src="app_enhanced.js"></script>
 
@@ -839,20 +905,18 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js')
-        .then(function(reg) {
-          reg.addEventListener('updatefound', function() {
-            var newWorker = reg.installing;
-            newWorker.addEventListener('statechange', function() {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                window.location.reload();
-              }
-            });
+      navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        // Naya version aaya kya, check karo
+        reg.addEventListener('updatefound', function() {
+          var newWorker = reg.installing;
+          newWorker.addEventListener('statechange', function() {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Naya version mil gaya — page apne aap refresh ho jayega
+              window.location.reload();
+            }
           });
-        })
-        .catch(function(err) { 
-          console.warn('[SW] Registration failed:', err); 
         });
+      }).catch(function(err) { console.warn('[SW] Registration failed:', err); });
     });
   }
 </script>
