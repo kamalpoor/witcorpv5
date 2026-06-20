@@ -175,33 +175,57 @@ function getUpdatedByLabel() {
   return getCurrentUserName() || getCurrentUserEmail() || 'User';
 }
 
-function loadUserInfo() {
+async function loadUserInfo() {
   const user = getCurrentUser();
   if (!user) return;
   STATE.currentUser = user;
-  const name = getCurrentUserName();
-  const initial = name.charAt(0).toUpperCase();
-  const role = (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'Member';
- const avatarUrl = user.user_metadata?.avatar_url || '';
-const avatarEl = document.getElementById('userInitial');
-if (avatarEl) {
-  if (avatarUrl) {
-    avatarEl.innerHTML = '';
-    avatarEl.style.backgroundImage = `url('${avatarUrl}')`;
-    avatarEl.style.backgroundSize = 'cover';
-    avatarEl.style.backgroundPosition = 'center';
-  } else {
-    avatarEl.textContent = initial;
-  }
-}
-const nameEl2 = document.getElementById('userDisplayName');
-const roleEl2 = document.getElementById('userDisplayRole');
-const welcomeEl = document.getElementById('welcomeUserName');
-if (nameEl2) nameEl2.textContent = name;
-if (roleEl2) roleEl2.innerHTML = `<span style="color:#10b981;font-size:10px">●</span> Online`;
-if (welcomeEl) welcomeEl.textContent = name;
-}
 
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  // profiles table se latest full_name fetch karo
+  let displayName = (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name
+    : (user.email ? user.email.split('@')[0] : 'User');
+
+  try {
+    const profRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=full_name`,
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+    );
+    if (profRes.ok) {
+      const profData = await profRes.json();
+      if (profData?.[0]?.full_name) {
+        displayName = profData[0].full_name;
+        // localStorage bhi update karo taaki consistent rahe
+        const fresh = { ...user };
+        fresh.user_metadata = fresh.user_metadata || {};
+        fresh.user_metadata.full_name = displayName;
+        localStorage.setItem('witcorp-user', JSON.stringify(fresh));
+      }
+    }
+  } catch(e) { /* network error — fallback to stored name */ }
+
+  const initial = displayName.charAt(0).toUpperCase();
+  const avatarUrl = user.user_metadata?.avatar_url || '';
+  const avatarEl = document.getElementById('userInitial');
+  if (avatarEl) {
+    if (avatarUrl) {
+      avatarEl.innerHTML = '';
+      avatarEl.style.backgroundImage = `url('${avatarUrl}')`;
+      avatarEl.style.backgroundSize = 'cover';
+      avatarEl.style.backgroundPosition = 'center';
+    } else {
+      avatarEl.textContent = initial;
+    }
+  }
+
+  const nameEl2 = document.getElementById('userDisplayName');
+  const roleEl2 = document.getElementById('userDisplayRole');
+  const welcomeEl = document.getElementById('welcomeUserName');
+  if (nameEl2) nameEl2.textContent = displayName;
+  if (roleEl2) roleEl2.innerHTML = `<span style="color:#10b981;font-size:10px">●</span> Online`;
+  if (welcomeEl) welcomeEl.textContent = displayName;
+}
 /* =========================================================
    4. DARK MODE
    ========================================================= */
@@ -2730,7 +2754,7 @@ async function saveProfileName() {
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
 
   try {
-    // Update Supabase Auth user_metadata
+    // Step 1: Update Supabase Auth user_metadata
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       method: 'PUT',
       headers: {
@@ -2744,12 +2768,30 @@ async function saveProfileName() {
     if (!res.ok) { showToast('❌ Failed to update name'); return; }
 
     const updatedUser = await res.json();
-    localStorage.setItem('witcorp-user', JSON.stringify(updatedUser));
 
-    // Also update profiles table if it has a full_name column
-    if (user.id) {
-      await supabaseQuery('profiles', { method: 'PATCH', filters: `id=eq.${user.id}`, body: { full_name: newName } }).catch(() => {});
+    // Step 2: Update profiles table (PROPERLY — no silent fail)
+    const profileRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ full_name: newName })
+      }
+    );
+
+    if (!profileRes.ok) {
+      console.warn('profiles table update failed:', await profileRes.text());
     }
+
+    // Step 3: Update localStorage with new name in BOTH places
+    updatedUser.user_metadata = updatedUser.user_metadata || {};
+    updatedUser.user_metadata.full_name = newName;
+    localStorage.setItem('witcorp-user', JSON.stringify(updatedUser));
 
     STATE.currentUser = updatedUser;
     loadUserInfo();
