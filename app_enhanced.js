@@ -509,7 +509,11 @@ function initPresence() {
   const myEmail = getCurrentUserEmail();
   if (myEmail) {
     setPresenceOnline(myEmail);
-    setInterval(() => setPresenceOnline(myEmail), 30000);
+    fetchAllPresence();
+    setInterval(() => {
+      setPresenceOnline(myEmail);
+      fetchAllPresence();
+    }, 30000);
   }
 }
 
@@ -521,12 +525,33 @@ async function setPresenceOnline(email) {
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates'
+      'Prefer': 'resolution=merge-duplicates,return=representation'
     },
     body: JSON.stringify({ email, is_online: true, last_seen: new Date().toISOString() })
   }).catch(() => {});
+
+  // Presence state locally bhi update karo
+  STATE.userPresence[email] = { is_online: true, last_seen: new Date().toISOString() };
 }
 
+async function fetchAllPresence() {
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/user_presence?select=*`, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+    });
+    const data = res.ok ? await res.json() : [];
+    const now = new Date();
+    data.forEach(p => {
+      const lastSeen = new Date(p.last_seen);
+      const diffMins = (now - lastSeen) / 60000;
+      STATE.userPresence[p.email] = {
+        is_online: diffMins < 2,
+        last_seen: p.last_seen
+      };
+    });
+  } catch(e) {}
+}
 async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
@@ -724,7 +749,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderPayrollTable();
   renderDir3Table();
 
-  setInterval(async () => {
+setInterval(async () => {
+    await fetchAllPresence();
     await renderTeamContacts();
     if (STATE.activeChatContact) await renderTeamMessages();
   }, 5000);
