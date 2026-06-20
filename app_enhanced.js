@@ -1,17 +1,12 @@
 /* =============================================================
    WITCORP DASHBOARD - app_enhanced.js
-   FULLY FIXED VERSION v6:
-   ✅ Fix #2  — supabaseQuery PATCH/DELETE returns res.ok not true
-   ✅ Fix #3  — saveProfileName uses PATCH not PUT
-   ✅ Fix #4  — deleteAccEntry defined only once (client-wise version)
-   ✅ Fix #5  — Vault passwords not exposed in onclick attributes
-   ✅ Fix #10 — presence interval stored and cleared
-   ✅ Fix #11 — chat poll interval stored and cleared
-   ✅ Fix #13 — escapeHtml double-escape in onclick fixed via data attrs
-   ✅ Fix #14 — AY dropdown populated only here, not in index.html
-   ✅ Fix #15 — toggleDarkMode/setTheme defined only here
-   ✅ Fix #16 — filterClientType defined only here
-   ✅ Fix #17 — viewVaultItem button added in renderVaultCredentials
+   FULLY FIXED VERSION v5:
+   ✅ updated_by column shown in ALL tables with correct headers
+   ✅ updated_at shown everywhere with correct variable names
+   ✅ ROC — client dropdown from Client Management
+   ✅ TDS — client dropdown from Client Management
+   ✅ DSC fixed, real-time sync, all bugs removed
+   ✅ contact_person added in clients
    ============================================================= */
 
 /* =========================================================
@@ -19,7 +14,7 @@
    ========================================================= */
 
 var SUPABASE_URL = window.SUPABASE_URL || 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
-var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY_HERE';
+var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
 
 async function supabaseQuery(table, options = {}) {
   const { method = 'GET', filters = '', body = null, select = '*', order = 'created_at.desc', limit = null } = options;
@@ -37,8 +32,7 @@ async function supabaseQuery(table, options = {}) {
   try {
     const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : null });
     if (!res.ok) { const err = await res.text(); console.error(`Supabase error [${table}]:`, err); return []; }
-    /* FIX #2 — return res.ok instead of hardcoded true */
-    if (method === 'DELETE' || method === 'PATCH') return res.ok;
+    if (method === 'DELETE' || method === 'PATCH') return true;
     return await res.json();
   } catch(e) { console.error('supabaseQuery network error:', e); return []; }
 }
@@ -114,10 +108,10 @@ async function supabaseUpdate(table, id, body) {
         });
         return res2.ok;
       }
-      return false;
+      return null;
     }
     return true;
-  } catch(e) { console.error('supabaseUpdate network error:', e); return false; }
+  } catch(e) { console.error('supabaseUpdate network error:', e); return null; }
 }
 
 async function supabaseDelete(table, id) {
@@ -177,7 +171,6 @@ function getCurrentUserEmail() {
   const user = getCurrentUser();
   return user ? (user.email || '') : '';
 }
-
 function getUpdatedByLabel() {
   return getCurrentUserName() || getCurrentUserEmail() || 'User';
 }
@@ -189,23 +182,23 @@ function loadUserInfo() {
   const name = getCurrentUserName();
   const initial = name.charAt(0).toUpperCase();
   const role = (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'Member';
-  const avatarUrl = user.user_metadata?.avatar_url || '';
-  const avatarEl = document.getElementById('userInitial');
-  if (avatarEl) {
-    if (avatarUrl) {
-      avatarEl.innerHTML = '';
-      avatarEl.style.backgroundImage = `url('${avatarUrl}')`;
-      avatarEl.style.backgroundSize = 'cover';
-      avatarEl.style.backgroundPosition = 'center';
-    } else {
-      avatarEl.textContent = initial;
-    }
+ const avatarUrl = user.user_metadata?.avatar_url || '';
+const avatarEl = document.getElementById('userInitial');
+if (avatarEl) {
+  if (avatarUrl) {
+    avatarEl.innerHTML = '';
+    avatarEl.style.backgroundImage = `url('${avatarUrl}')`;
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+  } else {
+    avatarEl.textContent = initial;
   }
-  const els = { userDisplayName: name, userDisplayRole: role, welcomeUserName: name };
-  Object.entries(els).forEach(([id, val]) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-  });
+}
+const els = { userDisplayName: name, userDisplayRole: role, welcomeUserName: name };
+Object.entries(els).forEach(([id, val]) => {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+});
 }
 
 /* =========================================================
@@ -279,8 +272,6 @@ function selectVaultFolder(folder) {
   renderVaultCredentials();
 }
 
-/* FIX #5 & #13 — passwords/usernames NOT embedded in onclick attributes.
-   Instead we use data-id and look up the value in JS at click time. */
 function renderVaultCredentials() {
   const container = document.getElementById('vaultCredentialsList');
   if (!container) return;
@@ -308,13 +299,13 @@ function renderVaultCredentials() {
               <td><strong>${escapeHtml(cred.label)}</strong></td>
               <td>
                 <span>${escapeHtml(cred.username || '-')}</span>
-                ${cred.username ? `<button class="btn-outline" style="padding:2px 7px;font-size:11px;margin-left:6px" onclick="copyVaultField(this)" data-val="${escapeAttr(cred.username)}" data-msg="Username copied!">📋</button>` : ''}
+                ${cred.username ? `<button class="btn-outline" style="padding:2px 7px;font-size:11px;margin-left:6px" onclick="copyToClipboard('${escapeHtml(cred.username)}','Username copied!')">📋</button>` : ''}
               </td>
               <td>
                 <div style="display:flex;align-items:center;gap:6px">
-                  <input type="password" id="vp_${cred.id}" value="${escapeAttr(cred.password||'')}" readonly style="border:none;background:transparent;color:var(--text);font-size:13px;width:100px;outline:none" />
+                  <input type="password" id="vp_${cred.id}" value="${escapeHtml(cred.password||'')}" readonly style="border:none;background:transparent;color:var(--text);font-size:13px;width:100px;outline:none" />
                   <button class="btn-outline" style="padding:2px 7px;font-size:11px" onclick="toggleVaultPass('vp_${cred.id}',this)">👁️</button>
-                  ${cred.password ? `<button class="btn-outline" style="padding:2px 7px;font-size:11px" onclick="copyVaultInput('vp_${cred.id}')">📋</button>` : ''}
+                  ${cred.password ? `<button class="btn-outline" style="padding:2px 7px;font-size:11px" onclick="copyToClipboard('${escapeHtml(cred.password)}','Password copied!')">📋</button>` : ''}
                 </div>
               </td>
               <td style="color:var(--text-muted);font-size:12px">${escapeHtml(cred.notes || '-')}</td>
@@ -323,7 +314,6 @@ function renderVaultCredentials() {
                 ${cred.updated_at ? formatDateTime(cred.updated_at) : ''}
               </td>
               <td>
-                <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="viewVaultItem(${cred.id})">👁️ View</button>
                 <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editVaultItem(${cred.id})">✏️ Edit</button>
                 <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteVaultItem(${cred.id})">🗑️</button>
               </td>
@@ -332,44 +322,20 @@ function renderVaultCredentials() {
       </table>
     </div>`;
 }
-
-/* FIX #5 — copy from data attribute, not embedded string */
-function copyVaultField(btn) {
-  const val = btn.getAttribute('data-val') || '';
-  const msg = btn.getAttribute('data-msg') || 'Copied!';
-  navigator.clipboard.writeText(val).then(() => showToast(msg)).catch(() => showToast('❌ Copy failed'));
-}
-
-/* Copy password from input element by ID — safe, no value in DOM attributes */
-function copyVaultInput(inputId) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  navigator.clipboard.writeText(input.value).then(() => showToast('Password copied!')).catch(() => showToast('❌ Copy failed'));
-}
-
-/* escapeAttr — for use inside HTML attribute values (double-quote safe) */
-function escapeAttr(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
 function viewVaultItem(id) {
   const cred = STATE.vaultCredentials.find(c => c.id === id);
   if (!cred) return;
   openModalWithContent(`🔐 View Credential — ${escapeHtml(cred.label)}`, `
     <div class="form-group"><label>Label</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.label)}</div></div>
+    <div class="form-group"><label>URL</label><div class="form-control" style="background:var(--bg);word-break:break-all">${escapeHtml(cred.url || '-')}</div></div>
     <div class="form-group"><label>Username</label><div style="display:flex;gap:8px">
       <div class="form-control" style="background:var(--bg);flex:1">${escapeHtml(cred.username || '-')}</div>
-      ${cred.username ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyVaultField(this)" data-val="${escapeAttr(cred.username)}" data-msg="Username copied!">📋 Copy</button>` : ''}
+      ${cred.username ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard('${escapeHtml(cred.username)}','Username copied!')">📋 Copy</button>` : ''}
     </div></div>
     <div class="form-group"><label>Password</label><div style="display:flex;gap:8px">
-      <input type="password" id="vaultPasswordView" class="form-control" style="flex:1;background:var(--bg)" value="${escapeAttr(cred.password || '')}" readonly />
+      <input type="password" id="vaultPasswordView" class="form-control" style="flex:1;background:var(--bg)" value="${escapeHtml(cred.password || '')}" readonly />
       <button class="btn-outline" style="padding:8px 12px" onclick="togglePasswordView('vaultPasswordView')">👁️ Show</button>
-      ${cred.password ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyVaultInput('vaultPasswordView')">📋 Copy</button>` : ''}
+      ${cred.password ? `<button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard('${escapeHtml(cred.password)}','Password copied!')">📋 Copy</button>` : ''}
     </div></div>
     ${cred.notes ? `<div class="form-group"><label>Notes</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.notes)}</div></div>` : ''}
     ${cred.updated_by ? `<div class="form-group"><label>Last Updated By</label><div class="form-control" style="background:var(--bg)">${escapeHtml(cred.updated_by)}</div></div>` : ''}
@@ -382,18 +348,18 @@ function editVaultItem(id) {
   const cred = STATE.vaultCredentials.find(c => c.id === id);
   if (!cred) return;
   openModalWithContent(`✏️ Edit — ${escapeHtml(cred.label)}`, `
-    <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="editVaultLabel" value="${escapeAttr(cred.label)}" /></div>
+    <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="editVaultLabel" value="${escapeHtml(cred.label)}" /></div>
     <div class="form-group"><label>Folder</label>
       <select class="form-control" id="editVaultFolder">
         ${VAULT_FOLDERS.map(f => `<option ${(cred.folder||'General')===f?'selected':''}>${f}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Username / Login ID</label><input type="text" class="form-control" id="editVaultUsername" value="${escapeAttr(cred.username||'')}" /></div>
+    <div class="form-group"><label>Username / Login ID</label><input type="text" class="form-control" id="editVaultUsername" value="${escapeHtml(cred.username||'')}" /></div>
     <div class="form-group"><label>Password</label>
       <div style="display:flex;gap:8px">
-        <input type="password" class="form-control" id="editVaultPassword" value="${escapeAttr(cred.password||'')}" style="flex:1" />
+        <input type="password" class="form-control" id="editVaultPassword" value="${escapeHtml(cred.password||'')}" style="flex:1" />
         <button class="btn-outline" style="padding:8px 12px" onclick="togglePasswordView('editVaultPassword')">👁️ Show</button>
-        <button class="btn-outline" style="padding:8px 12px" onclick="copyVaultInput('editVaultPassword')">📋</button>
+        <button class="btn-outline" style="padding:8px 12px" onclick="copyToClipboard(document.getElementById('editVaultPassword').value,'Password copied!')">📋</button>
       </div>
     </div>
     <div class="form-group"><label>Remarks</label><textarea class="form-control" id="editVaultNotes" rows="2">${escapeHtml(cred.notes||'')}</textarea></div>
@@ -407,7 +373,7 @@ async function saveVaultEdit(id) {
   const updated = {
     label,
     folder: document.getElementById('editVaultFolder')?.value || 'General',
-    url: '',
+    url: document.getElementById('editVaultUrl')?.value.trim() || '',
     username: document.getElementById('editVaultUsername')?.value.trim() || '',
     password: document.getElementById('editVaultPassword')?.value || '',
     notes: document.getElementById('editVaultNotes')?.value.trim() || ''
@@ -439,13 +405,6 @@ function togglePasswordView(inputId, btn) {
     input.type = input.type === 'password' ? 'text' : 'password';
     if (button) button.textContent = input.type === 'text' ? '🙈 Hide' : '👁️ Show';
   }
-}
-
-function toggleVaultPass(inputId, btn) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  input.type = input.type === 'password' ? 'text' : 'password';
-  btn.textContent = input.type === 'text' ? '🙈' : '👁️';
 }
 
 function copyToClipboard(text, message) {
@@ -546,15 +505,11 @@ document.addEventListener('click', function (e) {
 
 const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','😊','😇','🙂','😉','😌','😍','🥰','😘','😋','😛','😜','🤪','😝','😑','😐','😏','😒','🙄','😬','😔','😪','😴','😷','🤒','🤗','🤔','😮','🤐','😯','😲','😳','🥺','😦','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','😤','😡','😠','🤬','😈','👿','💩','🤖'];
 
-/* FIX #10 — store interval reference so it can be cleared */
-let presenceInterval = null;
-
 function initPresence() {
   const myEmail = getCurrentUserEmail();
   if (myEmail) {
     setPresenceOnline(myEmail);
-    if (presenceInterval) clearInterval(presenceInterval);
-    presenceInterval = setInterval(() => setPresenceOnline(myEmail), 30000);
+    setInterval(() => setPresenceOnline(myEmail), 30000);
   }
 }
 
@@ -588,7 +543,7 @@ async function renderTeamContacts() {
     const isActive = p.email === STATE.activeChatContact;
     const isOnline = STATE.userPresence[p.email]?.is_online || false;
     return `
-      <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${escapeAttr(p.email)}', '${escapeAttr(name)}')">
+      <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
           <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>
           <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${isOnline ? '#10b981' : '#9ca3af'};border:2px solid var(--surface)"></div>
@@ -726,56 +681,9 @@ function startNewChat() {
   showToast('Starting chat with ' + email);
 }
 
-function searchTeamMessages(query) {
-  const q = (query||'').trim().toLowerCase();
-  const clearBtn = document.getElementById('msgSearchClear');
-  if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
-  if (!q) { renderTeamMessages(); return; }
-  const el = document.getElementById('teamMessages');
-  if (!el) return;
-  const myEmail = getCurrentUserEmail();
-  const filtered = STATE.teamMessages.filter(m => (m.message||'').toLowerCase().includes(q));
-  if (!filtered.length) {
-    el.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:40px 20px"><div style="font-size:32px;margin-bottom:8px">🔍</div><div>No messages found for "<strong>${escapeHtml(query)}</strong>"</div></div>`;
-    return;
-  }
-  el.innerHTML = filtered.map(m => {
-    const isOwn = m.sender_email === myEmail;
-    const timeStr = new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}).replace(' ','');
-    const senderInitial = m.sender_email.charAt(0).toUpperCase();
-    const highlighted = escapeHtml(m.message).replace(
-      new RegExp(escapeHtml(q), 'gi'),
-      match => `<mark style="background:#fbbf24;color:#000;border-radius:3px;padding:0 2px">${match}</mark>`
-    );
-    return `
-      <div class="chat-msg ${isOwn ? 'user' : ''}">
-        ${!isOwn ? `<div class="msg-avatar" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">${senderInitial}</div>` : ''}
-        <div class="msg-content">
-          <div style="background:${isOwn?'var(--primary)':'var(--surface)'};color:${isOwn?'#fff':'var(--text)'};padding:8px 14px;border-radius:${isOwn?'14px 14px 4px 14px':'14px 14px 14px 4px'};word-break:break-word;display:inline-block;max-width:100%">
-            ${highlighted}
-          </div>
-          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn?'right':'left'}">${timeStr}</div>
-        </div>
-        ${isOwn ? `<div class="msg-avatar" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">${senderInitial}</div>` : ''}
-      </div>`;
-  }).join('');
-  el.scrollTop = el.scrollHeight;
-}
-
-function clearMsgSearch() {
-  const input = document.getElementById('msgSearchInput');
-  const clearBtn = document.getElementById('msgSearchClear');
-  if (input) input.value = '';
-  if (clearBtn) clearBtn.style.display = 'none';
-  renderTeamMessages();
-}
-
 /* =========================================================
    9. INITIALIZATION
    ========================================================= */
-
-/* FIX #11 — store chat poll interval so it can be cleared */
-let chatPollInterval = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadUserInfo();
@@ -813,17 +721,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderVaultCredentials();
   populateAllClientDropdowns();
 
-  /* FIX #14 — Assessment Year dropdown populated here, not in index.html */
-  const ayEl = document.getElementById('itrAssessmentYear');
-  if (ayEl) {
-    ayEl.innerHTML = getAssessmentYears().map((y, i) =>
-      `<option value="${y}"${i === 0 ? ' selected' : ''}>${y}</option>`
-    ).join('');
-  }
-
-  /* FIX #11 — clear old interval before setting new one */
-  if (chatPollInterval) clearInterval(chatPollInterval);
-  chatPollInterval = setInterval(async () => {
+  setInterval(async () => {
     await renderTeamContacts();
     if (STATE.activeChatContact) await renderTeamMessages();
   }, 5000);
@@ -1097,12 +995,11 @@ function updateDashboardStats() {
 
   const donutCenter = document.querySelector('#page-reports .donut-center');
   if (donutCenter) donutCenter.textContent = pct+'%';
-
-  const ovItems = document.querySelectorAll('.overview-item strong');
+   // Workspace Overview update
+ const ovItems = document.querySelectorAll('.overview-item strong');
   if (ovItems[0]) ovItems[0].textContent = done;
   if (ovItems[1]) ovItems[1].textContent = inprog;
   if (ovItems[2]) ovItems[2].textContent = todo;
-
   const donutChart = document.querySelector('#page-reports .donut-chart');
   if (donutChart) {
     if (!STATE.tasks.length) {
@@ -1171,7 +1068,6 @@ function renderClientTable() {
 
 function filterClients(value) { STATE.filters.clients.search=value; STATE.pagination.clients.page=1; renderClientTable(); }
 function filterClientStatus(value) { STATE.filters.clients.status=value; STATE.pagination.clients.page=1; renderClientTable(); }
-/* FIX #16 — defined only here, removed from index.html inline script */
 function filterClientType(value) { STATE.filters.clients.type=value; STATE.pagination.clients.page=1; renderClientTable(); }
 function prevPage(section) { if(section==='clients'&&STATE.pagination.clients.page>1){STATE.pagination.clients.page--;renderClientTable();} }
 function nextPage(section) { if(section==='clients'){const total=Math.ceil(getFilteredClients().length/STATE.pagination.clients.perPage);if(STATE.pagination.clients.page<total){STATE.pagination.clients.page++;renderClientTable();}} }
@@ -1198,17 +1094,17 @@ function editClient(id) {
   const c = STATE.clients.find(x => x.id === id);
   if (!c) return;
   openModalWithContent(`✏️ Edit — ${escapeHtml(c.name)}`, `
-    <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeAttr(c.name)}" /></div>
-    <div class="form-group"><label>Contact Person</label><input type="text" class="form-control" id="editClientContact" value="${escapeAttr(c.contact_person||'')}" placeholder="Enter contact person" /></div>
-    <div class="form-group"><label>PAN</label><input type="text" class="form-control" id="editClientPAN" value="${escapeAttr(c.pan||'')}" /></div>
+    <div class="form-group"><label>Client Name</label><input type="text" class="form-control" id="editClientName" value="${escapeHtml(c.name)}" /></div>
+    <div class="form-group"><label>Contact Person</label><input type="text" class="form-control" id="editClientContact" value="${escapeHtml(c.contact_person||'')}" placeholder="Enter contact person" /></div>
+    <div class="form-group"><label>PAN</label><input type="text" class="form-control" id="editClientPAN" value="${escapeHtml(c.pan||'')}" /></div>
     <div class="form-group"><label>Type</label>
       <select class="form-control" id="editClientType">
         ${['Individual','Company','LLP','Partnership'].map(t=>`<option ${c.type===t?'selected':''}>${t}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeAttr(c.email||'')}" /></div>
-    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeAttr(c.phone||'')}" /></div>
-    <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="editClientGST" value="${escapeAttr(c.gst||'')}" /></div>
+    <div class="form-group"><label>Email</label><input type="text" class="form-control" id="editClientEmail" value="${escapeHtml(c.email||'')}" /></div>
+    <div class="form-group"><label>Phone</label><input type="text" class="form-control" id="editClientPhone" value="${escapeHtml(c.phone||'')}" /></div>
+    <div class="form-group"><label>GST Number</label><input type="text" class="form-control" id="editClientGST" value="${escapeHtml(c.gst||'')}" /></div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="editClientStatus">
         ${['Active','Inactive','Pending'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}
@@ -1369,7 +1265,7 @@ function editGSTReturn(id) {
         ${['Filed','Pending','Overdue'].map(s=>`<option ${g.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editGstRemarks" value="${escapeAttr(g.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editGstRemarks" value="${escapeHtml(g.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveGSTEdit(${id})">💾 Save</button>
   `);
 }
@@ -1415,7 +1311,7 @@ function renderROCTable() {
       <td>${escapeHtml(r.form||'-')}</td>
       <td>${escapeHtml(r.due_date||'-')}</td>
       <td>${statusBadge(r.status)}</td>
-      <td class="remarks-cell" title="${escapeAttr(r.remarks||'')}">${escapeHtml(r.remarks||'-')}</td>
+      <td class="remarks-cell" title="${escapeHtml(r.remarks||'')}">${escapeHtml(r.remarks||'-')}</td>
       <td class="updated-by-cell">
         <span class="updated-by-badge">${escapeHtml(r.updated_by||'-')}</span>
         ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
@@ -1437,15 +1333,14 @@ function editROCStatus(id) {
         ${['In Progress','Filed','Overdue','Pending'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarksEdit" value="${escapeAttr(r.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarks" value="${escapeHtml(r.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>
   `);
 }
 
 async function saveROCStatus(id) {
   const status = document.getElementById('rocStatusSel')?.value;
-  /* FIX: use rocRemarksEdit not rocRemarks to avoid ID collision with the filing form */
-  const remarks = document.getElementById('rocRemarksEdit')?.value.trim();
+  const remarks = document.getElementById('rocRemarks')?.value.trim();
   const ok = await supabaseUpdate('roc_filings', id, { status, remarks });
   if (ok) {
     const idx = STATE.rocFilings.findIndex(r => r.id === id);
@@ -1460,9 +1355,7 @@ async function deleteROC(id) {
 }
 
 async function submitROCFiling() {
-  /* FIX #6/#7 — all form fields are read inside the modal while it is still open.
-     rocClientSel inside modal uses id rocClientSelModal to avoid collision. */
-  const clientSel = document.getElementById('rocClientSelModal');
+  const clientSel = document.getElementById('rocClientSel');
   const companyEl = document.getElementById('rocCompany');
   const cinEl = document.getElementById('rocCIN');
   const formSel = document.getElementById('rocForm');
@@ -1485,7 +1378,7 @@ async function submitROCFiling() {
     client_id: (clientSel && clientSel.value) ? clientSel.value : null,
     cin: cinVal || '-',
     form: formSel?.value || 'AOC-4',
-    due_date: dueVal,
+    due_date: dueEl?.value || 'TBD',
     remarks: remarksEl?.value.trim() || '',
     status: 'In Progress'
   };
@@ -1542,7 +1435,7 @@ function editITR(id) {
         ${['Filed','Pending','In Progress','Overdue'].map(s=>`<option ${itr.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editItrRemarks" value="${escapeAttr(itr.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editItrRemarks" value="${escapeHtml(itr.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveITREdit(${id})">💾 Save</button>
   `);
 }
@@ -1634,7 +1527,7 @@ function editTDS(id) {
         ${['Filed','Pending','Overdue'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editTdsRemarks" value="${escapeAttr(t.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editTdsRemarks" value="${escapeHtml(t.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveTDSEdit(${id})">💾 Save</button>
   `);
 }
@@ -1731,14 +1624,14 @@ function editAuditStatus(id) {
         ${['In Progress','In Review','Completed','Pending'].map(s=>`<option ${a.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarksEdit" value="${escapeAttr(a.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarks" value="${escapeHtml(a.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAuditStatus(${id})">Save</button>
   `);
 }
 
 async function saveAuditStatus(id) {
   const status = document.getElementById('auditStatusSel')?.value;
-  const remarks = document.getElementById('auditRemarksEdit')?.value.trim();
+  const remarks = document.getElementById('auditRemarks')?.value.trim();
   const ok = await supabaseUpdate('audits', id, { status, remarks });
   if (ok) {
     const idx = STATE.audits.findIndex(a => a.id === id);
@@ -1787,7 +1680,7 @@ function renderDSCAlerts() {
     const dscType = d.dsc_type || d.type || '-';
     const purpose = d.purpose || '-';
     const expiryDate = d.expiry_date || d.expiry || '-';
-    return `
+   return `
       <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;">
         <div style="width:42px;height:42px;border-radius:10px;background:${days !== null && days < 0 ? '#fee2e2' : urgent ? '#fef3c7' : 'var(--primary-glow)'};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">✍️</div>
         <div style="flex:1;min-width:0;">
@@ -1822,7 +1715,7 @@ function editDSC(id) {
       </select>
     </div>
     <div class="form-group"><label>Expiry Date</label><input type="date" class="form-control" id="editDscExpiry" value="${d.expiry_date||''}" /></div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editDscRemarks" value="${escapeAttr(d.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editDscRemarks" value="${escapeHtml(d.remarks||'')}" placeholder="Add remarks..." /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveDSCEdit(${id})">💾 Save</button>
   `);
 }
@@ -1900,13 +1793,62 @@ async function deleteDSC(id) {
 }
 
 /* =========================================================
-   22. ACCOUNTING HUB (stub — replaced by client-wise below)
+   22. ACCOUNTING HUB
    ========================================================= */
 
-/* renderAccountingList kept as a no-op stub so DOMContentLoaded call doesn't error.
-   The real UI is the client-wise accounting section below. */
 function renderAccountingList() {
-  /* intentionally empty — accounting page is now fully client-wise */
+  const el = document.getElementById('accountingList');
+  if (!el) return;
+  if (!STATE.accountingEntries.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧮</div><div class="empty-state-text">No entries yet</div></div>';
+    updateDashboardStats(); return;
+  }
+  el.innerHTML = STATE.accountingEntries.map(t => `
+    <div class="acc-item">
+      <div>
+        <div class="gst-item-name">${escapeHtml(t.narration)}</div>
+        <div class="gst-item-sub">${escapeHtml(t.entry_date||'')} • ${escapeHtml(t.voucher_type||'')}</div>
+        ${t.updated_by ? `<div class="updated-by-badge">by ${escapeHtml(t.updated_by)}</div>` : ''}
+        ${t.updated_at ? `<div class="updated-by-badge">🕐 ${formatDateTime(t.updated_at)}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="acc-amount ${t.entry_type}">${t.entry_type==='credit'?'+':'-'} ₹ ${formatAmount(t.amount||0)}</div>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteAccEntry(${t.id})">✕</button>
+      </div>
+    </div>`).join('');
+  updateDashboardStats();
+}
+
+async function submitJournalEntry() {
+  const dateEl = document.querySelector('#page-accounting input[type="date"]');
+  const voucherSel = document.querySelector('#page-accounting select');
+  const textarea = document.querySelector('#page-accounting textarea');
+  const narration = textarea?.value.trim();
+  const amountEl = document.getElementById('accAmount');
+  const debitEl = document.getElementById('accDebit');
+  const creditEl = document.getElementById('accCredit');
+  const amount = parseFloat(amountEl?.value)||0;
+  if (!narration) { showToast('Please enter narration'); return; }
+  if (isJunkText(narration, 4)) { showToast('Please enter a meaningful narration (min 4 characters)'); return; }
+  if (!amount) { showToast('Please enter amount'); return; }
+  if (isJunkText(debitEl?.value.trim(), 2) || isJunkText(creditEl?.value.trim(), 2)) { showToast('Please enter full account head names'); return; }
+  const voucherType = voucherSel?.value || 'Journal';
+  const entryType = ['Receipt','Sales','Invoice'].includes(voucherType) ? 'credit' : 'debit';
+  const body = {
+    narration, voucher_type: voucherType,
+    debit_account: debitEl?.value.trim() || '',
+    credit_account: creditEl?.value.trim() || '',
+    amount, entry_type: entryType,
+    entry_date: dateEl?.value || new Date().toISOString().split('T')[0]
+  };
+  const result = await supabaseInsert('accounting_entries', body);
+  if (result && result[0]) { STATE.accountingEntries.unshift(result[0]); renderAccountingList(); showToast('✅ Journal entry posted!'); }
+  else { showToast('❌ Entry failed'); }
+}
+
+async function deleteAccEntry(id) {
+  const ok = await supabaseDelete('accounting_entries', id);
+  if (ok) { STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id); renderAccountingList(); showToast('🗑️ Entry deleted'); }
 }
 
 /* =========================================================
@@ -1961,7 +1903,7 @@ function addTask(col) {
   openModalWithContent('➕ Add Task to ' + columnLabel(col), `
     <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
     <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
-    <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="newTaskAssignee" value="${escapeAttr(myName)}" placeholder="Assignee name" /></div>
+    <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="newTaskAssignee" value="${escapeHtml(myName)}" placeholder="Assignee name" /></div>
     <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="newTaskDue" /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="createTask('${col}')">Add Task</button>
   `);
@@ -1988,8 +1930,8 @@ function openTaskDetail(id) {
   if (!task) return;
   const myName = getCurrentUserName();
   openModalWithContent('📋 Task Details', `
-    <div class="form-group"><label>Title</label><input type="text" class="form-control" id="editTaskTitle" value="${escapeAttr(task.title)}" /></div>
-    <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="taskAssigneeSel" value="${escapeAttr(task.assignee||myName)}" /></div>
+    <div class="form-group"><label>Title</label><input type="text" class="form-control" id="editTaskTitle" value="${escapeHtml(task.title)}" /></div>
+    <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="taskAssigneeSel" value="${escapeHtml(task.assignee||myName)}" /></div>
     <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="editTaskDue" value="${task.due_date&&task.due_date!=='TBD'?task.due_date:''}" /></div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="taskStatusSelect">
@@ -2269,12 +2211,11 @@ function openModal(type) {
         <button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>`
     },
     gstReturn: { title:'📊 File GST Return', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">📊</div><p style="margin:12px 0">Use the GST Dashboard form below</p><button class="btn-primary" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button></div>` },
-    /* FIX #6 — ROC modal dropdown uses id rocClientSelModal to avoid collision with page-level rocClientSel */
     rocFiling: {
       title: '🏛️ New ROC Filing',
       body: `
         <div class="form-group"><label>Select Client</label>
-          <select class="form-control" id="rocClientSelModal">${clientOptions}</select>
+          <select class="form-control" id="rocClientSel">${clientOptions}</select>
         </div>
         <div class="form-group"><label>Company Name (if not in clients)</label><input type="text" class="form-control" id="rocCompany" placeholder="Or enter company name manually" /></div>
         <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" maxlength="21" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="U12345MH2020PTC123456" /></div>
@@ -2294,30 +2235,30 @@ function openModal(type) {
         <div class="form-group"><label>Audit Type</label>
           <select class="form-control" id="auditType"><option>Statutory Audit</option><option>Tax Audit</option><option>Internal Audit</option><option>Stock Audit</option><option>GST Audit</option><option>Concurrent Audit</option></select>
         </div>
-        <div class="form-group"><label>Auditor</label><input type="text" class="form-control" id="auditAuditor" value="${escapeAttr(myName)}" /></div>
+        <div class="form-group"><label>Auditor</label><input type="text" class="form-control" id="auditAuditor" value="${escapeHtml(myName)}" /></div>
         <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="auditStart" /></div>
         <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="auditEnd" /></div>
-        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarksModal" placeholder="Optional remarks..." /></div>
+        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="auditRemarks" placeholder="Optional remarks..." /></div>
         <button class="btn-primary" style="width:100%" onclick="submitNewAudit()">✅ Schedule Audit</button>`
     },
     newDSC: { title:'✍️ New DSC', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
     addVaultItem: {
-      title: '🔐 Add New Credential',
-      body: `
-        <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Ramesh Kumar, ABC Pvt Ltd" /></div>
-        <div class="form-group"><label>Folder / Category</label>
-          <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f=>`<option>${f}</option>`).join('')}</select>
-        </div>
-        <div class="form-group"><label>Username / Login ID</label><input type="text" class="form-control" id="vaultUsername" placeholder="Enter username or email" /></div>
-        <div class="form-group"><label>Password</label>
-          <div style="display:flex;gap:8px">
-            <input type="password" class="form-control" id="vaultPassword" placeholder="Enter password" style="flex:1" autocomplete="new-password" />
-            <button class="btn-outline" style="padding:8px 12px;white-space:nowrap" onclick="togglePasswordView('vaultPassword')">👁️ Show</button>
-          </div>
-        </div>
-        <div class="form-group"><label>Remarks</label><textarea class="form-control" id="vaultNotes" rows="2" placeholder="Optional notes..."></textarea></div>
-        <button class="btn-primary" style="width:100%" onclick="submitVaultItem()">🔐 Save Credential</button>`
-    },
+  title: '🔐 Add New Credential',
+  body: `
+    <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Ramesh Kumar, ABC Pvt Ltd" /></div>
+    <div class="form-group"><label>Folder / Category</label>
+      <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f=>`<option>${f}</option>`).join('')}</select>
+    </div>
+    <div class="form-group"><label>Username / Login ID</label><input type="text" class="form-control" id="vaultUsername" placeholder="Enter username or email" /></div>
+    <div class="form-group"><label>Password</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" class="form-control" id="vaultPassword" placeholder="Enter password" style="flex:1" autocomplete="new-password" />
+        <button class="btn-outline" style="padding:8px 12px;white-space:nowrap" onclick="togglePasswordView('vaultPassword')">👁️ Show</button>
+      </div>
+    </div>
+    <div class="form-group"><label>Remarks</label><textarea class="form-control" id="vaultNotes" rows="2" placeholder="Optional notes..."></textarea></div>
+    <button class="btn-primary" style="width:100%" onclick="submitVaultItem()">🔐 Save Credential</button>`
+},
     createVaultFolder: {
       title: '📁 Create New Folder',
       body: `
@@ -2330,7 +2271,7 @@ function openModal(type) {
       body: `
         <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitleModal" placeholder="Enter task title" /></div>
         <div class="form-group"><label>Tags</label><input type="text" class="form-control" id="newTaskTagsModal" placeholder="e.g. GST, High" /></div>
-        <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="newTaskAssigneeModal" value="${escapeAttr(myName)}" /></div>
+        <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="newTaskAssigneeModal" value="${escapeHtml(myName)}" /></div>
         <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="newTaskDueModal" /></div>
         <div class="form-group"><label>Column</label>
           <select class="form-control" id="newTaskColModal"><option value="todo">To Do</option><option value="inprogress">In Progress</option><option value="done">Done</option></select>
@@ -2411,7 +2352,7 @@ async function submitNewAudit() {
     auditor: document.getElementById('auditAuditor')?.value.trim() || getCurrentUserName(),
     start_date: document.getElementById('auditStart')?.value || '',
     end_date: document.getElementById('auditEnd')?.value || '',
-    remarks: document.getElementById('auditRemarksModal')?.value.trim() || '',
+    remarks: document.getElementById('auditRemarks')?.value.trim() || '',
     status: 'In Progress'
   };
   const result = await supabaseInsert('audits', body);
@@ -2433,6 +2374,7 @@ async function submitVaultItem() {
   const result = await supabaseInsert('vault_credentials', body);
   if (result && result[0]) {
     STATE.vaultCredentials.unshift(result[0]);
+    // Form reset
     document.getElementById('vaultLabel').value = '';
     document.getElementById('vaultUsername').value = '';
     document.getElementById('vaultPassword').value = '';
@@ -2522,11 +2464,11 @@ function openProfile() {
   const initial = name.charAt(0).toUpperCase();
   openModalWithContent('👤 My Profile', `
     <div style="text-align:center;margin-bottom:16px">
-      <div style="width:72px;height:72px;border-radius:50%;${user.user_metadata?.avatar_url ? `background-image:url('${escapeAttr(user.user_metadata.avatar_url)}');background-size:cover;background-position:center;` : `background:linear-gradient(135deg,var(--primary,#6366f1),#4f46e5);`}display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${user.user_metadata?.avatar_url ? '' : initial}</div>
+      <div style="width:72px;height:72px;border-radius:50%;${user.user_metadata?.avatar_url ? `background-image:url('${user.user_metadata.avatar_url}');background-size:cover;background-position:center;` : `background:linear-gradient(135deg,var(--primary,#6366f1),#4f46e5);`}display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 12px">${user.user_metadata?.avatar_url ? '' : initial}</div>
       <div style="font-weight:700;font-size:16px">${escapeHtml(name)}</div>
       <div style="color:var(--text-muted);font-size:13px">WITCORP India Advisors LLP</div>
     </div>
-    <div class="form-group"><label>Full Name</label><input type="text" class="form-control" id="profileNameInput" value="${escapeAttr(name)}" placeholder="Enter your name" /></div>
+    <div class="form-group"><label>Full Name</label><input type="text" class="form-control" id="profileNameInput" value="${escapeHtml(name)}" placeholder="Enter your name" /></div>
     <div class="form-group"><label>Email</label><div class="form-control" style="background:var(--bg)">${escapeHtml(email)}</div></div>
     <div class="form-group"><label>User ID</label><div class="form-control" style="background:var(--bg)">${escapeHtml(user?.id||'N/A')}</div></div>
     <div class="form-group"><label>Total Clients</label><div class="form-control" style="background:var(--bg)">${STATE.clients.length}</div></div>
@@ -2545,9 +2487,9 @@ async function saveProfileName() {
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
 
   try {
-    /* FIX #3 — Supabase Auth user update requires PATCH, not PUT */
+    // Update Supabase Auth user_metadata
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${token}`,
@@ -2561,6 +2503,7 @@ async function saveProfileName() {
     const updatedUser = await res.json();
     localStorage.setItem('witcorp-user', JSON.stringify(updatedUser));
 
+    // Also update profiles table if it has a full_name column
     if (user.id) {
       await supabaseQuery('profiles', { method: 'PATCH', filters: `id=eq.${user.id}`, body: { full_name: newName } }).catch(() => {});
     }
@@ -2574,12 +2517,11 @@ async function saveProfileName() {
     showToast('❌ Update failed');
   }
 }
-
 async function logout() {
   closeModal();
   const token = localStorage.getItem('witcorp-access-token');
   if (token) {
-    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+    await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/logout', {
       method: 'POST',
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer '+token }
     }).catch(() => {});
@@ -2595,7 +2537,6 @@ async function logout() {
 
 function handleSearch(query) {
   const q = (query || '').trim().toLowerCase();
-  /* FIX #12 — modal created only once; event listener added only on first creation */
   let modal = document.getElementById('searchResultsModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -2611,15 +2552,42 @@ function handleSearch(query) {
   if (!q || q.length < 2) { modal.style.display = 'none'; return; }
 
   const clients = STATE.clients.filter(c =>
-    (c.name||'').toLowerCase().includes(q) || (c.pan||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.phone||'').toLowerCase().includes(q)
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.pan||'').toLowerCase().includes(q) ||
+    (c.email||'').toLowerCase().includes(q) ||
+    (c.phone||'').toLowerCase().includes(q)
   );
-  const tasks = STATE.tasks.filter(t => (t.title||'').toLowerCase().includes(q) || (t.assignee||'').toLowerCase().includes(q));
-  const gst = STATE.gstReturns.filter(g => (g.client_name||'').toLowerCase().includes(q) || (g.return_type||'').toLowerCase().includes(q) || (g.gstin||'').toLowerCase().includes(q));
-  const tds = STATE.tdsReturns.filter(t => (t.client_name||'').toLowerCase().includes(q) || (t.tan||'').toLowerCase().includes(q) || (t.deductor||'').toLowerCase().includes(q));
-  const itr = STATE.itrFilings.filter(i => (i.client_name||'').toLowerCase().includes(q) || (i.form||'').toLowerCase().includes(q));
-  const roc = STATE.rocFilings.filter(r => (r.company||'').toLowerCase().includes(q) || (r.cin||'').toLowerCase().includes(q) || (r.form||'').toLowerCase().includes(q));
-  const dsc = STATE.dscRecords.filter(d => (d.client_name||d.name||'').toLowerCase().includes(q) || (d.pan||'').toLowerCase().includes(q));
-  const audits = STATE.audits.filter(a => (a.client||'').toLowerCase().includes(q) || (a.audit_type||'').toLowerCase().includes(q));
+  const tasks = STATE.tasks.filter(t =>
+    (t.title||'').toLowerCase().includes(q) ||
+    (t.assignee||'').toLowerCase().includes(q)
+  );
+  const gst = STATE.gstReturns.filter(g =>
+    (g.client_name||'').toLowerCase().includes(q) ||
+    (g.return_type||'').toLowerCase().includes(q) ||
+    (g.gstin||'').toLowerCase().includes(q)
+  );
+  const tds = STATE.tdsReturns.filter(t =>
+    (t.client_name||'').toLowerCase().includes(q) ||
+    (t.tan||'').toLowerCase().includes(q) ||
+    (t.deductor||'').toLowerCase().includes(q)
+  );
+  const itr = STATE.itrFilings.filter(i =>
+    (i.client_name||'').toLowerCase().includes(q) ||
+    (i.form||'').toLowerCase().includes(q)
+  );
+  const roc = STATE.rocFilings.filter(r =>
+    (r.company||'').toLowerCase().includes(q) ||
+    (r.cin||'').toLowerCase().includes(q) ||
+    (r.form||'').toLowerCase().includes(q)
+  );
+  const dsc = STATE.dscRecords.filter(d =>
+    (d.client_name||d.name||'').toLowerCase().includes(q) ||
+    (d.pan||'').toLowerCase().includes(q)
+  );
+  const audits = STATE.audits.filter(a =>
+    (a.client||'').toLowerCase().includes(q) ||
+    (a.audit_type||'').toLowerCase().includes(q)
+  );
 
   const total = clients.length + tasks.length + gst.length + tds.length + itr.length + roc.length + dsc.length + audits.length;
 
@@ -2645,8 +2613,9 @@ function handleSearch(query) {
       <div style="font-size:13px;font-weight:600">Results for "<strong>${escapeHtml(query)}</strong>" — ${total} found</div>
       <button onclick="document.getElementById('searchResultsModal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-muted)">✕</button>
     </div>
+
     ${section('👥','Clients', clients, 'clients', c => `
-      <div class="search-result-item" onclick="navigate('clients');document.getElementById('globalSearch').value='';document.getElementById('searchResultsModal').style.display='none';setTimeout(()=>filterClients('${escapeAttr(c.name)}'),300)">
+      <div class="search-result-item" onclick="navigate('clients');document.getElementById('globalSearch').value='';document.getElementById('searchResultsModal').style.display='none';setTimeout(()=>filterClients('${escapeHtml(c.name)}'),300)">
         <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
           <div style="width:34px;height:34px;border-radius:50%;background:var(--primary-glow);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--primary);flex-shrink:0">${(c.name||'?').charAt(0).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
@@ -2657,52 +2626,80 @@ function handleSearch(query) {
         </div>
       </div>`
     )}
+
     ${section('📊','GST Returns', gst, 'gst', g => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('gst');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="font-size:20px">📊</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${escapeHtml(g.client_name)}</div><div style="font-size:11px;color:var(--text-muted)">${escapeHtml(g.return_type)} • ${escapeHtml(g.period||'')}</div></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(g.client_name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(g.return_type)} • ${escapeHtml(g.period||'')}</div>
+        </div>
         ${statusBadge(g.status)}
       </div>`
     )}
+
     ${section('🧾','TDS Returns', tds, 'tds', t => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('tds');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="font-size:20px">🧾</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${escapeHtml(t.client_name||t.deductor||'-')}</div><div style="font-size:11px;color:var(--text-muted)">TAN: ${escapeHtml(t.tan||'-')} • ${escapeHtml(t.quarter||'')}</div></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(t.client_name||t.deductor||'-')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">TAN: ${escapeHtml(t.tan||'-')} • ${escapeHtml(t.quarter||'')}</div>
+        </div>
         ${statusBadge(t.status)}
       </div>`
     )}
+
     ${section('💰','ITR Filings', itr, 'incometax', i => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('incometax');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="font-size:20px">💰</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${escapeHtml(i.client_name)}</div><div style="font-size:11px;color:var(--text-muted)">${escapeHtml(i.form)} • AY ${escapeHtml(i.assessment_year||'')}</div></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(i.client_name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(i.form)} • AY ${escapeHtml(i.assessment_year||'')}</div>
+        </div>
         ${statusBadge(i.status)}
       </div>`
     )}
-    ${section('🏛️','ROC Filings', roc, 'roc', r => `
+
+   ${section('🏛️','ROC Filings', roc, 'roc', r => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('roc');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="font-size:20px">🏛️</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${escapeHtml(r.company)}</div><div style="font-size:11px;color:var(--text-muted)">${escapeHtml(r.form||'')} • CIN: ${escapeHtml(r.cin||'-')}</div></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(r.company)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(r.form||'')} • CIN: ${escapeHtml(r.cin||'-')}</div>
+        </div>
         ${statusBadge(r.status)}
       </div>`
     )}
+
     ${section('✍️','DSC Records', dsc, 'dsc', d => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('dsc');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="font-size:20px">✍️</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${escapeHtml(d.client_name||d.name||'-')}</div><div style="font-size:11px;color:var(--text-muted)">PAN: ${escapeHtml(d.pan||'-')} • Expiry: ${escapeHtml(d.expiry_date||'-')}</div></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(d.client_name||d.name||'-')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">PAN: ${escapeHtml(d.pan||'-')} • Expiry: ${escapeHtml(d.expiry_date||'-')}</div>
+        </div>
         ${statusBadge(d.status)}
       </div>`
     )}
+
     ${section('🛡️','Audits', audits, 'audit', a => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('audit');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="font-size:20px">🛡️</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${escapeHtml(a.client)}</div><div style="font-size:11px;color:var(--text-muted)">${escapeHtml(a.audit_type||'')} • ${escapeHtml(a.auditor||'')}</div></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(a.client)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(a.audit_type||'')} • ${escapeHtml(a.auditor||'')}</div>
+        </div>
         ${statusBadge(a.status)}
       </div>`
     )}
+
     ${section('✅','Tasks', tasks, 'tasks', t => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="navigate('tasks');document.getElementById('searchResultsModal').style.display='none'" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="font-size:20px">✅</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${escapeHtml(t.title)}</div><div style="font-size:11px;color:var(--text-muted)">👤 ${escapeHtml(t.assignee||'-')} • Due: ${escapeHtml(t.due_date||'TBD')}</div></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escapeHtml(t.title)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">👤 ${escapeHtml(t.assignee||'-')} • Due: ${escapeHtml(t.due_date||'TBD')}</div>
+        </div>
         <span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--primary-glow);color:var(--primary)">${columnLabel(t.column_name)}</span>
       </div>`
     )}
@@ -2772,11 +2769,23 @@ function closeNotifications() {
    ========================================================= */
 
 const FORMAT_RULES = {
-  pan:   { regex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,                                    len: 10, example: 'ABCDE1234F' },
-  tan:   { regex: /^[A-Z]{4}[0-9]{5}[A-Z]{1}$/,                                    len: 10, example: 'ABCD12345E' },
-  gstin: { regex: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,   len: 15, example: '29ABCDE1234F1Z5' },
-  cin:   { regex: /^[LUu][0-9]{5}[A-Za-z]{2}[0-9]{4}[A-Za-z]{3}[0-9]{6}$/i,       len: 21, example: 'U12345MH2020PTC123456' }
+  pan: { regex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, len: 10, example: 'ABCDE1234F' },
+  tan: { regex: /^[A-Z]{4}[0-9]{5}[A-Z]{1}$/, len: 10, example: 'ABCD12345E' },
+  gstin: { regex: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, len: 15, example: '29ABCDE1234F1Z5' },
+  cin: { regex: /^[LUu][0-9]{5}[A-Za-z]{2}[0-9]{4}[A-Za-z]{3}[0-9]{6}$/i, len: 21, example: 'U12345MH2020PTC123456' }
 };
+
+function attachFormatField(inputId, ruleKey) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const rule = FORMAT_RULES[ruleKey];
+  el.maxLength = rule.len;
+  el.placeholder = rule.example;
+  el.style.textTransform = 'uppercase';
+  el.addEventListener('input', () => {
+    el.value = el.value.toUpperCase().replace(/\s/g, '');
+  });
+}
 
 function isValidFormat(value, ruleKey) {
   if (!value) return true;
@@ -2811,9 +2820,8 @@ function statusBadge(status) {
   };
   return `<span class="badge ${map[status]||'badge-info'}">${escapeHtml(status||'-')}</span>`;
 }
-
 /* =========================================================
-   37. ACCOUNTING HUB — CLIENT WISE
+   ACCOUNTING HUB — CLIENT WISE
    ========================================================= */
 
 const ACC_CATEGORIES = [
@@ -2853,8 +2861,7 @@ function switchAccTab(tab) {
 
 function updateAccTabButtons() {
   document.querySelectorAll('.acc-tab').forEach(btn => {
-    const onclickStr = btn.getAttribute('onclick') || '';
-    btn.classList.toggle('active', onclickStr.includes(`'${accActiveTab}'`));
+    btn.classList.toggle('active', btn.textContent.includes(accActiveTab.split(' ')[0]) || btn.onclick.toString().includes(`'${accActiveTab}'`));
   });
   const formTitle = document.getElementById('accFormTitle');
   if (formTitle) formTitle.textContent = `➕ Add ${accActiveTab} Entry`;
@@ -2969,11 +2976,11 @@ function editAccEntry(id) {
   if (!e) return;
   openModalWithContent(`✏️ Edit Entry`, `
     <div class="form-group"><label>Date</label><input type="date" class="form-control" id="editAccDate" value="${e.entry_date||''}" /></div>
-    <div class="form-group"><label>Description</label><input type="text" class="form-control" id="editAccDesc" value="${escapeAttr(e.description||e.narration||'')}" /></div>
+    <div class="form-group"><label>Description</label><input type="text" class="form-control" id="editAccDesc" value="${escapeHtml(e.description||e.narration||'')}" /></div>
     <div class="form-group"><label>Debit (₹)</label><input type="number" class="form-control" id="editAccDebit" value="${e.debit||''}" /></div>
     <div class="form-group"><label>Credit (₹)</label><input type="number" class="form-control" id="editAccCredit" value="${e.credit||''}" /></div>
-    <div class="form-group"><label>Reference No.</label><input type="text" class="form-control" id="editAccRef" value="${escapeAttr(e.reference_no||'')}" /></div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editAccRemarks" value="${escapeAttr(e.remarks||'')}" /></div>
+    <div class="form-group"><label>Reference No.</label><input type="text" class="form-control" id="editAccRef" value="${escapeHtml(e.reference_no||'')}" /></div>
+    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editAccRemarks" value="${escapeHtml(e.remarks||'')}" /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAccEntry(${id})">💾 Save</button>
   `);
 }
@@ -2999,23 +3006,69 @@ async function saveAccEntry(id) {
     closeModal(); renderAccEntries(); renderAccClientStats(); showToast('✅ Entry updated!');
   }
 }
+function searchTeamMessages(query) {
+  const q = (query||'').trim().toLowerCase();
+  const clearBtn = document.getElementById('msgSearchClear');
+  if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+  
+  if (!q) { renderTeamMessages(); return; }
 
-/* FIX #4 — deleteAccEntry defined ONLY ONCE here (client-wise version).
-   The old Section 22 definition has been removed. */
-async function deleteAccEntry(id) {
-  const ok = await supabaseDelete('accounting_entries', id);
-  if (ok) {
-    STATE.accountingEntries = STATE.accountingEntries.filter(e => e.id !== id);
-    renderAccEntries();
-    renderAccClientStats();
-    showToast('🗑️ Entry deleted');
+  const el = document.getElementById('teamMessages');
+  if (!el) return;
+  const myEmail = getCurrentUserEmail();
+
+  const filtered = STATE.teamMessages.filter(m =>
+    (m.message||'').toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:40px 20px">
+      <div style="font-size:32px;margin-bottom:8px">🔍</div>
+      <div>No messages found for "<strong>${escapeHtml(query)}</strong>"</div>
+    </div>`;
+    return;
   }
+
+  el.innerHTML = filtered.map(m => {
+    const isOwn = m.sender_email === myEmail;
+    const timeStr = new Date(m.created_at).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}).replace(' ','');
+    const senderInitial = m.sender_email.charAt(0).toUpperCase();
+    
+    // Highlight matching text
+    const highlighted = escapeHtml(m.message).replace(
+      new RegExp(escapeHtml(q), 'gi'),
+      match => `<mark style="background:#fbbf24;color:#000;border-radius:3px;padding:0 2px">${match}</mark>`
+    );
+
+    return `
+      <div class="chat-msg ${isOwn ? 'user' : ''}">
+        ${!isOwn ? `<div class="msg-avatar" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">${senderInitial}</div>` : ''}
+        <div class="msg-content">
+          <div style="background:${isOwn?'var(--primary)':'var(--surface)'};color:${isOwn?'#fff':'var(--text)'};padding:8px 14px;border-radius:${isOwn?'14px 14px 4px 14px':'14px 14px 14px 4px'};word-break:break-word;display:inline-block;max-width:100%">
+            ${highlighted}
+          </div>
+          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn?'right':'left'}">${timeStr}</div>
+        </div>
+        ${isOwn ? `<div class="msg-avatar" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">${senderInitial}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  el.scrollTop = el.scrollHeight;
 }
 
-/* =========================================================
-   38. DASHBOARD REFRESH
-   ========================================================= */
-
+function clearMsgSearch() {
+  const input = document.getElementById('msgSearchInput');
+  const clearBtn = document.getElementById('msgSearchClear');
+  if (input) input.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  renderTeamMessages();
+}
+function toggleVaultPass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.textContent = input.type === 'text' ? '🙈' : '👁️';
+}
 async function refreshDashboard() {
   showToast('🔄 Refreshing...');
   showPageLoader(true);
@@ -3043,23 +3096,10 @@ async function refreshDashboard() {
   populateAllClientDropdowns();
   showToast('✅ Data refreshed!');
 }
-
 /* =========================================================
-   END OF app_enhanced.js — WITCORP FIXED v6
-   =========================================================
-   Changes from v5:
-   #2  supabaseQuery PATCH/DELETE returns res.ok
-   #3  saveProfileName uses PATCH
-   #4  deleteAccEntry single definition (client-wise)
-   #5  vault passwords via data-val / input ID refs only
-   #6  ROC modal dropdown id = rocClientSelModal
-   #7  submitROCFiling reads rocClientSelModal
-   #10 presenceInterval stored and cleared
-   #11 chatPollInterval stored and cleared
-   #12 searchResultsModal event listener added once
-   #13 escapeAttr used in all HTML attribute contexts
-   #14 AY dropdown populated in DOMContentLoaded
-   #15 toggleDarkMode/setTheme defined only here
-   #16 filterClientType defined only here
-   #17 viewVaultItem button added in renderVaultCredentials
+   END OF app_enhanced.js — WITCORP FIXED v3
+   ✅ updated_at sahi variable se har jagah fix kiya
+   ✅ contact_person add/edit/view mein add kiya
+   ✅ renderActivity mein updated_at use kiya
+   ✅ saari syntax errors hatayi
    ========================================================= */
