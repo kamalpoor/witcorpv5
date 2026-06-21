@@ -445,49 +445,136 @@
       </div>
     </section>
 
-    <!-- TDS RETURNS — FIXED: proper IDs -->
-    <section class="page" id="page-tds">
-      <div class="page-header">
-        <div><h1>🧾 TDS Returns</h1><p>Manage TDS filings</p></div>
-        <button class="btn-primary" onclick="openModal('tdsReturn')">+ File TDS</button>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Returns Filed</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">💰</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">TDS Collected</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">📋</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Challans Paid</div></div></div>
-      </div>
-      <div class="card">
-        <div class="card-title">TDS Filing Form</div>
-        <div class="form-grid">
-          <div class="form-group"><label>Deductor Name *</label><select class="form-control" id="tdsClientSel"><option value="">Select Client</option></select></div>
-          <div class="form-group"><label>TAN Number</label><input type="text" class="form-control" id="tdsTAN" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="ABCD12345E" /></div>
-          <div class="form-group"><label>Quarter</label>
-            <select class="form-control" id="tdsQuarter">
-              <option>Q1 (Apr-Jun)</option><option>Q2 (Jul-Sep)</option><option>Q3 (Oct-Dec)</option><option>Q4 (Jan-Mar)</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Form Type</label>
-            <select class="form-control" id="tdsFormType">
-              <option>24Q (Salary)</option><option>26Q (Non-Salary)</option><option>27Q (Foreign)</option><option>27EQ (TCS)</option>
-            </select>
-          </div>
-          <div class="form-group"><label>TDS Amount (₹)</label><input type="number" class="form-control" id="tdsAmount" placeholder="Enter TDS amount" /></div>
-          <div class="form-group"><label>Challan No.</label><input type="text" class="form-control" id="tdsChallan" placeholder="BSR Code / Challan" /></div>
-        </div>
-        <button class="btn-primary" onclick="submitTDS()">Submit TDS Return</button>
-      </div>
-      <div class="card" style="margin-top:1rem">
-        <div class="card-title">Recent TDS Filings</div>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead><tr><th>Client/Deductor</th><th>TAN</th><th>Quarter</th><th>Form</th><th>Amount</th><th>Challan</th><th>Status</th><th>Updated By</th><th>Actions</th></tr></thead>
-            <tbody id="tdsTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+   <section class="page" id="page-tds">
+  <div class="page-header">
+    <div><h1>🧾 TDS Returns</h1><p>Manage TDS filings</p></div>
+    <button class="btn-primary" onclick="openModal('tdsReturn')">+ File TDS</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Returns Filed</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Pending</div></div></div>
+    <div class="stat-card"><div class="stat-icon blue">💰</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">TDS Collected</div></div></div>
+    <div class="stat-card"><div class="stat-icon purple">📋</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Challans Paid</div></div></div>
+  </div>
 
+  <!-- TABS -->
+  <div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border)">
+    <button id="tdsTab1" onclick="switchTDSTab('filings')" style="padding:10px 24px;background:none;border:none;border-bottom:3px solid var(--primary);font-weight:700;font-size:14px;color:var(--primary);cursor:pointer">📋 TDS Filings</button>
+    <button id="tdsTab2" onclick="switchTDSTab('payments')" style="padding:10px 24px;background:none;border:none;border-bottom:3px solid transparent;font-weight:600;font-size:14px;color:var(--text-muted);cursor:pointer">💳 TDS Payments</button>
+  </div>
+
+  <!-- TDS FILINGS TAB -->
+  <div id="tdsFilingsTab">
+    <div class="card">
+      <div class="card-title">TDS Filing Form</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Deductor Name *</label>
+          <select class="form-control" id="tdsClientSel" onchange="onTDSClientChange()">
+            <option value="">Select Client</option>
+          </select>
+        </div>
+        <div class="form-group"><label>TAN Number</label>
+          <input type="text" class="form-control" id="tdsTAN" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="Auto fills from client" />
+        </div>
+        <div class="form-group"><label>Quarter</label>
+          <select class="form-control" id="tdsQuarter">
+            <option>Q1 (Apr-Jun)</option><option>Q2 (Jul-Sep)</option><option>Q3 (Oct-Dec)</option><option>Q4 (Jan-Mar)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Form Type</label>
+          <select class="form-control" id="tdsFormType">
+            <option>24Q (Salary)</option><option>26Q (Non-Salary)</option><option>27Q (Foreign)</option><option>27EQ (TCS)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>TDS Amount (₹)</label>
+          <input type="number" class="form-control" id="tdsAmount" placeholder="Enter TDS amount" />
+        </div>
+        <div class="form-group"><label>Challan No.</label>
+          <input type="text" class="form-control" id="tdsChallan" placeholder="BSR Code / Challan" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1"><label>Remarks</label>
+          <input type="text" class="form-control" id="tdsRemarks" placeholder="Optional remarks..." />
+        </div>
+      </div>
+      <button class="btn-primary" onclick="submitTDS()">Submit TDS Return</button>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div class="card-title">Recent TDS Filings</div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead><tr><th>Client/Deductor</th><th>TAN</th><th>Quarter</th><th>Form</th><th>Amount</th><th>Challan</th><th>Status</th><th>Remarks</th><th>Updated By</th><th>Actions</th></tr></thead>
+          <tbody id="tdsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TDS PAYMENTS TAB -->
+  <div id="tdsPaymentsTab" style="display:none">
+    <div class="card">
+      <div class="card-title">Record TDS Payment</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Client *</label>
+          <select class="form-control" id="tdsPayClientSel" onchange="onTDSPayClientChange()">
+            <option value="">Select Client</option>
+          </select>
+        </div>
+        <div class="form-group"><label>TAN</label>
+          <input type="text" class="form-control" id="tdsPayTAN" placeholder="Auto fills from client" style="text-transform:uppercase" />
+        </div>
+        <div class="form-group"><label>Quarter</label>
+          <select class="form-control" id="tdsPayQuarter">
+            <option>Q1 (Apr-Jun)</option><option>Q2 (Jul-Sep)</option><option>Q3 (Oct-Dec)</option><option>Q4 (Jan-Mar)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Month</label>
+          <select class="form-control" id="tdsPayMonth">
+            <option>April</option><option>May</option><option>June</option><option>July</option>
+            <option>August</option><option>September</option><option>October</option><option>November</option>
+            <option>December</option><option>January</option><option>February</option><option>March</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Payment Date</label>
+          <input type="date" class="form-control" id="tdsPayDate" />
+        </div>
+        <div class="form-group"><label>Amount (₹)</label>
+          <input type="number" class="form-control" id="tdsPayAmount" placeholder="Enter amount" />
+        </div>
+        <div class="form-group"><label>Challan No.</label>
+          <input type="text" class="form-control" id="tdsPayChallan" placeholder="Challan number" />
+        </div>
+        <div class="form-group"><label>BSR Code</label>
+          <input type="text" class="form-control" id="tdsPayBSR" placeholder="BSR Code" />
+        </div>
+        <div class="form-group"><label>Nature of Payment</label>
+          <select class="form-control" id="tdsPayNature">
+            <option>192 - Salary</option>
+            <option>194A - Interest</option>
+            <option>194C - Contractor</option>
+            <option>194H - Commission</option>
+            <option>194I - Rent</option>
+            <option>194J - Professional</option>
+            <option>194Q - Purchase</option>
+            <option>206C - TCS</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1"><label>Remarks</label>
+          <input type="text" class="form-control" id="tdsPayRemarks" placeholder="Optional remarks..." />
+        </div>
+      </div>
+      <button class="btn-primary" onclick="submitTDSPayment()">💳 Record Payment</button>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div class="card-title">TDS Payment Records</div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead><tr><th>Client</th><th>TAN</th><th>Quarter</th><th>Month</th><th>Date</th><th>Amount</th><th>Challan</th><th>Nature</th><th>Status</th><th>Remarks</th><th>Updated By</th><th>Actions</th></tr></thead>
+          <tbody id="tdsPaymentTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
     <!-- AUDIT & ASSURANCE — FIXED: real logged-in user in auditor -->
     <section class="page" id="page-audit">
       <div class="page-header">
