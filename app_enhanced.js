@@ -1443,6 +1443,7 @@ async function saveGSTEdit(id) {
     const idx = STATE.gstReturns.findIndex(g => g.id === id);
     if (idx !== -1) { STATE.gstReturns[idx].status = status; STATE.gstReturns[idx].remarks = remarks; STATE.gstReturns[idx].updated_by = getUpdatedByLabel(); STATE.gstReturns[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderGSTPage(); showToast('✅ GST return updated!');
+     sendNotifToAll('✏️ GST Updated', `GST return updated by ${getCurrentUserName()}`, '📊');
   }
 }
 
@@ -4458,6 +4459,26 @@ function playMsgSound() {
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.3);
   } catch(e) {}
+}
+async function requestPushPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+function showBrowserPush(title, message) {
+  if (!notifState.enabled) return;
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (document.visibilityState === 'visible') return;
+  const notif = new Notification(title, {
+    body: message,
+    icon: '/logo.png',
+    tag: 'witcorp-notif'
+  });
+  notif.onclick = function() { window.focus(); notif.close(); };
+  setTimeout(() => notif.close(), 5000);
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
