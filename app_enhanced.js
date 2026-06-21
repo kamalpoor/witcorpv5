@@ -1663,12 +1663,36 @@ function editITR(id) {
   const itr = STATE.itrFilings.find(x => x.id === id);
   if (!itr) return;
   openModalWithContent(`✏️ Edit ITR — ${escapeHtml(itr.client_name)}`, `
+    <div class="form-group"><label>Assessment Year</label>
+      <select class="form-control" id="editItrAY">
+        ${getAssessmentYears().map(y=>`<option ${itr.assessment_year===y?'selected':''}>${y}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>ITR Form</label>
+      <select class="form-control" id="editItrForm">
+        ${['ITR-1 (Sahaj)','ITR-2','ITR-3','ITR-4 (Sugam)','ITR-5','ITR-6','ITR-7'].map(f=>`<option ${itr.form===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Gross Income (₹)</label>
+      <input type="number" class="form-control" id="editItrGross" value="${itr.gross_income||''}" placeholder="Enter gross income" />
+    </div>
+    <div class="form-group"><label>Tax Deducted (₹)</label>
+      <input type="number" class="form-control" id="editItrTax" value="${itr.tax_deducted||''}" placeholder="Enter TDS amount" />
+    </div>
+    <div class="form-group"><label>Deductions (₹)</label>
+      <input type="number" class="form-control" id="editItrDed" value="${itr.deductions||''}" placeholder="Total deductions" />
+    </div>
+    <div class="form-group"><label>Filed Date</label>
+      <input type="date" class="form-control" id="editItrDate" value="${itr.filed_date||''}" />
+    </div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="editItrStatus">
         ${['Filed','Pending','In Progress','Overdue'].map(s=>`<option ${itr.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editItrRemarks" value="${escapeHtml(itr.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label>
+      <input type="text" class="form-control" id="editItrRemarks" value="${escapeHtml(itr.remarks||'')}" placeholder="Add remarks..." />
+    </div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveITREdit(${id})">💾 Save</button>
   `);
 }
@@ -1676,12 +1700,27 @@ function editITR(id) {
 async function saveITREdit(id) {
   const status = document.getElementById('editItrStatus')?.value;
   const remarks = document.getElementById('editItrRemarks')?.value.trim();
-  const ok = await supabaseUpdate('itr_filings', id, { status, remarks });
+  const updated = {
+    assessment_year: document.getElementById('editItrAY')?.value,
+    form: document.getElementById('editItrForm')?.value,
+    gross_income: parseFloat(document.getElementById('editItrGross')?.value)||0,
+    tax_deducted: parseFloat(document.getElementById('editItrTax')?.value)||0,
+    deductions: parseFloat(document.getElementById('editItrDed')?.value)||0,
+    filed_date: document.getElementById('editItrDate')?.value || '',
+    status,
+    remarks
+  };
+  const ok = await supabaseUpdate('itr_filings', id, updated);
   if (ok) {
     const idx = STATE.itrFilings.findIndex(i => i.id === id);
-    if (idx !== -1) { STATE.itrFilings[idx].status = status; STATE.itrFilings[idx].remarks = remarks; STATE.itrFilings[idx].updated_by = getUpdatedByLabel(); STATE.itrFilings[idx].updated_at = new Date().toISOString(); }
+    if (idx !== -1) STATE.itrFilings[idx] = {
+      ...STATE.itrFilings[idx],
+      ...updated,
+      updated_by: getUpdatedByLabel(),
+      updated_at: new Date().toISOString()
+    };
     closeModal(); renderITRList(); showToast('✅ ITR updated!');
-  }
+  } else { showToast('❌ Update failed'); }
 }
 
 async function submitITR() {
