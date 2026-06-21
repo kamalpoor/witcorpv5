@@ -937,7 +937,6 @@
       <div class="chat-layout">
         <div class="chat-sidebar">
           <div class="chat-search">
-            <input type="text" id="newChatEmail" placeholder="Email for New Message..." />
             <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
            <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px">
           <span style="color:var(--text-muted);font-size:14px">🔍</span>
@@ -948,7 +947,6 @@
       style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;display:none">✕</button>
   </div>
 </div>
-            <button class="btn-primary" style="margin-top:6px;width:100%;padding:8px;font-size:12px" onclick="startNewChat()">+ New Chat</button>
           </div>
           <div class="chat-contacts" id="chatContacts"></div>
         </div>
@@ -958,7 +956,7 @@
               <div class="chat-avatar-sm">K</div>
               <div>
                 <div class="chat-contact-name" id="activeChatName">Select a contact</div>
-                <div class="chat-online"><span class="online-indicator" id="onlineIndicator">●</span> <span id="onlineStatus">Offline</span></div>
+                <div class="chat-online" id="chatOnlineStatus" style="display:none"><span class="online-indicator" id="onlineIndicator">●</span> <span id="onlineStatus"></span></div>
               </div>
             </div>
           </div>
