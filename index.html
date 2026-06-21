@@ -540,22 +540,73 @@
         <div class="form-group"><label>Amount (₹)</label>
           <input type="number" class="form-control" id="tdsPayAmount" placeholder="Enter amount" />
         </div>
-        <div class="form-group"><label>Challan No.</label>
-          <input type="text" class="form-control" id="tdsPayChallan" placeholder="Challan number" />
-        </div>
-        <div class="form-group"><label>BSR Code</label>
-          <input type="text" class="form-control" id="tdsPayBSR" placeholder="BSR Code" />
-        </div>
         <div class="form-group"><label>Nature of Payment</label>
-          <select class="form-control" id="tdsPayNature">
-            <option>192 - Salary</option>
-            <option>194A - Interest</option>
-            <option>194C - Contractor</option>
-            <option>194H - Commission</option>
-            <option>194I - Rent</option>
-            <option>194J - Professional</option>
-            <option>194Q - Purchase</option>
-            <option>206C - TCS</option>
+         <select class="form-control" id="tdsPayNature">
+            <optgroup label="Salary">
+              <option>192 - Salary</option>
+              <option>192A - PF Withdrawal</option>
+            </optgroup>
+            <optgroup label="Interest & Dividend">
+              <option>193 - Interest on Securities</option>
+              <option>194 - Dividend</option>
+              <option>194A - Interest (Banks)</option>
+              <option>194A - Interest (Others)</option>
+            </optgroup>
+            <optgroup label="Contractors & Professionals">
+              <option>194C - Contractor/Subcontractor</option>
+              <option>194J - Professional/Technical</option>
+              <option>194J - Director Fees</option>
+              <option>194M - Contractor (Individual)</option>
+            </optgroup>
+            <optgroup label="Rent & Property">
+              <option>194I - Rent (Land/Building)</option>
+              <option>194I - Rent (Plant/Machinery)</option>
+              <option>194IB - Rent by Individual</option>
+              <option>194IC - Joint Development</option>
+            </optgroup>
+            <optgroup label="Commission & Brokerage">
+              <option>194B - Lottery/Crossword</option>
+              <option>194BB - Horse Race</option>
+              <option>194D - Insurance Commission</option>
+              <option>194G - Lottery Ticket Commission</option>
+              <option>194H - Commission/Brokerage</option>
+            </optgroup>
+            <optgroup label="Purchase & Sale">
+              <option>194Q - Purchase of Goods</option>
+              <option>194R - Perquisites/Benefits</option>
+              <option>194S - Virtual Digital Assets</option>
+            </optgroup>
+            <optgroup label="Foreign Payments">
+              <option>195 - Foreign Payments</option>
+              <option>196A - Foreign Company Income</option>
+              <option>196B - Offshore Fund</option>
+              <option>196C - Foreign Currency Bonds</option>
+              <option>196D - FII Income</option>
+            </optgroup>
+            <optgroup label="TCS">
+              <option>206C - TCS on Sale of Goods</option>
+              <option>206C - TCS on Scrap</option>
+              <option>206C - TCS on Minerals</option>
+              <option>206C - TCS on Timber</option>
+              <option>206C - TCS on Tendu Leaves</option>
+              <option>206C - TCS on Forest Produce</option>
+              <option>206C - TCS on Parking/Toll</option>
+              <option>206C - TCS on Liquor</option>
+              <option>206C(1H) - TCS on Sale above 50L</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option>194E - Non-Resident Sportsman</option>
+              <option>194EE - NSS Payments</option>
+              <option>194F - Repurchase of MF Units</option>
+              <option>194K - Income from MF Units</option>
+              <option>194LA - Land Acquisition</option>
+              <option>194LB - Infrastructure Bond</option>
+              <option>194LC - Long Term Bonds</option>
+              <option>194LD - Interest on Bonds</option>
+              <option>194N - Cash Withdrawal</option>
+              <option>194O - E-Commerce</option>
+              <option>194P - Senior Citizen</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-group" style="grid-column:1/-1"><label>Remarks</label>
