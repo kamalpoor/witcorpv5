@@ -940,7 +940,8 @@ function navigate(page) {
   closeNotifications();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (page === 'reports') { setTimeout(renderBarChart, 100); setTimeout(updateDashboardStats, 200); }
- if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
+  if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
+  if (page === 'mylocker') { setTimeout(initMyLocker, 100); }
   if (page === 'gst') renderGSTPage();
   if (page === 'dsc') renderDSCAlerts();
   if (page === 'professionaltax') renderPTTable();
@@ -3861,6 +3862,368 @@ function reshareEvent(id) {
     e.description || '',
     e.attendees || ''
   );
+}
+/* =========================================================
+   MY LOCKER — Private PIN-protected vault
+   ========================================================= */
+
+let lockerUnlocked = false;
+let lockerItems = [];
+
+async function initMyLocker() {
+  lockerUnlocked = false;
+  document.getElementById('lockerContent').style.display = 'none';
+  document.getElementById('lockerLockScreen').style.display = 'block';
+  document.getElementById('lockerSetupSection').style.display = 'none';
+  document.getElementById('lockerUnlockSection').style.display = 'none';
+  document.getElementById('lockerWrongMsg') && (document.getElementById('lockerWrongMsg').style.display = 'none');
+
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  // Check karo PIN set hai ya nahi
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/locker_pin?user_id=eq.${user.id}&select=id`,
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+  );
+  const data = res.ok ? await res.json() : [];
+
+  if (!data.length) {
+    // PIN nahi set — setup dikhao
+    document.getElementById('lockerSetupSection').style.display = 'block';
+  } else {
+    // PIN set hai — unlock screen dikhao
+    document.getElementById('lockerUnlockSection').style.display = 'block';
+    setTimeout(() => document.getElementById('lockerEnterPin')?.focus(), 100);
+  }
+}
+
+async function hashPIN(pin) {
+  // Simple hash using Web Crypto API
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + 'witcorp-locker-salt-2026');
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function setLockerPIN() {
+  const pin = document.getElementById('lockerSetPin')?.value.trim();
+  const confirm = document.getElementById('lockerConfirmPin')?.value.trim();
+  if (!pin || pin.length < 4) { showToast('PIN must be at least 4 characters'); return; }
+  if (pin !== confirm) { showToast('❌ PINs do not match!'); return; }
+
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  const pinHash = await hashPIN(pin);
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/locker_pin`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify({ user_id: user.id, pin_hash: pinHash })
+  });
+
+  if (res.ok) {
+    showToast('✅ PIN set! Locker unlocked.');
+    document.getElementById('lockerSetPin').value = '';
+    document.getElementById('lockerConfirmPin').value = '';
+    await openLockerAfterUnlock();
+  } else {
+    showToast('❌ Failed to set PIN');
+  }
+}
+
+async function unlockLocker() {
+  const pin = document.getElementById('lockerEnterPin')?.value.trim();
+  if (!pin) { showToast('Enter your PIN'); return; }
+
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  const pinHash = await hashPIN(pin);
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/locker_pin?user_id=eq.${user.id}&select=pin_hash`,
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+  );
+  const data = res.ok ? await res.json() : [];
+
+  if (!data.length || data[0].pin_hash !== pinHash) {
+    document.getElementById('lockerWrongMsg').style.display = 'block';
+    document.getElementById('lockerEnterPin').value = '';
+    document.getElementById('lockerEnterPin').focus();
+    return;
+  }
+
+  document.getElementById('lockerEnterPin').value = '';
+  await openLockerAfterUnlock();
+}
+
+async function openLockerAfterUnlock() {
+  lockerUnlocked = true;
+  document.getElementById('lockerLockScreen').style.display = 'none';
+  document.getElementById('lockerContent').style.display = 'block';
+  await loadLockerItems();
+}
+
+async function loadLockerItems() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/my_locker?user_id=eq.${user.id}&order=created_at.desc`,
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+  );
+  lockerItems = res.ok ? await res.json() : [];
+  renderLockerTable();
+}
+
+function renderLockerTable() {
+  const tbody = document.getElementById('lockerTableBody');
+  if (!tbody) return;
+  if (!lockerItems.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🔒</div><div class="empty-state-text">No items in locker yet</div><div class="empty-state-sub">Click + Add Item to get started</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lockerItems.map(item => `
+    <tr>
+      <td><strong>${escapeHtml(item.label)}</strong></td>
+      <td><span style="font-size:11px;background:var(--primary-glow);color:var(--primary);padding:2px 8px;border-radius:99px">${escapeHtml(item.category||'General')}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span>${escapeHtml(item.username||'-')}</span>
+          ${item.username ? `<button onclick="copyToClipboard('${escapeHtml(item.username)}','Username copied!')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 7px;cursor:pointer;font-size:11px">📋</button>` : ''}
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="password" id="lp_${item.id}" value="${escapeHtml(item.password||'')}" readonly
+            style="border:none;background:transparent;color:var(--text);width:90px;outline:none;font-size:13px" />
+          <button onclick="toggleVaultPass('lp_${item.id}',this)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 6px;cursor:pointer;font-size:12px">👁️</button>
+          ${item.password ? `<button onclick="copyToClipboard('${escapeHtml(item.password)}','Password copied!')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 6px;cursor:pointer;font-size:12px">📋</button>` : ''}
+        </div>
+      </td>
+      <td style="color:var(--text-muted);font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(item.notes||'-')}</td>
+      <td>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editLockerItem(${item.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteLockerItem(${item.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function lockLocker() {
+  lockerUnlocked = false;
+  lockerItems = [];
+  document.getElementById('lockerContent').style.display = 'none';
+  document.getElementById('lockerLockScreen').style.display = 'block';
+  document.getElementById('lockerSetupSection').style.display = 'none';
+  document.getElementById('lockerUnlockSection').style.display = 'block';
+  document.getElementById('lockerWrongMsg') && (document.getElementById('lockerWrongMsg').style.display = 'none');
+  setTimeout(() => document.getElementById('lockerEnterPin')?.focus(), 100);
+  showToast('🔒 Locker locked!');
+}
+
+function openLockerAddModal() {
+  const categories = ['General','Banking','GST Portal','MCA/ROC','Income Tax','Email','Social Media','Other'];
+  openModalWithContent('🔒 Add to My Locker', `
+    <div class="form-group"><label>Label / Site Name *</label><input type="text" class="form-control" id="li_label" placeholder="e.g. GSTIN Portal, HDFC Bank" /></div>
+    <div class="form-group"><label>Category</label>
+      <select class="form-control" id="li_category">
+        ${categories.map(c=>`<option>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Username / Email</label><input type="text" class="form-control" id="li_username" placeholder="Enter username or email" autocomplete="off" /></div>
+    <div class="form-group"><label>Password</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" class="form-control" id="li_password" placeholder="Enter password" style="flex:1" autocomplete="new-password" />
+        <button class="btn-outline" style="padding:8px 12px" onclick="togglePasswordView('li_password')">👁️</button>
+      </div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea class="form-control" id="li_notes" rows="2" placeholder="Optional notes..."></textarea></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveLockerItem()">🔐 Save to Locker</button>
+  `);
+}
+
+async function saveLockerItem() {
+  const label = document.getElementById('li_label')?.value.trim();
+  if (!label) { showToast('Label is required'); return; }
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  const body = {
+    user_id: user.id,
+    label,
+    category: document.getElementById('li_category')?.value || 'General',
+    username: document.getElementById('li_username')?.value.trim() || '',
+    password: document.getElementById('li_password')?.value || '',
+    notes: document.getElementById('li_notes')?.value.trim() || ''
+  };
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/my_locker`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    if (data[0]) lockerItems.unshift(data[0]);
+    closeModal();
+    renderLockerTable();
+    showToast('✅ Item saved to locker!');
+  } else {
+    showToast('❌ Failed to save');
+  }
+}
+
+function editLockerItem(id) {
+  const item = lockerItems.find(x => x.id === id);
+  if (!item) return;
+  const categories = ['General','Banking','GST Portal','MCA/ROC','Income Tax','Email','Social Media','Other'];
+  openModalWithContent(`✏️ Edit — ${escapeHtml(item.label)}`, `
+    <div class="form-group"><label>Label *</label><input type="text" class="form-control" id="eli_label" value="${escapeHtml(item.label)}" /></div>
+    <div class="form-group"><label>Category</label>
+      <select class="form-control" id="eli_category">
+        ${categories.map(c=>`<option ${item.category===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Username</label><input type="text" class="form-control" id="eli_username" value="${escapeHtml(item.username||'')}" autocomplete="off" /></div>
+    <div class="form-group"><label>Password</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" class="form-control" id="eli_password" value="${escapeHtml(item.password||'')}" style="flex:1" autocomplete="new-password" />
+        <button class="btn-outline" style="padding:8px 12px" onclick="togglePasswordView('eli_password')">👁️</button>
+      </div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea class="form-control" id="eli_notes" rows="2">${escapeHtml(item.notes||'')}</textarea></div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="updateLockerItem(${id})">💾 Save Changes</button>
+  `);
+}
+
+async function updateLockerItem(id) {
+  const label = document.getElementById('eli_label')?.value.trim();
+  if (!label) { showToast('Label required'); return; }
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  const body = {
+    label,
+    category: document.getElementById('eli_category')?.value || 'General',
+    username: document.getElementById('eli_username')?.value.trim() || '',
+    password: document.getElementById('eli_password')?.value || '',
+    notes: document.getElementById('eli_notes')?.value.trim() || '',
+    updated_at: new Date().toISOString()
+  };
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/my_locker?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (res.ok) {
+    const idx = lockerItems.findIndex(x => x.id === id);
+    if (idx !== -1) lockerItems[idx] = { ...lockerItems[idx], ...body };
+    closeModal();
+    renderLockerTable();
+    showToast('✅ Updated!');
+  } else {
+    showToast('❌ Update failed');
+  }
+}
+
+async function deleteLockerItem(id) {
+  const item = lockerItems.find(x => x.id === id);
+  if (!item) return;
+  if (!confirm(`Delete "${item.label}"? This cannot be undone.`)) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/my_locker?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+  });
+
+  if (res.ok) {
+    lockerItems = lockerItems.filter(x => x.id !== id);
+    renderLockerTable();
+    showToast('🗑️ Deleted from locker');
+  }
+}
+
+function showLockerResetConfirm() {
+  openModalWithContent('⚠️ Reset / Change Locker PIN', `
+    <div style="text-align:center;padding:10px 0">
+      <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+      <div style="font-weight:700;margin-bottom:8px">Change your Locker PIN?</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Enter current PIN to set a new one</div>
+      <div class="form-group"><input type="password" class="form-control" id="resetCurrentPin" placeholder="Current PIN" style="text-align:center;letter-spacing:4px" /></div>
+      <div class="form-group"><input type="password" class="form-control" id="resetNewPin" placeholder="New PIN (min 4)" style="text-align:center;letter-spacing:4px" /></div>
+      <div class="form-group"><input type="password" class="form-control" id="resetConfirmPin" placeholder="Confirm New PIN" style="text-align:center;letter-spacing:4px" /></div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" style="flex:1" onclick="changeLockerPIN()">✅ Change PIN</button>
+      </div>
+    </div>
+  `);
+}
+
+async function changeLockerPIN() {
+  const current = document.getElementById('resetCurrentPin')?.value.trim();
+  const newPin = document.getElementById('resetNewPin')?.value.trim();
+  const confirm = document.getElementById('resetConfirmPin')?.value.trim();
+
+  if (!current) { showToast('Enter current PIN'); return; }
+  if (!newPin || newPin.length < 4) { showToast('New PIN must be at least 4 chars'); return; }
+  if (newPin !== confirm) { showToast('❌ New PINs do not match'); return; }
+
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  const currentHash = await hashPIN(current);
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/locker_pin?user_id=eq.${user.id}&select=pin_hash`,
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+  );
+  const data = res.ok ? await res.json() : [];
+
+  if (!data.length || data[0].pin_hash !== currentHash) {
+    showToast('❌ Current PIN is wrong!'); return;
+  }
+
+  const newHash = await hashPIN(newPin);
+  const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/locker_pin?user_id=eq.${user.id}`, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ pin_hash: newHash, updated_at: new Date().toISOString() })
+  });
+
+  if (updateRes.ok) {
+    closeModal();
+    showToast('✅ PIN changed successfully!');
+    if (lockerUnlocked) lockLocker();
+  } else {
+    showToast('❌ Failed to change PIN');
+  }
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
