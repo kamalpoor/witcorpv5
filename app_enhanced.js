@@ -1711,7 +1711,8 @@ function renderTDSTable() {
       <td>${escapeHtml(t.form_type||'-')}</td>
       <td>₹ ${formatAmount(t.amount||0)}</td>
       <td>${escapeHtml(t.challan_no||'-')}</td>
-      <td>${statusBadge(t.status)}</td>
+     <td>${statusBadge(t.status)}</td>
+      <td class="remarks-cell" title="${escapeHtml(t.remarks||'')}">${escapeHtml(t.remarks||'-')}</td>
       <td class="updated-by-cell">
         <span class="updated-by-badge">${escapeHtml(t.updated_by||'-')}</span>
         ${t.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(t.updated_at)}</span>` : ''}
@@ -1749,6 +1750,16 @@ async function saveTDSEdit(id) {
   }
 }
 
+function onTDSClientChange() {
+  const sel = document.getElementById('tdsClientSel');
+  const clientId = sel?.value;
+  if (!clientId) return;
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  if (client && client.tan && client.tan !== '-') {
+    const tanEl = document.getElementById('tdsTAN');
+    if (tanEl) tanEl.value = client.tan;
+  }
+}
 async function submitTDS() {
   const clientSel = document.getElementById('tdsClientSel');
   const deductorEl = document.getElementById('tdsDeductor');
@@ -1790,6 +1801,117 @@ async function deleteTDS(id) {
   const ok = await supabaseDelete('tds_returns', id);
   if (ok) { STATE.tdsReturns = STATE.tdsReturns.filter(t => t.id !== id); renderTDSTable(); showToast('🗑️ TDS return deleted'); }
    sendNotifToAll('🗑️ TDS Deleted', `Deleted by ${getCurrentUserName()}`, '🧾');
+}
+/* =========================================================
+   TDS PAYMENTS
+   ========================================================= */
+
+async function loadTDSPayments() {
+  const data = await supabaseQuery('tds_payments', { order: 'created_at.desc' });
+  STATE.tdsPayments = Array.isArray(data) ? data : [];
+}
+
+function renderTDSPaymentTable() {
+  const tbody = document.getElementById('tdsPaymentTableBody');
+  if (!tbody) return;
+  const data = STATE.tdsPayments || [];
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">💳</div><div class="empty-state-text">No TDS payments yet</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(t => `
+    <tr>
+      <td><strong>${escapeHtml(t.client_name||'-')}</strong></td>
+      <td>${escapeHtml(t.tan||'-')}</td>
+      <td>${escapeHtml(t.quarter||'-')}</td>
+      <td>${escapeHtml(t.month||'-')}</td>
+      <td>${escapeHtml(t.payment_date||'-')}</td>
+      <td>₹ ${formatAmount(t.amount||0)}</td>
+      <td>${escapeHtml(t.challan_no||'-')}</td>
+      <td>${escapeHtml(t.nature_of_payment||'-')}</td>
+      <td>${statusBadge(t.status)}</td>
+      <td class="remarks-cell">${escapeHtml(t.remarks||'-')}</td>
+      <td class="updated-by-cell">
+        <span class="updated-by-badge">${escapeHtml(t.updated_by||'-')}</span>
+        ${t.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(t.updated_at)}</span>` : ''}
+      </td>
+      <td>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px;margin-right:4px" onclick="editTDSPayment(${t.id})">✏️</button>
+        <button class="btn-outline" style="padding:4px 8px;font-size:11px;border-color:#ef4444;color:#ef4444" onclick="deleteTDSPayment(${t.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function submitTDSPayment() {
+  const clientSel = document.getElementById('tdsPayClientSel');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
+  const body = {
+    client_name: clientName,
+    client_id: clientId,
+    tan: document.getElementById('tdsPayTAN')?.value.trim() || '',
+    quarter: document.getElementById('tdsPayQuarter')?.value || '',
+    month: document.getElementById('tdsPayMonth')?.value || '',
+    payment_date: document.getElementById('tdsPayDate')?.value || '',
+    amount: parseFloat(document.getElementById('tdsPayAmount')?.value) || 0,
+    challan_no: document.getElementById('tdsPayChallan')?.value.trim() || '',
+    bsr_code: document.getElementById('tdsPayBSR')?.value.trim() || '',
+    nature_of_payment: document.getElementById('tdsPayNature')?.value || '',
+    remarks: document.getElementById('tdsPayRemarks')?.value.trim() || '',
+    status: 'Paid'
+  };
+  const result = await supabaseInsert('tds_payments', body);
+  if (result && result[0]) {
+    if (!STATE.tdsPayments) STATE.tdsPayments = [];
+    STATE.tdsPayments.unshift(result[0]);
+    renderTDSPaymentTable();
+    showToast('✅ TDS Payment recorded!');
+  } else { showToast('❌ Failed'); }
+}
+
+function editTDSPayment(id) {
+  const t = (STATE.tdsPayments||[]).find(x => x.id === id);
+  if (!t) return;
+  openModalWithContent(`✏️ Edit TDS Payment`, `
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editTdsPayStatus">
+        ${['Paid','Pending','Failed'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label>
+      <input type="text" class="form-control" id="editTdsPayRemarks" value="${escapeHtml(t.remarks||'')}" />
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveTDSPaymentEdit(${id})">💾 Save</button>
+  `);
+}
+
+async function saveTDSPaymentEdit(id) {
+  const status = document.getElementById('editTdsPayStatus')?.value;
+  const remarks = document.getElementById('editTdsPayRemarks')?.value.trim();
+  const ok = await supabaseUpdate('tds_payments', id, { status, remarks });
+  if (ok) {
+    const idx = (STATE.tdsPayments||[]).findIndex(x => x.id === id);
+    if (idx !== -1) { STATE.tdsPayments[idx].status = status; STATE.tdsPayments[idx].remarks = remarks; STATE.tdsPayments[idx].updated_by = getUpdatedByLabel(); STATE.tdsPayments[idx].updated_at = new Date().toISOString(); }
+    closeModal(); renderTDSPaymentTable(); showToast('✅ Updated!');
+  }
+}
+
+async function deleteTDSPayment(id) {
+  if (!confirm('Delete this payment?')) return;
+  const ok = await supabaseDelete('tds_payments', id);
+  if (ok) { STATE.tdsPayments = (STATE.tdsPayments||[]).filter(x => x.id !== id); renderTDSPaymentTable(); showToast('🗑️ Deleted'); }
+}
+
+function onTDSPayClientChange() {
+  const sel = document.getElementById('tdsPayClientSel');
+  const clientId = sel?.value;
+  if (!clientId) return;
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  if (client && client.tan && client.tan !== '-') {
+    const tanEl = document.getElementById('tdsPayTAN');
+    if (tanEl) tanEl.value = client.tan;
+  }
 }
 
 /* =========================================================
