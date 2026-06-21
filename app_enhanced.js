@@ -748,6 +748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setCurrentDate();
   attachGlobalListeners();
   initPresence();
+  requestPushPermission();
   await loadNotifications();
   setInterval(pollNotifications, 10000);
   injectWAMenuStyles();
@@ -1319,6 +1320,7 @@ async function deleteClientConfirmed(id) {
     STATE.clients = STATE.clients.filter(c => c.id !== id);
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('🗑️ Client deleted');
   } else { showToast('❌ Delete failed'); }
+   sendNotifToAll('🗑️ Client Deleted', `${c.name} deleted by ${getCurrentUserName()}`, '👥');
 }
 
 /* =========================================================
@@ -1447,6 +1449,7 @@ async function saveGSTEdit(id) {
 async function deleteGSTReturn(id) {
   const ok = await supabaseDelete('gst_returns', id);
   if (ok) { STATE.gstReturns = STATE.gstReturns.filter(g => g.id !== id); renderGSTPage(); showToast('🗑️ GST return deleted'); }
+   sendNotifToAll('🗑️ GST Return Deleted', `Deleted by ${getCurrentUserName()}`, '📊');
 }
 
 /* =========================================================
@@ -1515,6 +1518,7 @@ async function saveROCStatus(id) {
 async function deleteROC(id) {
   const ok = await supabaseDelete('roc_filings', id);
   if (ok) { STATE.rocFilings = STATE.rocFilings.filter(r => r.id !== id); renderROCTable(); showToast('🗑️ ROC filing deleted'); }
+   sendNotifToAll('🗑️ ROC Filing Deleted', `Deleted by ${getCurrentUserName()}`, '🏛️');
 }
 
 async function submitROCFiling() {
@@ -1649,6 +1653,7 @@ async function submitITR() {
 async function deleteITR(id) {
   const ok = await supabaseDelete('itr_filings', id);
   if (ok) { STATE.itrFilings = STATE.itrFilings.filter(i => i.id !== id); renderITRList(); showToast('🗑️ ITR filing deleted'); }
+   sendNotifToAll('🗑️ ITR Deleted', `Deleted by ${getCurrentUserName()}`, '💰');
 }
 
 /* =========================================================
@@ -1748,6 +1753,7 @@ async function submitTDS() {
 async function deleteTDS(id) {
   const ok = await supabaseDelete('tds_returns', id);
   if (ok) { STATE.tdsReturns = STATE.tdsReturns.filter(t => t.id !== id); renderTDSTable(); showToast('🗑️ TDS return deleted'); }
+   sendNotifToAll('🗑️ TDS Deleted', `Deleted by ${getCurrentUserName()}`, '🧾');
 }
 
 /* =========================================================
@@ -1809,6 +1815,7 @@ async function saveAuditStatus(id) {
 async function deleteAudit(id) {
   const ok = await supabaseDelete('audits', id);
   if (ok) { STATE.audits = STATE.audits.filter(a => a.id !== id); renderAuditTable(); showToast('🗑️ Audit deleted'); }
+   sendNotifToAll('🗑️ Audit Deleted', `Deleted by ${getCurrentUserName()}`, '🛡️');
 }
 
 /* =========================================================
@@ -1973,6 +1980,7 @@ async function submitDSC() {
 async function deleteDSC(id) {
   const ok = await supabaseDelete('dsc_records', id);
   if (ok) { STATE.dscRecords = STATE.dscRecords.filter(d => d.id !== id); renderDSCAlerts(); showToast('🗑️ DSC record deleted'); }
+   sendNotifToAll('🗑️ DSC Deleted', `Deleted by ${getCurrentUserName()}`, '✍️');
 }
 
 /* =========================================================
@@ -3205,6 +3213,37 @@ async function sendNotifToAll(title, message, icon) {
       })
     ));
   } catch(e) {}
+   // Browser push bhi dikhao
+showBrowserPush(title, message, icon);
+}
+// Browser Push Notification
+async function requestPushPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+function showBrowserPush(title, message, icon) {
+  if (!notifState.enabled) return;
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (document.visibilityState === 'visible') return; // App open ho toh mat dikhao
+
+  const notif = new Notification(title, {
+    body: message,
+    icon: '/logo.png',
+    badge: '/logo.png',
+    tag: 'witcorp-notif',
+    requireInteraction: false
+  });
+
+  notif.onclick = function() {
+    window.focus();
+    notif.close();
+  };
+
+  setTimeout(() => notif.close(), 5000);
 }
 
 // Polling — har 10 sec mein check karo
