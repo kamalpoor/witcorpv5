@@ -4460,26 +4460,7 @@ function playMsgSound() {
     oscillator.stop(ctx.currentTime + 0.3);
   } catch(e) {}
 }
-async function requestPushPermission() {
-  if (!('Notification' in window)) return;
-  if (Notification.permission === 'default') {
-    await Notification.requestPermission();
-  }
-}
 
-function showBrowserPush(title, message) {
-  if (!notifState.enabled) return;
-  if (!('Notification' in window)) return;
-  if (Notification.permission !== 'granted') return;
-  if (document.visibilityState === 'visible') return;
-  const notif = new Notification(title, {
-    body: message,
-    icon: '/logo.png',
-    tag: 'witcorp-notif'
-  });
-  notif.onclick = function() { window.focus(); notif.close(); };
-  setTimeout(() => notif.close(), 5000);
-}
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
    ✅ updated_at sahi variable se har jagah fix kiya
