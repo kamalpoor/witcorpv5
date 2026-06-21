@@ -3162,6 +3162,11 @@ async function markAllNotifRead() {
   renderNotifPanel();
   showToast('✅ All notifications marked read');
 }
+function closeNotifications() {
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('show');
+  STATE.notifOpen = false;
+}
 
 function toggleNotifSetting() {
   notifState.enabled = !notifState.enabled;
