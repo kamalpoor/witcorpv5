@@ -143,7 +143,7 @@ const STATE = {
   tdsReturns: [], audits: [], dscRecords: [], accountingEntries: [],
   tasks: [], documents: [], calendarEvents: [],
   vaultCredentials: [],
-  teamMessages: [], userPresence: {},
+  teamMessages: [], userPresence: {}, unreadCounts: {},
   selectedMessageId: null,
   replyToId: null,
   currentUser: null
@@ -587,12 +587,13 @@ async function renderTeamContacts() {
     el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet.</div>`;
     return;
   }
-  el.innerHTML = others.map(p => {
+ el.innerHTML = others.map(p => {
     const name = p.full_name || p.email.split('@')[0];
     const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
     const isActive = p.email === STATE.activeChatContact;
     const myEmail = getCurrentUserEmail();
     const isOnline = p.email === myEmail ? true : (STATE.userPresence[p.email]?.is_online || false);
+    const unread = STATE.unreadCounts[p.email] || 0;
     return `
       <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
@@ -603,12 +604,15 @@ async function renderTeamContacts() {
           <div style="font-weight:600;font-size:13.5px">${escapeHtml(name)}</div>
           <div style="font-size:11px;color:var(--text-muted)">${isOnline ? '● Online' : 'Offline'}</div>
         </div>
+        ${unread > 0 ? `<div style="background:#ef4444;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${unread > 9 ? '9+' : unread}</div>` : ''}
       </div>`;
   }).join('');
 }
 
 function switchChatContact(email, name) {
   STATE.activeChatContact = email;
+  // Unread clear karo jab contact open karo
+  STATE.unreadCounts[email] = 0;
   const nameEl = document.getElementById('activeChatName');
   if (nameEl) nameEl.textContent = name || email.split('@')[0];
   cancelReply();
@@ -777,11 +781,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 setInterval(async () => {
     await fetchAllPresence();
+
+    // Naye messages check karo — har contact ke liye
+    const myEmail = getCurrentUserEmail();
+    const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+    try {
+      // Last 30 seconds ke messages fetch karo
+      const since = new Date(Date.now() - 35000).toISOString();
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/team_messages?receiver_email=eq.${encodeURIComponent(myEmail)}&created_at=gte.${since}&order=created_at.desc`,
+        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+      );
+      const newMsgs = res.ok ? await res.json() : [];
+
+      newMsgs.forEach(msg => {
+        // Agar yeh contact active nahi hai tabhi count badhao
+        if (msg.sender_email !== STATE.activeChatContact) {
+          if (!STATE.unreadCounts[msg.sender_email]) STATE.unreadCounts[msg.sender_email] = 0;
+
+          // Duplicate avoid karo — already counted check
+          const alreadyCounted = STATE._lastMsgIds && STATE._lastMsgIds.includes(msg.id);
+          if (!alreadyCounted) {
+            STATE.unreadCounts[msg.sender_email]++;
+            playMsgSound();
+          }
+        }
+      });
+
+      // Last checked IDs store karo
+      STATE._lastMsgIds = newMsgs.map(m => m.id);
+
+    } catch(e) {}
+
     await renderTeamContacts();
     if (STATE.activeChatContact) await renderTeamMessages();
-    // Online count update karo
-    const myEmail = getCurrentUserEmail();
-    if (myEmail) STATE.userPresence[myEmail] = { is_online: true };
+
+    const myEmail2 = getCurrentUserEmail();
+    if (myEmail2) STATE.userPresence[myEmail2] = { is_online: true };
     const onlineCount = Object.values(STATE.userPresence).filter(p => p.is_online).length;
     const countEl = document.getElementById('onlineCount');
     if (countEl) countEl.textContent = Math.max(onlineCount, 1);
@@ -4224,6 +4261,26 @@ async function changeLockerPIN() {
   } else {
     showToast('❌ Failed to change PIN');
   }
+}
+/* =========================================================
+   TEAM CHAT NOTIFICATIONS
+   ========================================================= */
+
+function playMsgSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1);
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
