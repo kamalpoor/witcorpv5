@@ -3251,6 +3251,7 @@ async function sendNotifToAll(title, message, icon) {
   } catch(e) {}
    // Browser push bhi dikhao
 showBrowserPush(title, message, icon);
+   sendPushToAll(title, message);
 }
 // Browser Push Notification
 async function requestPushPermission() {
@@ -3264,7 +3265,6 @@ function showBrowserPush(title, message, icon) {
   if (!notifState.enabled) return;
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
-  if (document.visibilityState === 'visible') return; // App open ho toh mat dikhao
 
   const notif = new Notification(title, {
     body: message,
@@ -3285,6 +3285,22 @@ function showBrowserPush(title, message, icon) {
 // Polling — har 10 sec mein check karo
 async function pollNotifications() {
   await loadNotifications();
+}
+
+async function sendPushToAll(title, message) {
+  if ('serviceWorker' in navigator) {
+    const reg = await navigator.serviceWorker.ready;
+    if (Notification.permission === 'granted') {
+      reg.showNotification(title, {
+        body: message,
+        icon: './logo.png',
+        badge: './logo.png',
+        tag: 'witcorp-' + Date.now(),
+        renotify: true,
+        vibrate: [200, 100, 200]
+      });
+    }
+  }
 }
 /* =========================================================
    36. UTILITY & FORMAT VALIDATORS
