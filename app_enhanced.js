@@ -1885,8 +1885,6 @@ async function submitTDSPayment() {
     month: document.getElementById('tdsPayMonth')?.value || '',
     payment_date: document.getElementById('tdsPayDate')?.value || '',
     amount: parseFloat(document.getElementById('tdsPayAmount')?.value) || 0,
-    challan_no: document.getElementById('tdsPayChallan')?.value.trim() || '',
-    bsr_code: document.getElementById('tdsPayBSR')?.value.trim() || '',
     nature_of_payment: document.getElementById('tdsPayNature')?.value || '',
     remarks: document.getElementById('tdsPayRemarks')?.value.trim() || '',
     status: 'Paid'
