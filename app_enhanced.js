@@ -37,7 +37,8 @@ async function supabaseQuery(table, options = {}) {
   } catch(e) { console.error('supabaseQuery network error:', e); return []; }
 }
 
-var supabase = supabaseQuery;
+var supabaseQuery = supabaseQuery;
+var supabaseClient = null;
 
 async function supabaseInsert(table, body) {
   const url = `${SUPABASE_URL}/rest/v1/${table}`;
@@ -245,6 +246,39 @@ function initDarkMode() {
     document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function (btn) {
       btn.textContent = '☀️';
     });
+  }
+}
+function initRealtimeNotifications() {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    supabaseClient
+      .channel('realtime-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const notif = payload.new;
+          notifState.items.unshift(notif);
+          updateNotifBadge();
+          showToast(`🔔 ${notif.title}`);
+          playMsgSound();
+          if (STATE.notifOpen) renderNotifPanel();
+        }
+      )
+      .subscribe();
+
+    console.log('✅ Realtime notifications active');
+  } catch(e) {
+    console.warn('Realtime init failed:', e);
   }
 }
 
@@ -750,6 +784,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPresence();
   requestPushPermission();
   await loadNotifications();
+  initRealtimeNotifications();
   setInterval(pollNotifications, 10000);
   injectWAMenuStyles();
   renderTeamContacts();
