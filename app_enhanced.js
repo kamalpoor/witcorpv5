@@ -618,6 +618,7 @@ function switchChatContact(email, name) {
   cancelReply();
   renderTeamContacts();
   renderTeamMessages();
+  updateChatSidebarBadge();
 }
 
 async function renderTeamMessages() {
@@ -805,6 +806,7 @@ setInterval(async () => {
           if (!alreadyCounted) {
             STATE.unreadCounts[msg.sender_email]++;
             playMsgSound();
+            updateChatSidebarBadge();
           }
         }
       });
@@ -978,6 +980,7 @@ function navigate(page) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (page === 'reports') { setTimeout(renderBarChart, 100); setTimeout(updateDashboardStats, 200); }
   if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
+  if (page === 'teamchat') { STATE.unreadCounts = {}; updateChatSidebarBadge(); }
   if (page === 'mylocker') { setTimeout(initMyLocker, 100); }
   if (page === 'gst') renderGSTPage();
   if (page === 'dsc') renderDSCAlerts();
@@ -4265,6 +4268,20 @@ async function changeLockerPIN() {
 /* =========================================================
    TEAM CHAT NOTIFICATIONS
    ========================================================= */
+function updateChatSidebarBadge() {
+  const totalUnread = Object.values(STATE.unreadCounts).reduce((s, n) => s + n, 0);
+  const navItem = document.querySelector('.nav-item[data-page="teamchat"]');
+  if (!navItem) return;
+  const oldBadge = navItem.querySelector('.chat-unread-badge');
+  if (oldBadge) oldBadge.remove();
+  if (totalUnread > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'chat-unread-badge';
+    badge.style.cssText = 'background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-left:auto;';
+    badge.textContent = totalUnread > 9 ? '9+' : totalUnread;
+    navItem.appendChild(badge);
+  }
+}
 
 function playMsgSound() {
   try {
