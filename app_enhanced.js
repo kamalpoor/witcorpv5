@@ -748,6 +748,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   setCurrentDate();
   attachGlobalListeners();
   initPresence();
+  await loadNotifications();
+  setInterval(pollNotifications, 10000);
   injectWAMenuStyles();
   renderTeamContacts();
   renderTeamMessages();
@@ -1292,6 +1294,7 @@ async function saveClientEdit(id) {
     if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated, updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString() };
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client updated!');
   } else { showToast('❌ Update failed.'); }
+   sendNotifToAll('✏️ Client Updated', `${updated.name} updated by ${getCurrentUserName()}`, '👥');
 }
 
 function deleteClientConfirm(id) {
@@ -1407,6 +1410,7 @@ async function submitGSTReturn() {
     STATE.gstReturns.unshift(result[0]);
     renderGSTPage();
     showToast('✅ GST Return filed successfully!');
+     sendNotifToAll('📊 GST Return Filed', `${body.return_type} filed for ${clientName} by ${getCurrentUserName()}`, '📊');
     if (gstinEl) gstinEl.value = '';
     if (turnoverEl) turnoverEl.value = '';
     if (taxEl) taxEl.value = '';
@@ -1544,6 +1548,7 @@ async function submitROCFiling() {
   const result = await supabaseInsert('roc_filings', body);
   if (result && result[0]) { STATE.rocFilings.unshift(result[0]); closeModal(); renderROCTable(); showToast('✅ ROC filing created!'); }
   else { showToast('❌ ROC filing failed'); }
+   sendNotifToAll('🏛️ ROC Filing Created', `${body.form} for ${companyName} by ${getCurrentUserName()}`, '🏛️');
 }
 
 /* =========================================================
@@ -1638,6 +1643,7 @@ async function submitITR() {
   const result = await supabaseInsert('itr_filings', body);
   if (result && result[0]) { STATE.itrFilings.unshift(result[0]); renderITRList(); showToast('✅ ITR filed successfully!'); }
   else { showToast('❌ ITR filing failed'); }
+   sendNotifToAll('💰 ITR Filed', `${body.form} filed for ${clientName} by ${getCurrentUserName()}`, '💰');
 }
 
 async function deleteITR(id) {
@@ -1736,6 +1742,7 @@ async function submitTDS() {
   const result = await supabaseInsert('tds_returns', body);
   if (result && result[0]) { STATE.tdsReturns.unshift(result[0]); renderTDSTable(); showToast('✅ TDS return submitted!'); }
   else { showToast('❌ TDS submission failed'); }
+   sendNotifToAll('🧾 TDS Return Filed', `${body.form_type} filed by ${getCurrentUserName()}`, '🧾');
 }
 
 async function deleteTDS(id) {
@@ -1889,6 +1896,7 @@ async function saveDSCEdit(id) {
     const idx = STATE.dscRecords.findIndex(d => d.id === id);
     if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; STATE.dscRecords[idx].updated_by = getUpdatedByLabel(); STATE.dscRecords[idx].updated_at = new Date().toISOString(); }
     closeModal(); renderDSCAlerts(); showToast('✅ DSC updated!');
+     sendNotifToAll('✍️ DSC Updated', `DSC updated by ${getCurrentUserName()}`, '✍️');
   }
 }
 
@@ -1952,6 +1960,7 @@ async function submitDSC() {
     STATE.dscRecords.unshift(result[0]);
     renderDSCAlerts();
     showToast('✅ DSC record added!');
+     sendNotifToAll('✍️ DSC Record Added', `${clientName} DSC added by ${getCurrentUserName()}`, '✍️');
     if (clientEl) clientEl.value = '';
     if (panEl) panEl.value = '';
     if (expiryEl) expiryEl.value = '';
@@ -2646,6 +2655,7 @@ async function submitAddClient() {
     STATE.clients.unshift(result[0]);
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client added!');
   } else { showToast('❌ Failed to add client'); }
+   sendNotifToAll('👥 New Client Added', `${body.name} added by ${getCurrentUserName()}`, '👥');
 }
 
 async function submitNewAudit() {
@@ -2666,6 +2676,7 @@ async function submitNewAudit() {
   const result = await supabaseInsert('audits', body);
   if (result && result[0]) { STATE.audits.unshift(result[0]); closeModal(); renderAuditTable(); showToast('✅ Audit scheduled!'); }
   else { showToast('❌ Audit scheduling failed'); }
+   sendNotifToAll('🛡️ New Audit Scheduled', `${body.audit_type} for ${clientName} by ${getCurrentUserName()}`, '🛡️');
 }
 
 async function submitVaultItem() {
@@ -3059,37 +3070,142 @@ function attachGlobalListeners() {
   window.addEventListener('resize', () => { if(window.innerWidth>768) closeSidebar(); });
 }
 
-/* =========================================================
-   35. NOTIFICATIONS
-   ========================================================= */
+// =========================================================
+// REAL NOTIFICATIONS SYSTEM
+// =========================================================
+
+let notifState = {
+  items: [],
+  enabled: localStorage.getItem('witcorp-notif-enabled') !== 'false',
+  lastFetched: null
+};
+
+async function loadNotifications() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/notifications?user_id=eq.${user.id}&order=created_at.desc&limit=50`,
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+    );
+    notifState.items = res.ok ? await res.json() : [];
+    updateNotifBadge();
+  } catch(e) {}
+}
+
+function updateNotifBadge() {
+  const unread = notifState.items.filter(n => !n.is_read).length;
+  const countEl = document.getElementById('notifCount');
+  if (!countEl) return;
+  if (unread > 0) {
+    countEl.style.display = 'flex';
+    countEl.textContent = unread > 9 ? '9+' : unread;
+  } else {
+    countEl.style.display = 'none';
+  }
+}
 
 function openNotifications() {
   const panel = document.getElementById('notifPanel');
   STATE.notifOpen = !STATE.notifOpen;
   if (panel) panel.classList.toggle('show', STATE.notifOpen);
-  const notifList = document.getElementById('notifList');
-  if (!notifList) return;
-  const notifs = [];
-  STATE.gstReturns.filter(g=>g.status==='Pending').slice(0,2).forEach(g => { notifs.push({icon:'📊',text:'GSTR pending: '+g.client_name+' — '+g.return_type,time:'Pending'}); });
-  STATE.dscRecords.filter(d => { const days=dscDaysLeft(d.expiry_date); return days!==null&&days>=0&&days<=30; }).forEach(d => {
-    notifs.push({icon:'⚠️',text:'DSC expiring: '+(d.client_name||d.name||'Unknown')+' in '+dscDaysLeft(d.expiry_date)+' days',time:'Alert'});
-  });
-  STATE.tasks.filter(t=>t.column_name==='todo'&&(t.tags||[]).includes('High')).slice(0,2).forEach(t => { notifs.push({icon:'🔴',text:'High priority: '+t.title,time:'Task'}); });
-  notifList.innerHTML = (notifs.length ? notifs : [{icon:'✅',text:'No new notifications',time:''}]).map(n=>`
-    <div class="notif-item">
-      <div class="notif-icon">${n.icon}</div>
-      <div><div class="notif-text">${escapeHtml(n.text)}</div><div class="notif-time">${escapeHtml(n.time)}</div></div>
+  if (STATE.notifOpen) renderNotifPanel();
+  // Toggle button update
+  const btn = document.getElementById('notifToggleBtn');
+  if (btn) btn.textContent = notifState.enabled ? '🔕 Off' : '🔔 On';
+}
+
+function renderNotifPanel() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  if (!notifState.items.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-text">No notifications yet</div></div>`;
+    return;
+  }
+  list.innerHTML = notifState.items.map(n => `
+    <div onclick="markOneNotifRead(${n.id})" style="display:flex;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;background:${n.is_read ? 'transparent' : 'var(--primary-glow)'};transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='${n.is_read ? 'transparent' : 'var(--primary-glow)'}'">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:1.5px solid var(--border)">${n.icon || '📋'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:${n.is_read ? '500' : '700'};color:var(--text);margin-bottom:2px">${escapeHtml(n.title)}</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.4">${escapeHtml(n.message)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${formatDateTime(n.created_at)}</div>
+      </div>
+      ${!n.is_read ? '<div style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:4px"></div>' : ''}
     </div>`).join('');
-  const dot = document.getElementById('notifCount');
-  if (dot) dot.textContent = notifs.length || '0';
 }
 
-function closeNotifications() {
-  const panel = document.getElementById('notifPanel');
-  if (panel) panel.classList.remove('show');
-  STATE.notifOpen = false;
+async function markOneNotifRead(id) {
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  await fetch(`${SUPABASE_URL}/rest/v1/notifications?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_read: true })
+  });
+  const idx = notifState.items.findIndex(n => n.id === id);
+  if (idx !== -1) notifState.items[idx].is_read = true;
+  updateNotifBadge();
+  renderNotifPanel();
 }
 
+async function markAllNotifRead() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  await fetch(`${SUPABASE_URL}/rest/v1/notifications?user_id=eq.${user.id}&is_read=eq.false`, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_read: true })
+  });
+  notifState.items.forEach(n => n.is_read = true);
+  updateNotifBadge();
+  renderNotifPanel();
+  showToast('✅ All notifications marked read');
+}
+
+function toggleNotifSetting() {
+  notifState.enabled = !notifState.enabled;
+  localStorage.setItem('witcorp-notif-enabled', notifState.enabled ? 'true' : 'false');
+  const btn = document.getElementById('notifToggleBtn');
+  if (btn) btn.textContent = notifState.enabled ? '🔕 Off' : '🔔 On';
+  showToast(notifState.enabled ? '🔔 Notifications ON' : '🔕 Notifications OFF');
+}
+
+// Notification bhejo baaki sabko
+async function sendNotifToAll(title, message, icon) {
+  if (!notifState.enabled) return;
+  const myUser = getCurrentUser();
+  if (!myUser) return;
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  // Saare users fetch karo
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id`, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+    });
+    const profiles = res.ok ? await res.json() : [];
+
+    // Apne aap ko chhod ke baaki sabko bhejo
+    const others = profiles.filter(p => p.id !== myUser.id);
+    await Promise.all(others.map(p =>
+      fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ user_id: p.id, title, message, icon: icon || '📋' })
+      })
+    ));
+  } catch(e) {}
+}
+
+// Polling — har 10 sec mein check karo
+async function pollNotifications() {
+  await loadNotifications();
+}
 /* =========================================================
    36. UTILITY & FORMAT VALIDATORS
    ========================================================= */
