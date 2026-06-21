@@ -929,6 +929,8 @@ async function loadAllData() {
     STATE.rocFilings = Array.isArray(roc) ? roc : [];
     STATE.itrFilings = Array.isArray(itr) ? itr : [];
     STATE.tdsReturns = Array.isArray(tds) ? tds : [];
+     STATE.tdsPayments = [];
+     loadTDSPayments();
     STATE.audits = Array.isArray(audits) ? audits : [];
     STATE.dscRecords = Array.isArray(dsc) ? dsc : [];
     STATE.accountingEntries = Array.isArray(acc) ? acc : [];
@@ -983,7 +985,7 @@ function onEditClientTypeChange() {
 
 function populateAllClientDropdowns() {
   const clientOptions = getClientOptionsHtml(true);
-  const dropdownIds = ['gstClientSel','itrClientSel','auditClientSel','tdsClientSel','rocClientSel','dscClientSel','accClientSel'];
+  const dropdownIds = ['gstClientSel','itrClientSel','auditClientSel','tdsClientSel','rocClientSel','dscClientSel','accClientSel','tdsPayClientSel'];
   dropdownIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = clientOptions;
@@ -1026,6 +1028,33 @@ function navigate(page) {
   if (page === 'payroll') renderPayrollTable();
   if (page === 'dir3kyc') renderDir3Table();
   populateAllClientDropdowns();
+}
+function switchTDSTab(tab) {
+  const filingsTab = document.getElementById('tdsFilingsTab');
+  const paymentsTab = document.getElementById('tdsPaymentsTab');
+  const btn1 = document.getElementById('tdsTab1');
+  const btn2 = document.getElementById('tdsTab2');
+  if (tab === 'filings') {
+    filingsTab.style.display = 'block';
+    paymentsTab.style.display = 'none';
+    btn1.style.borderBottomColor = 'var(--primary)';
+    btn1.style.color = 'var(--primary)';
+    btn1.style.fontWeight = '700';
+    btn2.style.borderBottomColor = 'transparent';
+    btn2.style.color = 'var(--text-muted)';
+    btn2.style.fontWeight = '600';
+  } else {
+    filingsTab.style.display = 'none';
+    paymentsTab.style.display = 'block';
+    btn2.style.borderBottomColor = 'var(--primary)';
+    btn2.style.color = 'var(--primary)';
+    btn2.style.fontWeight = '700';
+    btn1.style.borderBottomColor = 'transparent';
+    btn1.style.color = 'var(--text-muted)';
+    btn1.style.fontWeight = '600';
+    populateAllClientDropdowns();
+    renderTDSPaymentTable();
+  }
 }
 
 /* =========================================================
@@ -1788,7 +1817,8 @@ async function submitTDS() {
     quarter: quarterSel?.value || '',
     form_type: formSel?.value || '',
     amount: parseFloat(amountEl?.value)||0,
-    challan_no: challanEl?.value.trim() || '',
+   challan_no: challanEl?.value.trim() || '',
+    remarks: document.getElementById('tdsRemarks')?.value.trim() || '',
     status: 'Filed'
   };
   const result = await supabaseInsert('tds_returns', body);
