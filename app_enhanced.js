@@ -1025,7 +1025,11 @@ function onEditClientTypeChange() {
 
 function populateAllClientDropdowns() {
   const clientOptions = getClientOptionsHtml(true);
-  const dropdownIds = ['gstClientSel','itrClientSel','auditClientSel','tdsClientSel','rocClientSel','dscClientSel','accClientSel','tdsPayClientSel'];
+  const dropdownIds = [
+    'gstClientSel', 'gstOtherClientSel', 'itrClientSel',
+    'auditClientSel', 'tdsClientSel', 'rocClientSel',
+    'dscClientSel', 'accClientSel', 'tdsPayClientSel'
+  ];
   dropdownIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = clientOptions;
@@ -1483,47 +1487,128 @@ function renderGSTPage() {
   populateAllClientDropdowns();
   updateDashboardStats();
 }
+function switchGSTTab(tab) {
+  const filingsTab = document.getElementById('gstFilingsTab');
+  const otherTab = document.getElementById('gstOtherTab');
+  const btn1 = document.getElementById('gstTab1');
+  const btn2 = document.getElementById('gstTab2');
+  if (tab === 'filings') {
+    filingsTab.style.display = 'block';
+    otherTab.style.display = 'none';
+    btn1.style.borderBottomColor = 'var(--primary)';
+    btn1.style.color = 'var(--primary)';
+    btn1.style.fontWeight = '700';
+    btn2.style.borderBottomColor = 'transparent';
+    btn2.style.color = 'var(--text-muted)';
+    btn2.style.fontWeight = '600';
+  } else {
+    filingsTab.style.display = 'none';
+    otherTab.style.display = 'block';
+    btn2.style.borderBottomColor = 'var(--primary)';
+    btn2.style.color = 'var(--primary)';
+    btn2.style.fontWeight = '700';
+    btn1.style.borderBottomColor = 'transparent';
+    btn1.style.color = 'var(--text-muted)';
+    btn1.style.fontWeight = '600';
+    populateAllClientDropdowns();
+  }
+}
 
-async function submitGSTReturn() {
-  const clientSel = document.getElementById('gstClientSel');
-  const typeSel = document.getElementById('gstReturnType');
-  const periodSel = document.getElementById('gstPeriodSel');
+function onGSTClientChange() {
+  const sel = document.getElementById('gstClientSel');
+  const clientId = sel?.value;
+  if (!clientId) return;
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  if (!client) return;
   const gstinEl = document.getElementById('gstGSTIN');
-  const turnoverEl = document.getElementById('gstTurnover');
-  const taxEl = document.getElementById('gstTaxLiability');
-  const remarksEl = document.getElementById('gstRemarks');
+  if (gstinEl && client.gst && client.gst !== '-') {
+    gstinEl.value = client.gst;
+  }
+}
 
+function onGSTOtherClientChange() {
+  const sel = document.getElementById('gstOtherClientSel');
+  const clientId = sel?.value;
+  if (!clientId) return;
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  if (!client) return;
+  const gstinEl = document.getElementById('gstOtherGSTIN');
+  if (gstinEl && client.gst && client.gst !== '-') {
+    gstinEl.value = client.gst;
+  }
+}
+
+async function submitGSTOther() {
+  const clientSel = document.getElementById('gstOtherClientSel');
   const clientId = clientSel?.value;
   const clientName = clientId ? getClientNameById(clientId) : '';
   if (!clientName) { showToast('Please select a client'); return; }
 
-  const gstinVal = gstinEl?.value.trim().toUpperCase() || '';
-  if (gstinVal && !isValidFormat(gstinVal, 'gstin')) { showToast('❌ Invalid GSTIN format'); return; }
   const body = {
     client_name: clientName,
     client_id: clientId || null,
-    return_type: typeSel?.value || 'GSTR-1',
-    period: periodSel?.value || '',
-    gstin: gstinVal,
-    total_turnover: parseFloat(turnoverEl?.value)||0,
-    tax_liability: parseFloat(taxEl?.value)||0,
-    remarks: remarksEl?.value.trim() || '',
-    status: 'Filed',
+    return_type: document.getElementById('gstOtherType')?.value || '',
+    period: document.getElementById('gstOtherDate')?.value || '',
+    gstin: document.getElementById('gstOtherGSTIN')?.value.trim() || '',
+    total_turnover: 0,
+    tax_liability: 0,
+    remarks: document.getElementById('gstOtherRemarks')?.value.trim() || '',
+    status: document.getElementById('gstOtherStatus')?.value || 'In Progress',
     filed_date: new Date().toISOString().split('T')[0]
   };
+
+  const result = await supabaseInsert('gst_returns', body);
+  if (result && result[0]) {
+    STATE.gstReturns.unshift(result[0]);
+    renderGSTPage();
+    showToast('✅ GST work submitted!');
+    sendNotifToAll('📊 GST Work Added',
+      `${body.return_type} for ${clientName} by ${getCurrentUserName()}`, '📊');
+    document.getElementById('gstOtherRemarks').value = '';
+    document.getElementById('gstOtherGSTIN').value = '';
+  } else {
+    showToast('❌ Submission failed');
+  }
+}
+
+async function submitGSTReturn() {
+  const clientSel = document.getElementById('gstClientSel');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
+
+  const gstinVal = document.getElementById('gstGSTIN')?.value.trim().toUpperCase() || '';
+  if (gstinVal && !isValidFormat(gstinVal, 'gstin')) {
+    showToast('❌ Invalid GSTIN format'); return;
+  }
+
+  const body = {
+    client_name: clientName,
+    client_id: clientId || null,
+    return_type: document.getElementById('gstReturnType')?.value || 'GSTR-1',
+    period: document.getElementById('gstPeriodSel')?.value || '',
+    gstin: gstinVal,
+    total_turnover: parseFloat(document.getElementById('gstTurnover')?.value) || 0,
+    tax_liability: 0,
+    remarks: document.getElementById('gstRemarks')?.value.trim() || '',
+    status: document.getElementById('gstStatus')?.value || 'Filed',
+    filed_date: new Date().toISOString().split('T')[0]
+  };
+
   const result = await supabaseInsert('gst_returns', body);
   if (result && result[0]) {
     STATE.gstReturns.unshift(result[0]);
     renderGSTPage();
     showToast('✅ GST Return filed successfully!');
-     sendNotifToAll('📊 GST Return Filed', `${body.return_type} filed for ${clientName} by ${getCurrentUserName()}`, '📊');
-    if (gstinEl) gstinEl.value = '';
-    if (turnoverEl) turnoverEl.value = '';
-    if (taxEl) taxEl.value = '';
-    if (remarksEl) remarksEl.value = '';
-  } else { showToast('❌ Failed to file GST return'); }
+    sendNotifToAll('📊 GST Return Filed',
+      `${body.return_type} filed for ${clientName} by ${getCurrentUserName()}`, '📊');
+    document.getElementById('gstGSTIN').value = '';
+    document.getElementById('gstTurnover').value = '';
+    document.getElementById('gstRemarks').value = '';
+  } else {
+    showToast('❌ Failed to file GST return');
+  }
 }
-
 function editGSTReturn(id) {
   const g = STATE.gstReturns.find(x => x.id === id);
   if (!g) return;
