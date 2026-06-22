@@ -721,7 +721,12 @@ async function doSignup() {
     const data = await res.json();
 
     if (!res.ok) {
-      showErr('signupError', data.error_description || data.msg || data.error || 'Signup failed. Try again.');
+  const errMsg = data.error_description || data.msg || data.error || 'Signup failed. Try again.';
+  if (errMsg.toLowerCase().includes('email') && errMsg.toLowerCase().includes('confirm')) {
+    showErr('signupError', '✅ Account created! Admin approval ka wait karo.');
+  } else {
+    showErr('signupError', errMsg);
+  }
       if (btn) { btn.disabled = false; btn.innerHTML = 'Create Account →'; }
       return;
     }
