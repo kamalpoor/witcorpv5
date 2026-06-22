@@ -2298,6 +2298,7 @@ async function submitDSC() {
     client_id: clientId || null,
     individual_name: individualName,
     pan: panEl?.value.trim() || '',
+    din: document.getElementById('dscDIN')?.value.trim() || '',
     dsc_type: typeSel?.value || 'Class 3',
     validity: validitySel?.value || '2 Years',
     purpose: purposeSel?.value || '',
