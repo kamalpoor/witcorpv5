@@ -347,9 +347,6 @@
 
     <!-- ══ RESET PASSWORD ══ -->
     <div class="auth-section" id="sectionReset">
-
-    <!-- ══ RESET PASSWORD ══ -->
-    <div class="auth-section" id="sectionReset">
       <div class="recovery-notice">
         🔐 <span>You clicked the password reset link. Enter your new password below.</span>
       </div>
@@ -757,10 +754,7 @@ function showErr(id, msg) {
   const el = document.getElementById(id);
   if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
-
-// ===== INIT ON PAGE LOAD =====
-document.addEventListener('DOMContentLoaded', async () => {
-
+  
 // ===== INIT ON PAGE LOAD =====
 document.addEventListener('DOMContentLoaded', async () => {
  const params = new URLSearchParams(window.location.search);
