@@ -3485,8 +3485,9 @@ showBrowserPush(title, message, icon);
 // Browser Push Notification
 async function requestPushPermission() {
   if (!('Notification' in window)) return;
-  if (Notification.permission === 'default') {
-    await Notification.requestPermission();
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted' && typeof window.getFCMToken === 'function') {
+    await window.getFCMToken();
   }
 }
 
@@ -3516,21 +3517,12 @@ async function pollNotifications() {
   await loadNotifications();
 }
 
-async function sendPushToAll(title, message) {
-  if ('serviceWorker' in navigator) {
-    const reg = await navigator.serviceWorker.ready;
-    if (Notification.permission === 'granted') {
-      reg.showNotification(title, {
-        body: message,
-        icon: './logo.png',
-        badge: './logo.png',
-        tag: 'witcorp-' + Date.now(),
-        renotify: true,
-        vibrate: [200, 100, 200]
-      });
-    }
+async function sendPushToAll(title, body) {
+  if (typeof window.sendFCMPushToAll === 'function') {
+    await window.sendFCMPushToAll(title, body);
   }
 }
+
 /* =========================================================
    36. UTILITY & FORMAT VALIDATORS
    ========================================================= */
