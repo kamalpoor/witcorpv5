@@ -26,7 +26,7 @@ window.getFCMToken = async function() {
       serviceWorkerRegistration: reg
     });
     if (token) {
-      console.log('✅ FCM Token mila');
+      console.log('✅ FCM Token received');
       await saveFCMTokenToSupabase(token);
       return token;
     }
@@ -43,14 +43,25 @@ async function saveFCMTokenToSupabase(token) {
   const user = getCurrentUser();
   if (!user) return;
   const authToken = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  
   try {
+    // Pehle purana token delete karo
+    await fetch(`${SUPABASE_URL}/rest/v1/fcm_tokens?user_id=eq.${user.id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+
+    // Phir naya insert karo
     await fetch(`${SUPABASE_URL}/rest/v1/fcm_tokens`, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
+        'Prefer': 'return=minimal'
       },
       body: JSON.stringify({
         user_id: user.id,
@@ -63,7 +74,6 @@ async function saveFCMTokenToSupabase(token) {
     console.warn('FCM save error:', e);
   }
 }
-
 /* ---------------------------------------------------------
    App OPEN ho tab notification
    --------------------------------------------------------- */
