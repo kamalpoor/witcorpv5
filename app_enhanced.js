@@ -1746,6 +1746,37 @@ function renderITRList() {
     </div>`).join('');
   updateDashboardStats();
 }
+function onITRManualNameInput() {
+  const manualName = document.getElementById('itrManualName')?.value.trim();
+  const clientSel = document.getElementById('itrClientSel');
+  
+  // Agar manual naam fill kar raha hai toh dropdown clear karo
+  if (manualName) {
+    if (clientSel) clientSel.value = '';
+  }
+}
+
+function onITRClientChange() {
+  const sel = document.getElementById('itrClientSel');
+  const clientId = sel?.value;
+  
+  // Agar dropdown se select kiya toh manual naam clear karo
+  if (clientId) {
+    const manualEl = document.getElementById('itrManualName');
+    if (manualEl) manualEl.value = '';
+  }
+  
+  if (!clientId) return;
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  if (!client) return;
+
+  // Client type auto set karo
+  const typeEl = document.getElementById('itrClientType');
+  if (typeEl && client.type) {
+    typeEl.value = client.type;
+    onITRClientTypeChange();
+  }
+}
 
 function editITR(id) {
   const itr = STATE.itrFilings.find(x => x.id === id);
@@ -1811,37 +1842,52 @@ async function saveITREdit(id) {
   } else { showToast('❌ Update failed'); }
 }
 
+
 async function submitITR() {
   const clientSel = document.getElementById('itrClientSel');
-  const ayEl = document.getElementById('itrAssessmentYear');
-  const formEl = document.getElementById('itrForm');
-  const grossEl = document.getElementById('itrGrossIncome');
-  const tdsEl = document.getElementById('itrTaxDeducted');
-  const dedEl = document.getElementById('itrDeductions');
-  const remarksEl = document.getElementById('itrRemarks');
-
   const clientId = clientSel?.value;
-  const clientName = clientId ? getClientNameById(clientId) : '';
-  if (!clientName) { showToast('Please select a client'); return; }
+  const manualName = document.getElementById('itrManualName')?.value.trim();
+
+  // Client dropdown se liya ya manual naam
+  let clientName = '';
+  if (clientId) {
+    clientName = getClientNameById(clientId);
+  } else if (manualName) {
+    clientName = manualName;
+  }
+
+  if (!clientName) { 
+    showToast('Please select a client OR enter individual name'); 
+    return; 
+  }
 
   const body = {
     client_name: clientName,
     client_id: clientId || null,
-    assessment_year: ayEl?.value || getAssessmentYears()[0],
-    form: formEl?.value || 'ITR-1',
-    gross_income: parseFloat(grossEl?.value)||0,
-    tax_deducted: parseFloat(tdsEl?.value)||0,
-    deductions: parseFloat(dedEl?.value)||0,
-    remarks: remarksEl?.value.trim() || '',
+    assessment_year: document.getElementById('itrAssessmentYear')?.value || getAssessmentYears()[0],
+    form: document.getElementById('itrForm')?.value || 'ITR-1 (Sahaj)',
+    gross_income: parseFloat(document.getElementById('itrGrossIncome')?.value) || 0,
+    tax_deducted: parseFloat(document.getElementById('itrTaxDeducted')?.value) || 0,
+    deductions: parseFloat(document.getElementById('itrDeductions')?.value) || 0,
+    remarks: document.getElementById('itrRemarks')?.value.trim() || '',
     status: 'Filed',
     filed_date: new Date().toISOString().split('T')[0]
   };
-  const result = await supabaseInsert('itr_filings', body);
-  if (result && result[0]) { STATE.itrFilings.unshift(result[0]); renderITRList(); showToast('✅ ITR filed successfully!'); }
-  else { showToast('❌ ITR filing failed'); }
-   sendNotifToAll('💰 ITR Filed', `${body.form} filed for ${clientName} by ${getCurrentUserName()}`, '💰');
-}
 
+  const result = await supabaseInsert('itr_filings', body);
+  if (result && result[0]) { 
+    STATE.itrFilings.unshift(result[0]); 
+    renderITRList(); 
+    // Form clear karo
+    if (clientSel) clientSel.value = '';
+    const manualEl = document.getElementById('itrManualName');
+    if (manualEl) manualEl.value = '';
+    showToast('✅ ITR filed successfully!'); 
+    sendNotifToAll('💰 ITR Filed', `${body.form} filed for ${clientName} by ${getCurrentUserName()}`, '💰');
+  } else { 
+    showToast('❌ ITR filing failed'); 
+  }
+}
 async function deleteITR(id) {
   const ok = await supabaseDelete('itr_filings', id);
   if (ok) { STATE.itrFilings = STATE.itrFilings.filter(i => i.id !== id); renderITRList(); showToast('🗑️ ITR filing deleted'); }
