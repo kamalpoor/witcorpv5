@@ -698,6 +698,68 @@ function checkStrength(val) {
   fill.style.background = level.color;
   if (label) { label.textContent = level.text; label.style.color = level.color; }
 }
+  // ===== SIGN UP =====
+async function doSignup() {
+  const name = (document.getElementById('signupName')?.value || '').trim();
+  const email = (document.getElementById('signupEmail')?.value || '').trim();
+  const password = document.getElementById('signupPassword')?.value || '';
+  const errEl = document.getElementById('signupError');
+  const sucEl = document.getElementById('signupSuccess');
+  if (errEl) errEl.style.display = 'none';
+  if (sucEl) sucEl.style.display = 'none';
+
+  if (!name) { showErr('signupError','Please enter your name'); return; }
+  if (!email || !email.includes('@')) { showErr('signupError','Please enter a valid email'); return; }
+  if (!password || password.length < 8) { showErr('signupError','Password must be at least 8 characters'); return; }
+
+  const btn = document.getElementById('signupBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="auth-spinner"></span> Creating account...'; }
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/signup', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password, data: { full_name: name } })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showErr('signupError', data.error_description || data.msg || data.error || 'Signup failed. Try again.');
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Create Account →'; }
+      return;
+    }
+
+    const uid = data.user?.id || data.id;
+    const token = data.access_token;
+    if (uid && token) {
+      await fetch(SUPABASE_URL + '/rest/v1/profiles', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({ id: uid, full_name: name, email: email, status: 'pending' })
+      });
+    }
+
+    if (sucEl) sucEl.style.display = 'block';
+    if (btn) { btn.disabled = true; btn.innerHTML = '✅ Account Created!'; }
+
+  } catch(e) {
+    showErr('signupError', 'Network error. Please try again.');
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Create Account →'; }
+  }
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+// ===== INIT ON PAGE LOAD =====
+document.addEventListener('DOMContentLoaded', async () => {
 
 // ===== INIT ON PAGE LOAD =====
 document.addEventListener('DOMContentLoaded', async () => {
