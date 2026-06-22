@@ -2735,7 +2735,7 @@ function openModal(type) {
         </div>
         <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="rocDue" /></div>
         <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarks2" placeholder="Optional remarks..." /></div>
-        <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Create Filing</button>`
+        <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Update</button>`
     },
     itrFiling: { title:'💰 File ITR', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">💰</div><p style="margin:12px 0">Use the Income Tax form</p><button class="btn-primary" onclick="closeModal();navigate('incometax')">Go to Income Tax</button></div>` },
     tdsReturn: { title:'🧾 File TDS', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">🧾</div><p style="margin:12px 0">Use the TDS Returns form</p><button class="btn-primary" onclick="closeModal();navigate('tds')">Go to TDS Returns</button></div>` },
