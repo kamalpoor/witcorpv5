@@ -335,48 +335,130 @@
           <div class="upcoming-list" id="gstUpcoming"></div>
         </div>
       </div>
-      <div class="card" style="margin-top:1rem">
-        <div class="card-title">File New GST Return</div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Client Name *</label>
-            <select class="form-control" id="gstClientSel"><option value="">Select Client</option></select>
-          </div>
-          <div class="form-group">
-            <label>Return Type</label>
-            <select class="form-control" id="gstReturnType">
-              <option>GSTR-1</option><option>GSTR-2B</option><option>GSTR-3B</option><option>GSTR-9</option><option>GSTR-9C</option>
-              <option>GSTR-2A</option><option>GSTR-4</option><option>GSTR-5</option><option>GSTR-6</option>
-              <option>GSTR-7</option><option>GSTR-8</option><option>GSTR-10</option>
-              <option>GST Registration New</option><option>GST Registration Amendment</option><option>GST Cancellation</option>
-              <option>GST Revocation</option><option>GST LUT</option><option>GST Refund</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Period</label>
-            <select class="form-control" id="gstPeriodSel"><!-- populated by JS --></select>
-          </div>
-         <div class="form-group">
-         <label>GSTIN</label>
-        <input type="text" class="form-control" id="gstGSTIN" maxlength="15" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="29ABCDE1234F1Z5" />
-         </div>
-          <div class="form-group">
-            <label>Total Turnover (₹)</label>
-            <input type="number" class="form-control" id="gstTurnover" placeholder="Enter amount" />
-          </div>
-          <div class="form-group">
-            <label>Tax Liability (₹)</label>
-            <input type="number" class="form-control" id="gstTaxLiability" placeholder="Enter amount" />
-          </div>
-          <div class="form-group" style="grid-column:1/-1">
-            <label>Remarks</label>
-            <input type="text" class="form-control" id="gstRemarks" placeholder="Optional remarks..." />
-          </div>
-        </div>
-        <button class="btn-primary" onclick="submitGSTReturn()">Submit Return</button>
-      </div>
-    </section>
+      <!-- Pehle wala poora GST form replace karo yeh se: -->
+<div class="card" style="margin-top:1rem">
+  <div class="card-title">File New GST Return</div>
+  
+  <!-- 2 tabs -->
+  <div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border)">
+    <button id="gstTab1" onclick="switchGSTTab('filings')" 
+      style="padding:10px 24px;background:none;border:none;border-bottom:3px solid var(--primary);
+      font-weight:700;font-size:14px;color:var(--primary);cursor:pointer">
+      📋 GST Filings
+    </button>
+    <button id="gstTab2" onclick="switchGSTTab('other')" 
+      style="padding:10px 24px;background:none;border:none;border-bottom:3px solid transparent;
+      font-weight:600;font-size:14px;color:var(--text-muted);cursor:pointer">
+      📝 Registration / LUT / Refund
+    </button>
+  </div>
 
+  <!-- TAB 1 — GST Filings -->
+  <div id="gstFilingsTab">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Client Name *</label>
+        <select class="form-control" id="gstClientSel" onchange="onGSTClientChange()">
+          <option value="">Select Client</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Return Type</label>
+        <select class="form-control" id="gstReturnType">
+          <option>GSTR-1</option>
+          <option>GSTR-2B</option>
+          <option>GSTR-3B</option>
+          <option>GSTR-9</option>
+          <option>GSTR-9C</option>
+          <option>GSTR-2A</option>
+          <option>GSTR-4</option>
+          <option>GSTR-5</option>
+          <option>GSTR-6</option>
+          <option>GSTR-7</option>
+          <option>GSTR-8</option>
+          <option>GSTR-10</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Period</label>
+        <select class="form-control" id="gstPeriodSel"></select>
+      </div>
+      <div class="form-group">
+        <label>GSTIN</label>
+        <input type="text" class="form-control" id="gstGSTIN" maxlength="15" 
+          style="text-transform:uppercase" 
+          oninput="this.value=this.value.toUpperCase()" 
+          placeholder="Auto fills from client" />
+      </div>
+      <div class="form-group">
+        <label>Total Sales (₹)</label>
+        <input type="number" class="form-control" id="gstTurnover" placeholder="Enter amount" />
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select class="form-control" id="gstStatus">
+          <option>Filed</option>
+          <option>Pending</option>
+          <option>Overdue</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Remarks</label>
+        <input type="text" class="form-control" id="gstRemarks" placeholder="Optional remarks..." />
+      </div>
+    </div>
+    <button class="btn-primary" onclick="submitGSTReturn()">✅ Submit</button>
+  </div>
+
+  <!-- TAB 2 — Registration/LUT/Refund -->
+  <div id="gstOtherTab" style="display:none">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Client Name *</label>
+        <select class="form-control" id="gstOtherClientSel" onchange="onGSTOtherClientChange()">
+          <option value="">Select Client</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Work Type</label>
+        <select class="form-control" id="gstOtherType">
+          <option>GST Registration New</option>
+          <option>GST Registration Amendment</option>
+          <option>GST Cancellation</option>
+          <option>GST Revocation</option>
+          <option>GST LUT</option>
+          <option>GST Refund</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>GSTIN</label>
+        <input type="text" class="form-control" id="gstOtherGSTIN" maxlength="15"
+          style="text-transform:uppercase"
+          oninput="this.value=this.value.toUpperCase()"
+          placeholder="Auto fills from client" />
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" class="form-control" id="gstOtherDate" />
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select class="form-control" id="gstOtherStatus">
+          <option>In Progress</option>
+          <option>Completed</option>
+          <option>Pending</option>
+          <option>Filed</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Remarks</label>
+        <input type="text" class="form-control" id="gstOtherRemarks" 
+          placeholder="Optional remarks..." />
+      </div>
+    </div>
+    <button class="btn-primary" onclick="submitGSTOther()">✅ Submit</button>
+  </div>
+</div>
     <!-- ROC FILINGS — FIXED: full forms list + remarks column -->
     <section class="page" id="page-roc">
       <div class="page-header">
