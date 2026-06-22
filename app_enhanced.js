@@ -1588,7 +1588,7 @@ function renderROCTable() {
         ${r.updated_at ? `<span class="updated-by-badge">🕐 ${formatDateTime(r.updated_at)}</span>` : ''}
       </td>
       <td>
-        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">Update</button>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;margin-right:4px" onclick="editROCStatus(${r.id})">✏️ Edit</button>
         <button class="btn-outline" style="padding:4px 10px;font-size:11.5px;border-color:#ef4444;color:#ef4444" onclick="deleteROC(${r.id})">Delete</button>
       </td>
     </tr>`).join('');
@@ -1598,25 +1598,74 @@ function renderROCTable() {
 function editROCStatus(id) {
   const r = STATE.rocFilings.find(x => x.id === id);
   if (!r) return;
-  openModalWithContent(`Update ROC Filing — ${escapeHtml(r.company)}`, `
+  openModalWithContent(`✏️ Edit ROC Filing — ${escapeHtml(r.company)}`, `
+    <div class="form-group"><label>Company Name</label>
+      <input type="text" class="form-control" id="editRocCompany" value="${escapeHtml(r.company||'')}" />
+    </div>
+    <div class="form-group"><label>CIN / LLPIN</label>
+      <input type="text" class="form-control" id="editRocCin" value="${escapeHtml(r.cin||'')}" 
+        style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div class="form-group"><label>Form Type</label>
+      <select class="form-control" id="editRocForm">
+        ${ROC_FORMS.map(f=>`<option ${r.form===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Due Date</label>
+      <input type="date" class="form-control" id="editRocDue" value="${r.due_date||''}" />
+    </div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="rocStatusSel">
         ${['In Progress','Filed','Overdue','Pending'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarks" value="${escapeHtml(r.remarks||'')}" placeholder="Add remarks..." /></div>
-    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">Save</button>
+    <div class="form-group"><label>Remarks</label>
+      <input type="text" class="form-control" id="rocRemarks" value="${escapeHtml(r.remarks||'')}" placeholder="Add remarks..." />
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveROCStatus(${id})">💾 Save Changes</button>
   `);
 }
 
 async function saveROCStatus(id) {
   const status = document.getElementById('rocStatusSel')?.value;
   const remarks = document.getElementById('rocRemarks')?.value.trim();
-  const ok = await supabaseUpdate('roc_filings', id, { status, remarks });
+  const company = document.getElementById('editRocCompany')?.value.trim();
+  const cin = document.getElementById('editRocCin')?.value.trim().toUpperCase();
+  const form = document.getElementById('editRocForm')?.value;
+  const due_date = document.getElementById('editRocDue')?.value;
+
+  const ok = await supabaseUpdate('roc_filings', id, { 
+    status, remarks, company, cin, form, due_date 
+  });
+  
   if (ok) {
     const idx = STATE.rocFilings.findIndex(r => r.id === id);
-    if (idx !== -1) { STATE.rocFilings[idx].status = status; STATE.rocFilings[idx].remarks = remarks; STATE.rocFilings[idx].updated_by = getUpdatedByLabel(); STATE.rocFilings[idx].updated_at = new Date().toISOString(); }
-    closeModal(); renderROCTable(); showToast('✅ ROC status updated');
+    if (idx !== -1) { 
+      STATE.rocFilings[idx] = {
+        ...STATE.rocFilings[idx],
+        status, remarks, company, cin, form, due_date,
+        updated_by: getUpdatedByLabel(), 
+        updated_at: new Date().toISOString()
+      };
+    }
+    closeModal(); 
+    renderROCTable(); 
+    showToast('✅ ROC filing updated!');
+  } else {
+    showToast('❌ Update failed');
+  }
+}
+function onROCClientChange() {
+  const sel = document.getElementById('rocClientSel');
+  const clientId = sel?.value;
+  if (!clientId) return;
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  if (!client) return;
+  
+  // CIN/LLPIN auto fill
+  const cinEl = document.getElementById('rocCIN');
+  if (cinEl && client.cin && client.cin !== '-') {
+    cinEl.value = client.cin;
   }
 }
 
@@ -1628,38 +1677,37 @@ async function deleteROC(id) {
 
 async function submitROCFiling() {
   const clientSel = document.getElementById('rocClientSel');
-  const companyEl = document.getElementById('rocCompany');
-  const cinEl = document.getElementById('rocCIN');
-  const formSel = document.getElementById('rocForm');
-  const dueEl = document.getElementById('rocDue');
-  const remarksEl = document.getElementById('rocRemarks2');
-
-  let companyName = '';
-  if (clientSel && clientSel.value) {
-    companyName = getClientNameById(clientSel.value);
-  } else if (companyEl) {
-    companyName = companyEl.value.trim();
-  }
-  if (!companyName) { showToast('Please select a client or enter company name'); return; }
-  const dueVal = dueEl?.value;
+  const clientId = clientSel?.value;
+  const companyName = clientId ? getClientNameById(clientId) : '';
+  
+  if (!companyName) { showToast('Please select a client'); return; }
+  
+  const dueVal = document.getElementById('rocDue')?.value;
   if (!dueVal) { showToast('Please select a due date'); return; }
 
-  const cinVal = cinEl?.value.trim().toUpperCase() || '';
+  const cinVal = document.getElementById('rocCIN')?.value.trim().toUpperCase() || '';
+  
   const body = {
     company: companyName,
-    client_id: (clientSel && clientSel.value) ? clientSel.value : null,
+    client_id: clientId,
     cin: cinVal || '-',
-    form: formSel?.value || 'AOC-4',
-    due_date: dueEl?.value || 'TBD',
-    remarks: remarksEl?.value.trim() || '',
-    status: 'In Progress'
+    form: document.getElementById('rocForm')?.value || 'AOC-4',
+    due_date: dueVal,
+    remarks: document.getElementById('rocRemarks2')?.value.trim() || '',
+    status: document.getElementById('rocStatus')?.value || 'In Progress'
   };
+  
   const result = await supabaseInsert('roc_filings', body);
-  if (result && result[0]) { STATE.rocFilings.unshift(result[0]); closeModal(); renderROCTable(); showToast('✅ ROC filing created!'); }
-  else { showToast('❌ ROC filing failed'); }
-   sendNotifToAll('🏛️ ROC Filing Created', `${body.form} for ${companyName} by ${getCurrentUserName()}`, '🏛️');
+  if (result && result[0]) { 
+    STATE.rocFilings.unshift(result[0]); 
+    closeModal(); 
+    renderROCTable(); 
+    showToast('✅ ROC filing created!'); 
+    sendNotifToAll('🏛️ ROC Filing Created', `${body.form} for ${companyName} by ${getCurrentUserName()}`, '🏛️');
+  } else { 
+    showToast('❌ ROC filing failed'); 
+  }
 }
-
 /* =========================================================
    18. INCOME TAX
    ========================================================= */
@@ -2722,21 +2770,38 @@ function openModal(type) {
         <button class="btn-primary" style="width:100%" onclick="submitAddClient()">✅ Add Client</button>`
     },
     gstReturn: { title:'📊 File GST Return', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">📊</div><p style="margin:12px 0">Use the GST Dashboard form below</p><button class="btn-primary" onclick="closeModal();navigate('gst')">Go to GST Dashboard</button></div>` },
-    rocFiling: {
-      title: '🏛️ New ROC Filing',
-      body: `
-        <div class="form-group"><label>Select Client</label>
-          <select class="form-control" id="rocClientSel">${clientOptions}</select>
-        </div>
-        <div class="form-group"><label>Company Name (if not in clients)</label><input type="text" class="form-control" id="rocCompany" placeholder="Or enter company name manually" /></div>
-        <div class="form-group"><label>CIN</label><input type="text" class="form-control" id="rocCIN" maxlength="21" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" placeholder="U12345MH2020PTC123456" /></div>
-        <div class="form-group"><label>Form Type</label>
-          <select class="form-control" id="rocForm">${ROC_FORMS.map(f=>`<option>${f}</option>`).join('')}</select>
-        </div>
-        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="rocDue" /></div>
-        <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="rocRemarks2" placeholder="Optional remarks..." /></div>
-        <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Update</button>`
-    },
+   rocFiling: {
+  title: '🏛️ New ROC Filing',
+  body: `
+    <div class="form-group"><label>Select Client</label>
+      <select class="form-control" id="rocClientSel" onchange="onROCClientChange()">
+        ${clientOptions}
+      </select>
+    </div>
+    <div class="form-group"><label>CIN / LLPIN</label>
+      <input type="text" class="form-control" id="rocCIN" maxlength="21" 
+        style="text-transform:uppercase" 
+        oninput="this.value=this.value.toUpperCase()" 
+        placeholder="Auto fills from client" />
+    </div>
+    <div class="form-group"><label>Form Type</label>
+      <select class="form-control" id="rocForm">
+        ${ROC_FORMS.map(f=>`<option>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Due Date</label>
+      <input type="date" class="form-control" id="rocDue" />
+    </div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="rocStatus">
+        ${['In Progress','Filed','Overdue','Pending'].map(s=>`<option>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Remarks</label>
+      <input type="text" class="form-control" id="rocRemarks2" placeholder="Optional remarks..." />
+    </div>
+    <button class="btn-primary" style="width:100%" onclick="submitROCFiling()">✅ Add Filing</button>`
+},
     itrFiling: { title:'💰 File ITR', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">💰</div><p style="margin:12px 0">Use the Income Tax form</p><button class="btn-primary" onclick="closeModal();navigate('incometax')">Go to Income Tax</button></div>` },
     tdsReturn: { title:'🧾 File TDS', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">🧾</div><p style="margin:12px 0">Use the TDS Returns form</p><button class="btn-primary" onclick="closeModal();navigate('tds')">Go to TDS Returns</button></div>` },
     newAudit: {
