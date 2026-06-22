@@ -3524,47 +3524,25 @@ async function sendPushToAll(title, body) {
   try {
     const authToken = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
 
-    //  FCM tokens fetch Supabase 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/fcm_tokens?select=token`, {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${authToken}`
-      }
-    });
-    const rows = res.ok ? await res.json() : [];
-    const tokens = rows.map(r => r.token).filter(Boolean);
-
-    if (!tokens.length) {
-      console.log('Koi FCM token nahi mila');
-      return;
-    }
-
-    // Firebase FCM  push 
-    await fetch('https://fcm.googleapis.com/fcm/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        registration_ids: tokens,
-        notification: {
-          title: title,
-          body: body,
-          icon: '/logo.png'
+    // Supabase Edge Function ko call karo — directly FCM nahi
+    const res = await fetch(
+      'https://yqbvdbsbuycxlsfkijhc.supabase.co/functions/v1/send-push',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
         },
-        data: {
-          title: title,
-          body: body
-        }
-      })
-    });
-    console.log('✅ Push notification');
+        body: JSON.stringify({ title, body })
+      }
+    );
+
+    const data = await res.json();
+    console.log('✅ Push sent:', data);
   } catch(e) {
     console.warn('sendPushToAll error:', e);
   }
 }
-
 /* =========================================================
    36. UTILITY & FORMAT VALIDATORS
    ========================================================= */
