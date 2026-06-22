@@ -15,6 +15,45 @@
 
 var SUPABASE_URL = window.SUPABASE_URL || 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
 var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+/* =========================================================
+   TOKEN AUTO-REFRESH
+   ========================================================= */
+
+async function refreshAuthToken() {
+  const refreshToken = localStorage.getItem('witcorp-refresh-token');
+  
+  // Agar refresh token hi nahi mila toh logout
+  if (!refreshToken) {
+    console.warn('No refresh token found');
+    logout();
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      // Naya token save karo
+      localStorage.setItem('witcorp-access-token', data.access_token);
+      localStorage.setItem('witcorp-refresh-token', data.refresh_token);
+      console.log('✅ Token refresh Completed!');
+    } else {
+      // Refresh bhi fail hua — logout karo
+      logout();
+    }
+
+  } catch(e) {
+    console.error('Token refresh error:', e);
+  }
+}
 
 async function supabaseQuery(table, options = {}) {
   const { method = 'GET', filters = '', body = null, select = '*', order = 'created_at.desc', limit = null } = options;
@@ -782,6 +821,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setCurrentDate();
   attachGlobalListeners();
   initPresence();
+  setInterval(refreshAuthToken, 45 * 60 * 1000);
   requestPushPermission();
   await loadNotifications();
   initRealtimeNotifications();
