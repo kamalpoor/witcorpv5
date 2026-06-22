@@ -417,7 +417,17 @@
           <div class="card-title">File New ITR</div>
           <div class="form-group">
             <label>Client Name *</label>
-            <select class="form-control" id="itrClientSel"><option value="">Select Client</option></select>
+            <select class="form-control" id="itrClientSel" onchange="onITRClientChange()"><option value="">Select Client</option></select>
+          </div>
+          <div style="text-align:center;color:var(--text-muted);font-size:12px;margin:4px 0">
+          ── OR ──
+         </div>
+
+        <div class="form-group">
+        <label>Individual Person Name <span style="font-size:11px;color:var(--text-muted)">(if not in client list)</span></label>
+        <input type="text" class="form-control" id="itrManualName" 
+         placeholder="Enter individual person name manually..." 
+         oninput="onITRManualNameInput()" />
           </div>
           <div class="form-group">
             <label>Assessment Year</label>
