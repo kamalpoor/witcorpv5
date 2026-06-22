@@ -3478,7 +3478,7 @@ async function sendNotifToAll(title, message, icon) {
       })
     ));
   } catch(e) {}
-   // Browser push bhi dikhao
+   // Browser push 
 showBrowserPush(title, message, icon);
    sendPushToAll(title, message);
 }
@@ -3487,7 +3487,7 @@ async function requestPushPermission() {
   if (!('Notification' in window)) return;
   const perm = await Notification.requestPermission();
   if (perm === 'granted') {
-    // FCM token lo — firebase-init.js se
+    // FCM token — firebase-init.js se
     if (typeof window.getFCMToken === 'function') {
       await window.getFCMToken();
     }
@@ -3524,7 +3524,7 @@ async function sendPushToAll(title, body) {
   try {
     const authToken = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
 
-    // Sabke FCM tokens fetch karo Supabase se
+    //  FCM tokens fetch Supabase 
     const res = await fetch(`${SUPABASE_URL}/rest/v1/fcm_tokens?select=token`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
@@ -3539,11 +3539,11 @@ async function sendPushToAll(title, body) {
       return;
     }
 
-    // Firebase FCM se push bhejo
+    // Firebase FCM  push 
     await fetch('https://fcm.googleapis.com/fcm/send', {
       method: 'POST',
       headers: {
-        'Authorization': 'key=YAHAN_STEP_3_WALI_SERVER_KEY_DAALO',
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -3559,7 +3559,7 @@ async function sendPushToAll(title, body) {
         }
       })
     });
-    console.log('✅ Push notification bheja sabko');
+    console.log('✅ Push notification');
   } catch(e) {
     console.warn('sendPushToAll error:', e);
   }
