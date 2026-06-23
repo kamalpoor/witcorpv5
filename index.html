@@ -895,28 +895,30 @@
       <select class="form-control" id="accClientSel" style="max-width:280px" onchange="onAccClientChange()">
         <option value="">-- Select Client --</option>
       </select>
-      <div id="accClientStats" style="display:flex;gap:10px;flex-wrap:wrap;margin-left:auto"></div>
     </div>
   </div>
 
-  <!-- Category Tabs -->
+  <!-- Category Boxes -->
   <div id="accTabsWrapper" style="display:none">
-    <div class="acc-tabs" id="accTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
-      <button class="acc-tab active" onclick="switchAccTab('Sales')">💰 Sales</button>
-      <button class="acc-tab" onclick="switchAccTab('Purchases')">🛒 Purchases</button>
-      <button class="acc-tab" onclick="switchAccTab('Sundry Debtors')">📤 Sundry Debtors</button>
-      <button class="acc-tab" onclick="switchAccTab('Sundry Creditors')">📥 Sundry Creditors</button>
-      <button class="acc-tab" onclick="switchAccTab('Payroll Entries')">👨‍💼 Payroll</button>
-      <button class="acc-tab" onclick="switchAccTab('Bank Statement')">🏦 Bank Statement</button>
-      <button class="acc-tab" onclick="switchAccTab('GST Transfer Entries')">📊 GST Transfer</button>
-      <button class="acc-tab" onclick="switchAccTab('Depreciation Entries')">📉 Depreciation</button>
-      <button class="acc-tab" onclick="switchAccTab('TDS Entries')">🧾 TDS Entries</button>
-      <button class="acc-tab" onclick="switchAccTab('Miscellaneous Ledgers')">📋 Misc Ledgers</button>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem" id="accCategoryGrid">
+      <div class="acc-cat-box" onclick="switchAccTab('Sales')">💰<br><span>Sales</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('Purchases')">🛒<br><span>Purchases</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('Sundry Debtors')">📤<br><span>Sundry Debtors</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('Sundry Creditors')">📥<br><span>Sundry Creditors</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('Payroll Entries')">👨‍💼<br><span>Payroll</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('Bank Statement')">🏦<br><span>Bank Statement</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('GST Transfer Entries')">📊<br><span>GST Transfer</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('Depreciation Entries')">📉<br><span>Depreciation</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('TDS Entries')">🧾<br><span>TDS Entries</span></div>
+      <div class="acc-cat-box" onclick="switchAccTab('Miscellaneous Ledgers')">📋<br><span>Misc Ledgers</span></div>
     </div>
 
-    <!-- Add Entry Form -->
-    <div class="card" style="margin-bottom:1rem">
-      <div class="card-title" id="accFormTitle">➕ Add Entry</div>
+    <!-- Entry Form (shown after category select) -->
+    <div class="card" id="accEntryFormCard" style="display:none;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="card-title" id="accFormTitle" style="margin:0">➕ Add Entry</div>
+        <button onclick="closeAccForm()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-muted)">✕</button>
+      </div>
       <div class="form-grid">
         <div class="form-group">
           <label>Date *</label>
@@ -927,30 +929,39 @@
           <input type="text" class="form-control" id="accDesc" placeholder="Entry description" />
         </div>
         <div class="form-group">
-          <label>Debit (₹)</label>
-          <input type="number" class="form-control" id="accDebit" placeholder="0" />
+          <label>Assigned Person</label>
+          <select class="form-control" id="accAssigned">
+            <option value="">-- Select --</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Credit (₹)</label>
-          <input type="number" class="form-control" id="accCredit" placeholder="0" />
+          <label>Approved By</label>
+          <select class="form-control" id="accApproved">
+            <option value="">-- Select --</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Reference No.</label>
-          <input type="text" class="form-control" id="accRef" placeholder="Invoice/Challan no." />
+          <label>Status</label>
+          <select class="form-control" id="accStatus">
+            <option>Pending</option>
+            <option>In Progress</option>
+            <option>Completed</option>
+            <option>On Hold</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Remarks</label>
-          <input type="text" class="form-control" id="accRemarks" placeholder="Optional" />
+          <input type="text" class="form-control" id="accRemarks" placeholder="Optional remarks..." />
         </div>
       </div>
       <button class="btn-primary" onclick="submitAccEntry()">✅ Add Entry</button>
     </div>
 
     <!-- Entries Table -->
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="card" id="accTableCard" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div class="card-title" id="accTableTitle" style="margin:0">Entries</div>
-        <div id="accTabStats" style="font-size:13px;color:var(--text-muted)"></div>
+        <button class="btn-primary" onclick="openAccForm()" style="padding:6px 14px;font-size:13px">+ Add Entry</button>
       </div>
       <div class="table-wrapper">
         <table class="data-table">
@@ -958,9 +969,9 @@
             <tr>
               <th>Date</th>
               <th>Description</th>
-              <th>Debit (₹)</th>
-              <th>Credit (₹)</th>
-              <th>Reference</th>
+              <th>Assigned To</th>
+              <th>Approved By</th>
+              <th>Status</th>
               <th>Remarks</th>
               <th>Updated By</th>
               <th>Actions</th>
@@ -970,7 +981,11 @@
         </table>
       </div>
       <div id="accEntriesEmpty" style="display:none">
-        <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No entries yet</div><div class="empty-state-sub">Add your first entry above</div></div>
+        <div class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-text">No entries yet</div>
+          <div class="empty-state-sub">Click "+ Add Entry" to get started</div>
+        </div>
       </div>
     </div>
   </div>
