@@ -2757,6 +2757,34 @@ function showFilingsSummaryModal() {
 /* =========================================================
    25. AI ASSISTANT
    ========================================================= */
+function sendAIMessage(presetMsg) {
+  const input = document.getElementById('aiInput');
+  const msg = presetMsg || input?.value.trim();
+  if (!msg) return;
+  const chatEl = document.getElementById('chatMessages');
+  if (!chatEl) return;
+  const name = getCurrentUserName();
+  const initial = name.charAt(0).toUpperCase();
+  chatEl.insertAdjacentHTML('beforeend', `
+    <div class="chat-msg user">
+      <div class="msg-avatar">${initial}</div>
+      <div class="msg-content">${escapeHtml(msg)}</div>
+    </div>`);
+  if (input) input.value = '';
+  chatEl.scrollTop = chatEl.scrollHeight;
+  const typingId = 'typing-' + Date.now();
+  chatEl.insertAdjacentHTML('beforeend', `
+    <div class="chat-msg bot" id="${typingId}">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-content"><em>Thinking...</em></div>
+    </div>`);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  setTimeout(() => {
+    const el = document.getElementById(typingId);
+    if (el) el.querySelector('.msg-content').innerHTML = getAIResponse(msg);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }, 600);
+}
 
 function getAIResponse(query) {
   const q = query.toLowerCase().trim();
