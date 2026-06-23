@@ -75,15 +75,29 @@
       localStorage.setItem('witcorp-body-theme', themeName);
       document.querySelectorAll('.swatch').forEach(function(s) { s.classList.toggle('active', s.dataset.theme === themeName); });
     }
-    document.addEventListener('DOMContentLoaded', function() {
-      var savedDark = localStorage.getItem('witcorp-dark-mode');
-      if (savedDark === '1') {
-        document.body.classList.add('force-dark');
-        document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) { btn.textContent = '☀️'; });
-      }
-      var savedTheme = localStorage.getItem('witcorp-body-theme');
-      if (savedTheme) setTheme(savedTheme);
+   // Theme & Dark — PAGE LOAD PE TURANT (flash nahi aayega)
+(function() {
+  var savedTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
+  document.body.className = savedTheme;
+  if (localStorage.getItem('witcorp-dark-mode') === '1') {
+    document.body.classList.add('force-dark');
+  }
+})();
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Swatch active mark karo
+  var savedTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
+  document.querySelectorAll('.swatch').forEach(function(s) {
+    s.classList.toggle('active', s.dataset.theme === savedTheme);
+  });
+  // Dark mode button text
+  if (localStorage.getItem('witcorp-dark-mode') === '1') {
+    document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) {
+      btn.textContent = '☀️';
     });
+  }
+  loadUserInfoExtended();
+});
     function filterClientType(value) {
       if (typeof STATE !== 'undefined') { STATE.filters.clients.type = value; STATE.pagination.clients.page = 1; if (typeof renderClientTable === 'function') renderClientTable(); }
     }
