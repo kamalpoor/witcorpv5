@@ -1500,11 +1500,7 @@ function renderGSTPage() {
   }
 
   if (upcomingEl) {
-    const upcoming = STATE.calendarEvents.filter(e => 
-  e.event_type && 
-  e.event_type !== 'Internal' && 
-  e.event_type !== 'Meeting'
-).slice(0, 5);
+   const upcoming = STATE.calendarEvents.filter(e => e.event_type === 'GST').slice(0, 5);
     upcomingEl.innerHTML = upcoming.length ? upcoming.map(e => `
       <div class="upcoming-item">
         <div><div class="gst-item-name">${escapeHtml(e.title)}</div><div class="gst-item-sub">${escapeHtml(e.event_type||'')}</div></div>
