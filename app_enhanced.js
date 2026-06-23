@@ -2699,8 +2699,60 @@ function renderBarChart() {
   updateDashboardStats();
 }
 
-function exportReport() { showToast('📥 Preparing export...'); }
+function exportReport() {
+  const rows = [
+    ['Category', 'Count'],
+    ['Total Clients', STATE.clients.length],
+    ['GST Returns', STATE.gstReturns.length],
+    ['ITR Filings', STATE.itrFilings.length],
+    ['TDS Returns', STATE.tdsReturns.length],
+    ['ROC Filings', STATE.rocFilings.length],
+    ['Total Filings', STATE.gstReturns.length + STATE.itrFilings.length + STATE.tdsReturns.length + STATE.rocFilings.length],
+  ];
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'witcorp_report_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Report exported as CSV!');
+}
 function generateReport() { showToast('✅ Report generated!'); }
+
+function showFilingsSummaryModal() {
+  const gst = STATE.gstReturns.length;
+  const itr = STATE.itrFilings.length;
+  const tds = STATE.tdsReturns.length;
+  const roc = STATE.rocFilings.length;
+  const total = gst + itr + tds + roc;
+  openModalWithContent('📋 Total Filings Breakdown', `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;cursor:pointer" onclick="closeModal();navigate('gst')">
+        <div style="font-size:28px;font-weight:800;color:var(--primary)">${gst}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">📊 GST Returns</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;cursor:pointer" onclick="closeModal();navigate('incometax')">
+        <div style="font-size:28px;font-weight:800;color:#f59e0b">${itr}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">💰 ITR Filings</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;cursor:pointer" onclick="closeModal();navigate('tds')">
+        <div style="font-size:28px;font-weight:800;color:#8b5cf6">${tds}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">🧾 TDS Returns</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;cursor:pointer" onclick="closeModal();navigate('roc')">
+        <div style="font-size:28px;font-weight:800;color:#10b981">${roc}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">🏛️ ROC Filings</div>
+      </div>
+    </div>
+    <div style="background:var(--primary);color:#fff;border-radius:12px;padding:16px;text-align:center">
+      <div style="font-size:32px;font-weight:800">${total}</div>
+      <div style="font-size:13px;margin-top:4px;opacity:0.85">Total Filings</div>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:12px" onclick="closeModal()">Close</button>
+  `);
+}
 
 /* =========================================================
    25. AI ASSISTANT
