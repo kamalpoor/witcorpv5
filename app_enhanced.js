@@ -384,7 +384,8 @@ function renderVaultCredentials() {
         <thead>
           <tr>
             <th>Client Name</th>
-            <th>Username / Login ID</th>
+          <th>Individual Name</th>
+          <th>Username / Login ID</th>
             <th>Password</th>
             <th>Remarks</th>
             <th>Updated By</th>
@@ -395,7 +396,8 @@ function renderVaultCredentials() {
           ${filtered.map(cred => `
             <tr>
               <td><strong>${escapeHtml(cred.label)}</strong></td>
-              <td>
+              <td>${escapeHtml(cred.individual_name || '-')}</td>
+               <td>
                 <span>${escapeHtml(cred.username || '-')}</span>
                 ${cred.username ? `<button class="btn-outline" style="padding:2px 7px;font-size:11px;margin-left:6px" onclick="copyToClipboard('${escapeHtml(cred.username)}','Username copied!')">📋</button>` : ''}
               </td>
@@ -3212,9 +3214,9 @@ async function submitVaultItem() {
   const clientName = clientId ? getClientNameById(clientId) : '';
   if (!clientName) { showToast('Please select a client'); return; }
   const individualName = document.getElementById('vaultIndividualName')?.value.trim() || '';
-  const label = individualName ? `${clientName} — ${individualName}` : clientName;
   const body = {
-    label,
+    label: clientName,
+    individual_name: individualName,
     folder: document.getElementById('vaultFolder')?.value || 'General',
     url: '',
     username: document.getElementById('vaultUsername')?.value.trim() || '',
