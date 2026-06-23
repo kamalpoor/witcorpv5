@@ -902,7 +902,7 @@ setInterval(async () => {
     const onlineCount = Object.values(STATE.userPresence).filter(p => p.is_online).length;
     const countEl = document.getElementById('onlineCount');
     if (countEl) countEl.textContent = Math.max(onlineCount, 1);
-  }, 5000);
+  }, 1000);
 
   // ✅ REAL-TIME KANBAN — Supabase Realtime (turant, koi delay nahi)
 function initRealtimeTasks() {
@@ -943,6 +943,7 @@ function initRealtimeTasks() {
 }
 
 initRealtimeTasks();
+});
 function injectWAMenuStyles() {
   const style = document.createElement('style');
   style.textContent = `
