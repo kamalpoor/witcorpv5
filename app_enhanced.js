@@ -3877,8 +3877,12 @@ function onAccClientChange() {
   const sel = document.getElementById('accClientSel');
   accActiveClientId = sel?.value || '';
   accActiveClientName = sel?.options[sel.selectedIndex]?.text || '';
+  
   const wrapper = document.getElementById('accTabsWrapper');
   const noClient = document.getElementById('accNoClient');
+  const entryForm = document.getElementById('accEntryFormCard');
+  const tableCard = document.getElementById('accTableCard');
+
   if (!accActiveClientId) {
     if (wrapper) wrapper.style.display = 'none';
     if (noClient) noClient.style.display = 'block';
@@ -3886,16 +3890,57 @@ function onAccClientChange() {
   }
   if (wrapper) wrapper.style.display = 'block';
   if (noClient) noClient.style.display = 'none';
-  accActiveTab = 'Sales';
-  updateAccTabButtons();
-  renderAccEntries();
-  renderAccClientStats();
-}
+  if (entryForm) entryForm.style.display = 'none';
+  if (tableCard) tableCard.style.display = 'none';
 
+  // Category boxes reset
+  document.querySelectorAll('.acc-cat-box').forEach(b => b.classList.remove('active'));
+  accActiveTab = '';
+}
 function switchAccTab(tab) {
   accActiveTab = tab;
-  updateAccTabButtons();
+
+  // Active box highlight
+  document.querySelectorAll('.acc-cat-box').forEach(b => {
+    b.classList.toggle('active', b.textContent.includes(tab.split(' ')[0]));
+  });
+
+  // Show table card
+  const tableCard = document.getElementById('accTableCard');
+  if (tableCard) tableCard.style.display = 'block';
+
+  // Update titles
+  const formTitle = document.getElementById('accFormTitle');
+  if (formTitle) formTitle.textContent = `➕ Add ${tab} Entry`;
+  const tableTitle = document.getElementById('accTableTitle');
+  if (tableTitle) tableTitle.textContent = `📋 ${tab} Entries`;
+
+  // Load team members for dropdowns
+  loadAccTeamDropdowns();
   renderAccEntries();
+}
+
+function openAccForm() {
+  const card = document.getElementById('accEntryFormCard');
+  if (card) { card.style.display = 'block'; card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+}
+
+function closeAccForm() {
+  const card = document.getElementById('accEntryFormCard');
+  if (card) card.style.display = 'none';
+}
+
+async function loadAccTeamDropdowns() {
+  const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
+  const opts = '<option value="">-- Select --</option>' +
+    (profiles || []).map(p => {
+      const name = p.full_name || p.email?.split('@')[0] || '';
+      return `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+    }).join('');
+  const assignEl = document.getElementById('accAssigned');
+  const approveEl = document.getElementById('accApproved');
+  if (assignEl) assignEl.innerHTML = opts;
+  if (approveEl) approveEl.innerHTML = opts;
 }
 
 function updateAccTabButtons() {
@@ -3934,17 +3979,12 @@ function renderAccClientStats() {
 function renderAccEntries() {
   const tbody = document.getElementById('accEntriesBody');
   const emptyEl = document.getElementById('accEntriesEmpty');
-  const statsEl = document.getElementById('accTabStats');
   if (!tbody) return;
 
   const entries = STATE.accountingEntries.filter(e =>
     String(e.client_id) === String(accActiveClientId) &&
     e.category === accActiveTab
   );
-
-  const tabDebit = entries.reduce((s, e) => s + (parseFloat(e.debit) || 0), 0);
-  const tabCredit = entries.reduce((s, e) => s + (parseFloat(e.credit) || 0), 0);
-  if (statsEl) statsEl.innerHTML = `<span style="color:#ef4444">Dr: ₹${formatAmount(tabDebit)}</span> &nbsp;|&nbsp; <span style="color:#10b981">Cr: ₹${formatAmount(tabCredit)}</span>`;
 
   if (!entries.length) {
     tbody.innerHTML = '';
@@ -3956,10 +3996,10 @@ function renderAccEntries() {
   tbody.innerHTML = entries.map(e => `
     <tr>
       <td>${escapeHtml(e.entry_date || '-')}</td>
-      <td><strong>${escapeHtml(e.description || e.narration || '-')}</strong></td>
-      <td style="color:#ef4444">${e.debit ? '₹ ' + formatAmount(e.debit) : '-'}</td>
-      <td style="color:#10b981">${e.credit ? '₹ ' + formatAmount(e.credit) : '-'}</td>
-      <td>${escapeHtml(e.reference_no || '-')}</td>
+      <td><strong>${escapeHtml(e.description || '-')}</strong></td>
+      <td>${escapeHtml(e.assigned_to || '-')}</td>
+      <td>${escapeHtml(e.approved_by || '-')}</td>
+      <td>${statusBadge(e.status || 'Pending')}</td>
       <td style="color:var(--text-muted);font-size:12px">${escapeHtml(e.remarks || '-')}</td>
       <td style="font-size:11px;color:var(--text-muted)">
         ${escapeHtml(e.updated_by || '-')}<br>
@@ -3971,16 +4011,12 @@ function renderAccEntries() {
       </td>
     </tr>`).join('');
 }
-
 async function submitAccEntry() {
   const desc = document.getElementById('accDesc')?.value.trim();
   const dateVal = document.getElementById('accDate')?.value;
   if (!accActiveClientId) { showToast('Please select a client first'); return; }
   if (!desc) { showToast('Description required'); return; }
   if (!dateVal) { showToast('Date required'); return; }
-  const debit = parseFloat(document.getElementById('accDebit')?.value) || 0;
-  const credit = parseFloat(document.getElementById('accCredit')?.value) || 0;
-  if (!debit && !credit) { showToast('Enter debit or credit amount'); return; }
 
   const body = {
     client_id: accActiveClientId,
@@ -3988,38 +4024,48 @@ async function submitAccEntry() {
     category: accActiveTab,
     entry_date: dateVal,
     description: desc,
-    debit, credit,
-    amount: debit || credit,
-    entry_type: credit > 0 ? 'credit' : 'debit',
-    reference_no: document.getElementById('accRef')?.value.trim() || '',
-    remarks: document.getElementById('accRemarks')?.value.trim() || ''
+    assigned_to: document.getElementById('accAssigned')?.value || '',
+    approved_by: document.getElementById('accApproved')?.value || '',
+    status: document.getElementById('accStatus')?.value || 'Pending',
+    remarks: document.getElementById('accRemarks')?.value.trim() || '',
+    amount: 0,
+    entry_type: 'debit',
+    debit: 0,
+    credit: 0
   };
 
   const result = await supabaseInsert('accounting_entries', body);
   if (result && result[0]) {
     STATE.accountingEntries.unshift(result[0]);
-    document.getElementById('accDesc').value = '';
-    document.getElementById('accDate').value = '';
-    document.getElementById('accDebit').value = '';
-    document.getElementById('accCredit').value = '';
-    document.getElementById('accRef').value = '';
-    document.getElementById('accRemarks').value = '';
+    // Clear form
+    ['accDate','accDesc','accRemarks'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('accStatus').value = 'Pending';
+    closeAccForm();
     renderAccEntries();
-    renderAccClientStats();
     showToast('✅ Entry added!');
   } else { showToast('❌ Entry failed'); }
 }
-
 function editAccEntry(id) {
   const e = STATE.accountingEntries.find(x => x.id === id);
   if (!e) return;
   openModalWithContent(`✏️ Edit Entry`, `
-    <div class="form-group"><label>Date</label><input type="date" class="form-control" id="editAccDate" value="${e.entry_date||''}" /></div>
-    <div class="form-group"><label>Description</label><input type="text" class="form-control" id="editAccDesc" value="${escapeHtml(e.description||e.narration||'')}" /></div>
-    <div class="form-group"><label>Debit (₹)</label><input type="number" class="form-control" id="editAccDebit" value="${e.debit||''}" /></div>
-    <div class="form-group"><label>Credit (₹)</label><input type="number" class="form-control" id="editAccCredit" value="${e.credit||''}" /></div>
-    <div class="form-group"><label>Reference No.</label><input type="text" class="form-control" id="editAccRef" value="${escapeHtml(e.reference_no||'')}" /></div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editAccRemarks" value="${escapeHtml(e.remarks||'')}" /></div>
+    <div class="form-group"><label>Date</label>
+      <input type="date" class="form-control" id="editAccDate" value="${e.entry_date||''}" /></div>
+    <div class="form-group"><label>Description</label>
+      <input type="text" class="form-control" id="editAccDesc" value="${escapeHtml(e.description||'')}" /></div>
+    <div class="form-group"><label>Assigned To</label>
+      <input type="text" class="form-control" id="editAccAssigned" value="${escapeHtml(e.assigned_to||'')}" /></div>
+    <div class="form-group"><label>Approved By</label>
+      <input type="text" class="form-control" id="editAccApproved" value="${escapeHtml(e.approved_by||'')}" /></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="editAccStatus">
+        ${['Pending','In Progress','Completed','On Hold'].map(s=>`<option ${e.status===s?'selected':''}>${s}</option>`).join('')}
+      </select></div>
+    <div class="form-group"><label>Remarks</label>
+      <input type="text" class="form-control" id="editAccRemarks" value="${escapeHtml(e.remarks||'')}" /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveAccEntry(${id})">💾 Save</button>
   `);
 }
@@ -4027,22 +4073,22 @@ function editAccEntry(id) {
 async function saveAccEntry(id) {
   const desc = document.getElementById('editAccDesc')?.value.trim();
   if (!desc) { showToast('Description required'); return; }
-  const debit = parseFloat(document.getElementById('editAccDebit')?.value) || 0;
-  const credit = parseFloat(document.getElementById('editAccCredit')?.value) || 0;
   const updated = {
     entry_date: document.getElementById('editAccDate')?.value,
     description: desc,
-    debit, credit,
-    amount: debit || credit,
-    entry_type: credit > 0 ? 'credit' : 'debit',
-    reference_no: document.getElementById('editAccRef')?.value.trim() || '',
+    assigned_to: document.getElementById('editAccAssigned')?.value.trim() || '',
+    approved_by: document.getElementById('editAccApproved')?.value.trim() || '',
+    status: document.getElementById('editAccStatus')?.value || 'Pending',
     remarks: document.getElementById('editAccRemarks')?.value.trim() || ''
   };
   const ok = await supabaseUpdate('accounting_entries', id, updated);
   if (ok) {
     const idx = STATE.accountingEntries.findIndex(e => e.id === id);
-    if (idx !== -1) STATE.accountingEntries[idx] = { ...STATE.accountingEntries[idx], ...updated, updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString() };
-    closeModal(); renderAccEntries(); renderAccClientStats(); showToast('✅ Entry updated!');
+    if (idx !== -1) STATE.accountingEntries[idx] = {
+      ...STATE.accountingEntries[idx], ...updated,
+      updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString()
+    };
+    closeModal(); renderAccEntries(); showToast('✅ Entry updated!');
   }
 }
 function searchTeamMessages(query) {
