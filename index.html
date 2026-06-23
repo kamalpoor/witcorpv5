@@ -62,64 +62,77 @@
   })();
 </script>
 
-  <script>
-    function toggleDarkMode() {
-      const isDark = document.body.classList.toggle('force-dark');
-      localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
-      document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) { btn.textContent = isDark ? '☀️' : '🌙'; });
-    }
-    function setTheme(themeName) {
-      var themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
-      themes.forEach(function(t) { document.body.classList.remove(t); });
-      document.body.classList.add(themeName);
-      localStorage.setItem('witcorp-body-theme', themeName);
-      document.querySelectorAll('.swatch').forEach(function(s) { s.classList.toggle('active', s.dataset.theme === themeName); });
-    }
-   // Theme & Dark — PAGE LOAD PE TURANT (flash nahi aayega)
-(function() {
-  var savedTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
-  document.body.className = savedTheme;
-  if (localStorage.getItem('witcorp-dark-mode') === '1') {
-    document.body.classList.add('force-dark');
-  }
-})();
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Swatch active mark karo
-  var savedTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
-  document.querySelectorAll('.swatch').forEach(function(s) {
-    s.classList.toggle('active', s.dataset.theme === savedTheme);
-  });
-  // Dark mode button text
-  if (localStorage.getItem('witcorp-dark-mode') === '1') {
-    document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) {
-      btn.textContent = '☀️';
+ <script>
+  function toggleDarkMode() {
+    const isDark = document.body.classList.toggle('force-dark');
+    localStorage.setItem('witcorp-dark-mode', isDark ? '1' : '0');
+    document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) { 
+      btn.textContent = isDark ? '☀️' : '🌙'; 
     });
   }
-  loadUserInfoExtended();
-});
-    function filterClientType(value) {
-      if (typeof STATE !== 'undefined') { STATE.filters.clients.type = value; STATE.pagination.clients.page = 1; if (typeof renderClientTable === 'function') renderClientTable(); }
+  
+  function setTheme(themeName) {
+    var themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber',
+                  'theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset',
+                  'theme-sakura','theme-gold','theme-teal','theme-grape'];
+    themes.forEach(function(t) { document.body.classList.remove(t); });
+    document.body.classList.add(themeName);
+    localStorage.setItem('witcorp-body-theme', themeName);
+    document.querySelectorAll('.swatch').forEach(function(s) { 
+      s.classList.toggle('active', s.dataset.theme === themeName); 
+    });
+  }
+  
+  function filterClientType(value) {
+    if (typeof STATE !== 'undefined') { 
+      STATE.filters.clients.type = value; 
+      STATE.pagination.clients.page = 1; 
+      if (typeof renderClientTable === 'function') renderClientTable(); 
     }
-    function loadUserInfoExtended() {
-      var userRaw = localStorage.getItem('witcorp-user');
-      if (!userRaw) return;
-      var user = JSON.parse(userRaw);
-      var meta = user.user_metadata || {};
-      var name = meta.full_name || (user.email ? user.email.split('@')[0] : 'User');
-      var role = meta.role || 'Member';
-      var initial = name.charAt(0).toUpperCase();
-      var initEl = document.getElementById('userInitial');
-      var nameEl = document.getElementById('userDisplayName');
-      var roleEl = document.getElementById('userDisplayRole');
-      if (initEl) initEl.textContent = initial;
-      if (nameEl) nameEl.textContent = name;
-      if (roleEl) roleEl.textContent = role;
-    }
-    document.addEventListener('DOMContentLoaded', loadUserInfoExtended);
-  </script>
-</head>
+  }
+  
+  function loadUserInfoExtended() {
+    var userRaw = localStorage.getItem('witcorp-user');
+    if (!userRaw) return;
+    var user = JSON.parse(userRaw);
+    var meta = user.user_metadata || {};
+    var name = meta.full_name || (user.email ? user.email.split('@')[0] : 'User');
+    var role = meta.role || 'Member';
+    var initial = name.charAt(0).toUpperCase();
+    var initEl = document.getElementById('userInitial');
+    var nameEl = document.getElementById('userDisplayName');
+    var roleEl = document.getElementById('userDisplayRole');
+    if (initEl) initEl.textContent = initial;
+    if (nameEl) nameEl.textContent = name;
+    if (roleEl) roleEl.textContent = role;
+  }
 
+  document.addEventListener('DOMContentLoaded', function() {
+    // Theme apply
+    var savedTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
+    document.body.className = savedTheme;
+    
+    // Dark mode apply
+    if (localStorage.getItem('witcorp-dark-mode') === '1') {
+      document.body.classList.add('force-dark');
+    }
+    
+    // Swatch active mark karo
+    document.querySelectorAll('.swatch').forEach(function(s) {
+      s.classList.toggle('active', s.dataset.theme === savedTheme);
+    });
+    
+    // Dark mode button text
+    if (localStorage.getItem('witcorp-dark-mode') === '1') {
+      document.querySelectorAll('[onclick="toggleDarkMode()"]').forEach(function(btn) {
+        btn.textContent = '☀️';
+      });
+    }
+    
+    loadUserInfoExtended();
+  });
+</script>
+</head>
 <body class="">
 
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
