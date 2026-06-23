@@ -941,9 +941,8 @@ function initRealtimeTasks() {
     console.warn('Realtime tasks init failed:', e);
   }
 }
-
 initRealtimeTasks();
-});
+}); //
 function injectWAMenuStyles() {
   const style = document.createElement('style');
   style.textContent = `
