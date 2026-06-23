@@ -54,6 +54,18 @@
 .theme-sunset  { --primary:#f97316; --primary-dark:#ea580c; --primary-light:#fdba74; --primary-glow:rgba(249,115,22,.15); --sidebar-bg:#431407; --bg:#fff7ed; }
 .theme-sakura  { --primary:#ec4899; --primary-dark:#db2777; --primary-light:#f9a8d4; --primary-glow:rgba(236,72,153,.15); --sidebar-bg:#500724; --bg:#fdf2f8; }
 .theme-gold    { --primary:#ca8a04; --primary-dark:#a16207; --primary-light:#fde68a; --primary-glow:rgba(202,138,4,.15);  --sidebar-bg:#1c1106; --bg:#fefce8; }
+/* Teal Theme */
+body.theme-teal {
+  --primary: #0d9488;
+  --primary-glow: rgba(13,148,136,0.12);
+  --primary-dark: #0f766e;
+}
+/* Grape Theme */
+body.theme-grape {
+  --primary: #7e22ce;
+  --primary-glow: rgba(126,34,206,0.12);
+  --primary-dark: #6b21a8;
+}
 
 /* ===================================================
    BASE
