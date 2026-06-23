@@ -2524,7 +2524,12 @@ async function submitJournalEntry() {
 
 async function deleteAccEntry(id) {
   const ok = await supabaseDelete('accounting_entries', id);
-  if (ok) { STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id); renderAccountingList(); showToast('🗑️ Entry deleted'); }
+  if (ok) {
+    STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id);
+    renderAccEntries();
+    renderAccountingList();
+    showToast('🗑️ Entry deleted');
+  }
 }
 
 /* =========================================================
