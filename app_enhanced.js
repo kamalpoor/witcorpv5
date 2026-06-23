@@ -3402,14 +3402,25 @@ async function saveProfileName() {
 async function logout() {
   closeModal();
   const token = localStorage.getItem('witcorp-access-token');
+  
+  // Theme aur dark mode save karo logout se pehle
+  const savedTheme = localStorage.getItem('witcorp-body-theme');
+  const savedDark = localStorage.getItem('witcorp-dark-mode');
+  
   if (token) {
     await fetch('https://yqbvdbsbuycxlsfkijhc.supabase.co/auth/v1/logout', {
       method: 'POST',
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer '+token }
     }).catch(() => {});
   }
+  
   localStorage.clear();
   sessionStorage.clear();
+  
+  // Theme aur dark mode wapas restore karo
+  if (savedTheme) localStorage.setItem('witcorp-body-theme', savedTheme);
+  if (savedDark) localStorage.setItem('witcorp-dark-mode', savedDark);
+  
   window.location.replace('login.html');
 }
 
