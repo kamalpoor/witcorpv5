@@ -1062,11 +1062,11 @@
         <div><h1>📈 Reports &amp; Insights</h1><p>Analytics &amp; reports</p></div>
         <button class="btn-primary" onclick="exportReport()">⬇ Export Report</button>
       </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon green">📊</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Clients</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Filings</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">💰</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Revenue</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⭐</div><div class="stat-info"><div class="stat-number">0%</div><div class="stat-label">Task Completion</div></div></div>
+     <div class="stats-grid">
+        <div class="stat-card" onclick="navigate('clients')" style="cursor:pointer"><div class="stat-icon green">📊</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Clients</div></div></div>
+        <div class="stat-card" onclick="showFilingsSummaryModal()" style="cursor:pointer"><div class="stat-icon blue">📋</div><div class="stat-info"><div class="stat-number">0</div><div class="stat-label">Total Filings</div></div></div>
+        <div class="stat-card" onclick="navigate('accounting')" style="cursor:pointer"><div class="stat-icon purple">💰</div><div class="stat-info"><div class="stat-number">₹ 0</div><div class="stat-label">Revenue</div></div></div>
+        <div class="stat-card" onclick="navigate('tasks')" style="cursor:pointer"><div class="stat-icon orange">⭐</div><div class="stat-info"><div class="stat-number">0%</div><div class="stat-label">Task Completion</div></div></div>
       </div>
       <div class="two-col">
         <div class="card"><div class="card-title">Monthly Performance</div><div class="bar-chart" id="barChart"></div></div>
