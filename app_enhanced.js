@@ -336,8 +336,11 @@ function setTheme(themeName) {
 }
 
 function initTheme() {
+  // Body pe already lag chuka hai (head script se), sirf swatches sync karo
   const savedBodyTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
-  setTheme(savedBodyTheme);
+  document.querySelectorAll('.swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.theme === savedBodyTheme);
+  });
 }
 
 /* =========================================================
