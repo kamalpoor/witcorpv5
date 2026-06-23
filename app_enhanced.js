@@ -903,8 +903,46 @@ setInterval(async () => {
     const countEl = document.getElementById('onlineCount');
     if (countEl) countEl.textContent = Math.max(onlineCount, 1);
   }, 5000);
-});
 
+  // ✅ REAL-TIME KANBAN — Supabase Realtime (turant, koi delay nahi)
+function initRealtimeTasks() {
+  try {
+    if (!supabaseClient) {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    supabaseClient
+      .channel('realtime-tasks')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',       // INSERT, UPDATE, DELETE — teeno pe
+          schema: 'public',
+          table: 'tasks'
+        },
+        async (payload) => {
+          console.log('🔄 Task changed:', payload);
+
+          // Fresh data fetch karo database se
+          const freshTasks = await supabaseQuery('tasks', { order: 'created_at.desc' });
+          if (Array.isArray(freshTasks)) {
+            STATE.tasks = freshTasks;
+            renderKanban();
+            updateDashboardStats();
+            showToast('🔄 Tasks updated!');
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('✅ Realtime tasks status:', status);
+      });
+
+  } catch(e) {
+    console.warn('Realtime tasks init failed:', e);
+  }
+}
+
+initRealtimeTasks();
 function injectWAMenuStyles() {
   const style = document.createElement('style');
   style.textContent = `
@@ -2534,12 +2572,22 @@ async function dropTask(e, targetCol) {
 }
 function columnLabel(col) { return { todo:'To Do', inprogress:'In Progress', done:'Done' }[col]||col; }
 
-function addTask(col) {
+async function addTask(col) {
   const myName = getCurrentUserName();
+  // profiles table se saare members fetch karo
+  const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
+  const profileOpts = '<option value="">-- Select Assignee --</option>' +
+    (profiles || []).map(p => {
+      const name = p.full_name || (p.email ? p.email.split('@')[0] : '');
+      return `<option value="${escapeHtml(name)}" ${name === myName ? 'selected' : ''}>${escapeHtml(name)}</option>`;
+    }).join('');
+
   openModalWithContent('➕ Add Task to ' + columnLabel(col), `
     <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitle" placeholder="Enter task title" /></div>
     <div class="form-group"><label>Tags (comma separated)</label><input type="text" class="form-control" id="newTaskTags" placeholder="e.g. GST, High" /></div>
-    <div class="form-group"><label>Assignee</label><input type="text" class="form-control" id="newTaskAssignee" value="${escapeHtml(myName)}" placeholder="Assignee name" /></div>
+    <div class="form-group"><label>Assignee</label>
+      <select class="form-control" id="newTaskAssignee">${profileOpts}</select>
+    </div>
     <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="newTaskDue" /></div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="createTask('${col}')">Add Task</button>
   `);
@@ -2870,6 +2918,8 @@ function renderActivity() {
    ========================================================= */
 
 function openModal(type) {
+   // newTask ko addTask pe redirect karo (async profiles ke liye)
+  if (type === 'newTask') { addTask('todo'); return; }
   const myName = getCurrentUserName();
   const clientOptions = getClientOptionsHtml();
 
@@ -2974,7 +3024,7 @@ function openModal(type) {
         <button class="btn-primary" style="width:100%" onclick="submitCreateFolder()">Create Folder</button>`
     },
     newEntry: { title:'🧮 Journal Entry', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">🧮</div><p style="margin:12px 0">Use the Accounting Hub form</p><button class="btn-primary" onclick="closeModal();navigate('accounting')">Go to Accounting Hub</button></div>` },
-    newTask: {
+   newTask: {
       title: '✅ Add New Task',
       body: `
         <div class="form-group"><label>Task Title *</label><input type="text" class="form-control" id="newTaskTitleModal" placeholder="Enter task title" /></div>
