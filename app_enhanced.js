@@ -2760,48 +2760,461 @@ function showFilingsSummaryModal() {
 
 function getAIResponse(query) {
   const q = query.toLowerCase().trim();
-  const { clients, gstReturns, tasks, tdsReturns } = STATE;
-  if (q.includes('gst') && (q.includes('pending')||q.includes('show'))) {
-    const pending = gstReturns.filter(g=>g.status==='Pending'||g.status==='Overdue');
-    if (!pending.length) return 'No pending GST returns right now! 🎉';
-    let txt = `${pending.length} GST returns need attention:<br><br>`;
-    pending.forEach(g => { txt += `• <strong>${escapeHtml(g.client_name)}</strong> — ${g.return_type} (${g.period}) — <span style="color:${g.status==='Overdue'?'#ef4444':'#f59e0b'}">${g.status}</span><br>`; });
-    return txt;
+  const { clients, gstReturns, rocFilings, itrFilings, tdsReturns, audits, dscRecords, accountingEntries, tasks, calendarEvents } = STATE;
+
+  // ── CLIENTS ──
+  if (q.includes('client') || q.includes('customer')) {
+    const active = clients.filter(c => c.status === 'Active');
+    const inactive = clients.filter(c => c.status === 'Inactive');
+    const pending = clients.filter(c => c.status === 'Pending');
+    if (q.includes('list') || q.includes('all') || q.includes('show')) {
+      return `<b>👥 All Clients (${clients.length})</b><br><br>` +
+        clients.slice(0, 15).map(c => `• <b>${c.name}</b> — ${c.type || '-'} | ${c.status} | PAN: ${c.pan || '-'}`).join('<br>') +
+        (clients.length > 15 ? `<br><br><i>...and ${clients.length - 15} more clients</i>` : '');
+    }
+    if (q.includes('active')) return `<b>✅ Active Clients: ${active.length}</b><br><br>` + active.map(c => `• <b>${c.name}</b> — ${c.type || '-'}`).join('<br>');
+    if (q.includes('inactive')) return `<b>❌ Inactive Clients: ${inactive.length}</b><br><br>` + inactive.map(c => `• <b>${c.name}</b>`).join('<br>');
+    if (q.includes('pending')) return `<b>⏳ Pending Clients: ${pending.length}</b><br><br>` + pending.map(c => `• <b>${c.name}</b>`).join('<br>');
+    if (q.includes('company')) {
+      const cos = clients.filter(c => c.type === 'Company');
+      return `<b>🏢 Companies: ${cos.length}</b><br><br>` + cos.map(c => `• <b>${c.name}</b> | CIN: ${c.cin || '-'}`).join('<br>');
+    }
+    if (q.includes('llp')) {
+      const llps = clients.filter(c => c.type === 'LLP');
+      return `<b>🏛️ LLPs: ${llps.length}</b><br><br>` + llps.map(c => `• <b>${c.name}</b> | LLPIN: ${c.cin || '-'}`).join('<br>');
+    }
+    if (q.includes('individual')) {
+      const inds = clients.filter(c => c.type === 'Individual');
+      return `<b>👤 Individuals: ${inds.length}</b><br><br>` + inds.map(c => `• <b>${c.name}</b> | PAN: ${c.pan || '-'}`).join('<br>');
+    }
+    if (q.includes('partnership')) {
+      const parts = clients.filter(c => c.type === 'Partnership');
+      return `<b>🤝 Partnerships: ${parts.length}</b><br><br>` + parts.map(c => `• <b>${c.name}</b> | PAN: ${c.pan || '-'}`).join('<br>');
+    }
+    return `<b>👥 Client Summary</b><br><br>
+      📊 Total: <b>${clients.length}</b><br>
+      ✅ Active: <b>${active.length}</b><br>
+      ❌ Inactive: <b>${inactive.length}</b><br>
+      ⏳ Pending: <b>${pending.length}</b><br>
+      🏢 Companies: <b>${clients.filter(c => c.type === 'Company').length}</b><br>
+      🏛️ LLPs: <b>${clients.filter(c => c.type === 'LLP').length}</b><br>
+      👤 Individuals: <b>${clients.filter(c => c.type === 'Individual').length}</b><br>
+      🤝 Partnerships: <b>${clients.filter(c => c.type === 'Partnership').length}</b><br><br>
+      <i>Try: "list all clients", "active clients", "company clients", "llp clients"</i>`;
   }
-  if (q.includes('task')||q.includes('pending')) {
-    const p = tasks.filter(t=>t.column_name!=='done');
-    if (!p.length) return 'No pending tasks! Everything is done. 🎉';
-    let txt = `${p.length} tasks pending:<br><br>`;
-    p.slice(0,6).forEach(t => { txt += `• <strong>${escapeHtml(t.title)}</strong> — ${t.column_name==='todo'?'To Do':'In Progress'}, due ${t.due_date||'TBD'}<br>`; });
-    return txt;
+
+  // ── GST ──
+  if (q.includes('gst')) {
+    const filed = gstReturns.filter(g => g.status === 'Filed');
+    const pending = gstReturns.filter(g => g.status === 'Pending');
+    const overdue = gstReturns.filter(g => g.status === 'Overdue');
+    if (q.includes('pending')) {
+      if (!pending.length) return '🎉 No pending GST returns!';
+      return `<b>⏳ Pending GST Returns (${pending.length})</b><br><br>` +
+        pending.map(g => `• <b>${g.client_name}</b> — ${g.return_type} | ${g.period} | GSTIN: ${g.gstin || '-'}`).join('<br>');
+    }
+    if (q.includes('overdue') || q.includes('late')) {
+      if (!overdue.length) return '✅ No overdue GST returns!';
+      return `<b>🚨 Overdue GST Returns (${overdue.length})</b><br><br>` +
+        overdue.map(g => `• <b>${g.client_name}</b> — ${g.return_type} | ${g.period}`).join('<br>');
+    }
+    if (q.includes('filed') || q.includes('complete')) {
+      return `<b>✅ Filed GST Returns (${filed.length})</b><br><br>` +
+        filed.slice(0, 15).map(g => `• <b>${g.client_name}</b> — ${g.return_type} | ${g.period}`).join('<br>');
+    }
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>📊 All GST Returns (${gstReturns.length})</b><br><br>` +
+        gstReturns.slice(0, 15).map(g => `• <b>${g.client_name}</b> — ${g.return_type} | ${g.period} | <span style="color:${g.status==='Filed'?'#10b981':g.status==='Overdue'?'#ef4444':'#f59e0b'}">${g.status}</span>`).join('<br>') +
+        (gstReturns.length > 15 ? `<br><br><i>...and ${gstReturns.length - 15} more</i>` : '');
+    }
+    return `<b>📊 GST Summary</b><br><br>
+      ✅ Filed: <b>${filed.length}</b><br>
+      ⏳ Pending: <b>${pending.length}</b><br>
+      🚨 Overdue: <b>${overdue.length}</b><br>
+      📋 Total: <b>${gstReturns.length}</b><br><br>
+      <i>Try: "pending gst", "overdue gst", "filed gst", "all gst returns"</i>`;
   }
-  if (q.includes('tds')) { const filed=tdsReturns.filter(t=>t.status==='Filed').length; const pend=tdsReturns.filter(t=>t.status==='Pending').length; return `TDS Summary:<br>✅ Filed: <strong>${filed}</strong><br>⏳ Pending: <strong>${pend}</strong>`; }
-  if (q.includes('client')) { const active=clients.filter(c=>c.status==='Active').length; return `Total clients: <strong>${clients.length}</strong><br>Active: <strong>${active}</strong><br>Pending: <strong>${clients.filter(c=>c.status==='Pending').length}</strong>`; }
-  if (q.includes('upcoming')||q.includes('due')||q.includes('compliance')) return 'Check the <strong>Calendar</strong> page for all upcoming due dates. Click 📅 Calendar in the sidebar!';
-  const defaults = ['I can help with GST, TDS, ITR, clients, tasks & more. Try asking "show pending GST returns"!','Ask me about: pending tasks, GST status, TDS filings, client list, upcoming compliances.','Namaste! Try: "pending tasks", "GST due this week", "TDS filing status"'];
-  return defaults[Math.floor(Math.random()*defaults.length)];
+
+  // ── TDS ──
+  if (q.includes('tds')) {
+    const filed = tdsReturns.filter(t => t.status === 'Filed');
+    const pending = tdsReturns.filter(t => t.status === 'Pending');
+    const overdue = tdsReturns.filter(t => t.status === 'Overdue');
+    if (q.includes('pending')) return !pending.length ? '🎉 No pending TDS returns!' :
+      `<b>⏳ Pending TDS Returns (${pending.length})</b><br><br>` +
+      pending.map(t => `• <b>${t.client_name || t.deductor}</b> — ${t.form_type} | ${t.quarter} | TAN: ${t.tan || '-'}`).join('<br>');
+    if (q.includes('overdue')) return !overdue.length ? '✅ No overdue TDS returns!' :
+      `<b>🚨 Overdue TDS (${overdue.length})</b><br><br>` +
+      overdue.map(t => `• <b>${t.client_name || t.deductor}</b> — ${t.form_type} | ${t.quarter}`).join('<br>');
+    if (q.includes('filed')) return `<b>✅ Filed TDS Returns (${filed.length})</b><br><br>` +
+      filed.slice(0, 15).map(t => `• <b>${t.client_name || t.deductor}</b> — ${t.form_type} | ${t.quarter}`).join('<br>');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>🧾 All TDS Returns (${tdsReturns.length})</b><br><br>` +
+        tdsReturns.slice(0, 15).map(t => `• <b>${t.client_name || t.deductor || '-'}</b> — ${t.form_type} | ${t.quarter} | TAN: ${t.tan || '-'} | <span style="color:${t.status==='Filed'?'#10b981':t.status==='Overdue'?'#ef4444':'#f59e0b'}">${t.status}</span>`).join('<br>') +
+        (tdsReturns.length > 15 ? `<br><br><i>...and ${tdsReturns.length - 15} more</i>` : '');
+    }
+    return `<b>🧾 TDS Summary</b><br><br>
+      ✅ Filed: <b>${filed.length}</b><br>
+      ⏳ Pending: <b>${pending.length}</b><br>
+      🚨 Overdue: <b>${overdue.length}</b><br>
+      📋 Total: <b>${tdsReturns.length}</b><br><br>
+      <i>Try: "pending tds", "overdue tds", "filed tds", "all tds"</i>`;
+  }
+
+  // ── ITR ──
+  if (q.includes('itr') || q.includes('income tax') || q.includes('incometax')) {
+    const filed = itrFilings.filter(i => i.status === 'Filed');
+    const pending = itrFilings.filter(i => i.status === 'Pending' || i.status === 'In Progress');
+    const overdue = itrFilings.filter(i => i.status === 'Overdue');
+    if (q.includes('pending')) return !pending.length ? '🎉 No pending ITR filings!' :
+      `<b>⏳ Pending ITR (${pending.length})</b><br><br>` +
+      pending.map(i => `• <b>${i.client_name}</b> — ${i.form} | AY ${i.assessment_year} | ${i.status}`).join('<br>');
+    if (q.includes('overdue')) return !overdue.length ? '✅ No overdue ITR!' :
+      `<b>🚨 Overdue ITR (${overdue.length})</b><br><br>` +
+      overdue.map(i => `• <b>${i.client_name}</b> — ${i.form} | AY ${i.assessment_year}`).join('<br>');
+    if (q.includes('filed')) return `<b>✅ Filed ITR (${filed.length})</b><br><br>` +
+      filed.slice(0, 15).map(i => `• <b>${i.client_name}</b> — ${i.form} | AY ${i.assessment_year}`).join('<br>');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>💰 All ITR Filings (${itrFilings.length})</b><br><br>` +
+        itrFilings.slice(0, 15).map(i => `• <b>${i.client_name}</b> — ${i.form} | AY ${i.assessment_year} | <span style="color:${i.status==='Filed'?'#10b981':i.status==='Overdue'?'#ef4444':'#f59e0b'}">${i.status}</span>`).join('<br>') +
+        (itrFilings.length > 15 ? `<br><br><i>...and ${itrFilings.length - 15} more</i>` : '');
+    }
+    return `<b>💰 ITR Summary</b><br><br>
+      ✅ Filed: <b>${filed.length}</b><br>
+      ⏳ Pending/In Progress: <b>${pending.length}</b><br>
+      🚨 Overdue: <b>${overdue.length}</b><br>
+      📋 Total: <b>${itrFilings.length}</b><br><br>
+      <i>Try: "pending itr", "filed itr", "all itr filings"</i>`;
+  }
+
+  // ── ROC ──
+  if (q.includes('roc') || q.includes('mca') || q.includes('company filing')) {
+    const filed = rocFilings.filter(r => r.status === 'Filed');
+    const pending = rocFilings.filter(r => r.status === 'Pending' || r.status === 'In Progress');
+    const overdue = rocFilings.filter(r => r.status === 'Overdue');
+    if (q.includes('pending') || q.includes('progress')) return !pending.length ? '🎉 No pending ROC filings!' :
+      `<b>⏳ Pending ROC Filings (${pending.length})</b><br><br>` +
+      pending.map(r => `• <b>${r.company}</b> — ${r.form} | CIN: ${r.cin || '-'} | Due: ${r.due_date || '-'}`).join('<br>');
+    if (q.includes('overdue')) return !overdue.length ? '✅ No overdue ROC filings!' :
+      `<b>🚨 Overdue ROC (${overdue.length})</b><br><br>` +
+      overdue.map(r => `• <b>${r.company}</b> — ${r.form} | Due: ${r.due_date || '-'}`).join('<br>');
+    if (q.includes('filed')) return `<b>✅ Filed ROC (${filed.length})</b><br><br>` +
+      filed.slice(0, 15).map(r => `• <b>${r.company}</b> — ${r.form}`).join('<br>');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>🏛️ All ROC Filings (${rocFilings.length})</b><br><br>` +
+        rocFilings.slice(0, 15).map(r => `• <b>${r.company}</b> — ${r.form} | CIN: ${r.cin || '-'} | Due: ${r.due_date || '-'} | <span style="color:${r.status==='Filed'?'#10b981':r.status==='Overdue'?'#ef4444':'#f59e0b'}">${r.status}</span>`).join('<br>') +
+        (rocFilings.length > 15 ? `<br><br><i>...and ${rocFilings.length - 15} more</i>` : '');
+    }
+    return `<b>🏛️ ROC Summary</b><br><br>
+      ✅ Filed: <b>${filed.length}</b><br>
+      ⏳ Pending/In Progress: <b>${pending.length}</b><br>
+      🚨 Overdue: <b>${overdue.length}</b><br>
+      📋 Total: <b>${rocFilings.length}</b><br><br>
+      <i>Try: "pending roc", "overdue roc", "all roc filings"</i>`;
+  }
+
+  // ── DSC ──
+  if (q.includes('dsc') || q.includes('digital signature') || q.includes('esign')) {
+    const today = new Date();
+    const expiring = dscRecords.filter(d => {
+      if (!d.expiry_date) return false;
+      const days = Math.ceil((new Date(d.expiry_date) - today) / (1000*60*60*24));
+      return days >= 0 && days <= 30;
+    });
+    const expired = dscRecords.filter(d => {
+      if (!d.expiry_date) return false;
+      return new Date(d.expiry_date) < today;
+    });
+    const active = dscRecords.filter(d => {
+      if (!d.expiry_date) return false;
+      return Math.ceil((new Date(d.expiry_date) - today) / (1000*60*60*24)) > 30;
+    });
+    if (q.includes('expir') || q.includes('renew')) {
+      let res = !expiring.length ? '✅ No DSC expiring in next 30 days!' :
+        `<b>⚠️ DSC Expiring Soon (${expiring.length})</b><br><br>` +
+        expiring.map(d => {
+          const days = Math.ceil((new Date(d.expiry_date) - today) / (1000*60*60*24));
+          return `• <b>${d.client_name || d.name}</b> — ${d.dsc_type || d.type || '-'} | Expiry: ${d.expiry_date} | <span style="color:#f59e0b"><b>${days} days left</b></span>`;
+        }).join('<br>');
+      if (expired.length) res += `<br><br><b>❌ Already Expired (${expired.length})</b><br>` +
+        expired.map(d => `• <b>${d.client_name || d.name}</b> — Expired: ${d.expiry_date}`).join('<br>');
+      return res;
+    }
+    if (q.includes('expired')) return !expired.length ? '✅ No expired DSC records!' :
+      `<b>❌ Expired DSC (${expired.length})</b><br><br>` +
+      expired.map(d => `• <b>${d.client_name || d.name}</b> — ${d.dsc_type || '-'} | Expired: ${d.expiry_date}`).join('<br>');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>✍️ All DSC Records (${dscRecords.length})</b><br><br>` +
+        dscRecords.slice(0, 15).map(d => {
+          const days = d.expiry_date ? Math.ceil((new Date(d.expiry_date) - today) / (1000*60*60*24)) : null;
+          const color = days === null ? '#94a3b8' : days < 0 ? '#ef4444' : days <= 30 ? '#f59e0b' : '#10b981';
+          return `• <b>${d.client_name || d.name}</b> — ${d.dsc_type || '-'} | Purpose: ${d.purpose || '-'} | Expiry: ${d.expiry_date || '-'} | <span style="color:${color}"><b>${days !== null ? (days < 0 ? 'Expired' : days + 'd left') : '-'}</b></span>`;
+        }).join('<br>') +
+        (dscRecords.length > 15 ? `<br><br><i>...and ${dscRecords.length - 15} more</i>` : '');
+    }
+    return `<b>✍️ DSC Summary</b><br><br>
+      ✅ Active: <b>${active.length}</b><br>
+      ⚠️ Expiring in 30 days: <b>${expiring.length}</b><br>
+      ❌ Expired: <b>${expired.length}</b><br>
+      📋 Total: <b>${dscRecords.length}</b><br><br>
+      <i>Try: "expiring dsc", "expired dsc", "all dsc records"</i>`;
+  }
+
+  // ── AUDIT ──
+  if (q.includes('audit')) {
+    const active = audits.filter(a => a.status === 'In Progress');
+    const completed = audits.filter(a => a.status === 'Completed');
+    const pending = audits.filter(a => a.status === 'Pending');
+    const inReview = audits.filter(a => a.status === 'In Review');
+    if (q.includes('pending')) return !pending.length ? '🎉 No pending audits!' :
+      `<b>⏳ Pending Audits (${pending.length})</b><br><br>` +
+      pending.map(a => `• <b>${a.client}</b> — ${a.audit_type} | Auditor: ${a.auditor || '-'}`).join('<br>');
+    if (q.includes('progress')) return !active.length ? 'No audits in progress!' :
+      `<b>🔄 Audits In Progress (${active.length})</b><br><br>` +
+      active.map(a => `• <b>${a.client}</b> — ${a.audit_type} | Auditor: ${a.auditor || '-'} | End: ${a.end_date || '-'}`).join('<br>');
+    if (q.includes('complete')) return !completed.length ? 'No completed audits yet!' :
+      `<b>✅ Completed Audits (${completed.length})</b><br><br>` +
+      completed.map(a => `• <b>${a.client}</b> — ${a.audit_type}`).join('<br>');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>🛡️ All Audits (${audits.length})</b><br><br>` +
+        audits.slice(0, 15).map(a => `• <b>${a.client}</b> — ${a.audit_type} | Auditor: ${a.auditor || '-'} | <span style="color:${a.status==='Completed'?'#10b981':a.status==='Overdue'?'#ef4444':'#f59e0b'}">${a.status}</span>`).join('<br>');
+    }
+    return `<b>🛡️ Audit Summary</b><br><br>
+      🔄 In Progress: <b>${active.length}</b><br>
+      🔍 In Review: <b>${inReview.length}</b><br>
+      ✅ Completed: <b>${completed.length}</b><br>
+      ⏳ Pending: <b>${pending.length}</b><br>
+      📋 Total: <b>${audits.length}</b><br><br>
+      <i>Try: "pending audit", "all audits", "completed audits"</i>`;
+  }
+
+  // ── PROFESSIONAL TAX ──
+  if (q.includes('professional tax') || q.includes('pt filing') || q.includes('ptax')) {
+    const ptData = STATE.ptFilings || [];
+    const filed = ptData.filter(p => p.status === 'Filed');
+    const pending = ptData.filter(p => p.status === 'Pending');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>🏷️ All PT Filings (${ptData.length})</b><br><br>` +
+        ptData.slice(0, 15).map(p => `• <b>${p.client_name}</b> — ${p.state || '-'} | ${p.period || '-'} | ₹${(p.amount||0).toLocaleString('en-IN')} | <span style="color:${p.status==='Filed'?'#10b981':'#f59e0b'}">${p.status}</span>`).join('<br>');
+    }
+    return `<b>🏷️ Professional Tax Summary</b><br><br>
+      ✅ Filed: <b>${filed.length}</b><br>
+      ⏳ Pending: <b>${pending.length}</b><br>
+      📋 Total: <b>${ptData.length}</b>`;
+  }
+
+  // ── PAYROLL ──
+  if (q.includes('payroll') || q.includes('salary')) {
+    const payData = STATE.payrollEntries || [];
+    const processed = payData.filter(p => p.status === 'Processed');
+    const pending = payData.filter(p => p.status === 'Pending');
+    const totalSalary = processed.reduce((s, p) => s + (p.net_salary || 0), 0);
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>👨‍💼 All Payroll Entries (${payData.length})</b><br><br>` +
+        payData.slice(0, 15).map(p => `• <b>${p.client_name}</b> — ${p.month_year || '-'} | Employees: ${p.employee_count || 0} | Net: ₹${(p.net_salary||0).toLocaleString('en-IN')} | <span style="color:${p.status==='Processed'?'#10b981':'#f59e0b'}">${p.status}</span>`).join('<br>');
+    }
+    return `<b>👨‍💼 Payroll Summary</b><br><br>
+      ✅ Processed: <b>${processed.length}</b><br>
+      ⏳ Pending: <b>${pending.length}</b><br>
+      💰 Total Salary Paid: <b>₹${totalSalary.toLocaleString('en-IN')}</b><br>
+      📋 Total Entries: <b>${payData.length}</b>`;
+  }
+
+  // ── DIR-3 KYC ──
+  if (q.includes('dir3') || q.includes('dir-3') || q.includes('kyc') || q.includes('director kyc')) {
+    const dir3Data = STATE.dir3Filings || [];
+    const filed = dir3Data.filter(d => d.status === 'Filed');
+    const pending = dir3Data.filter(d => d.status === 'Pending');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>📝 All DIR-3 KYC (${dir3Data.length})</b><br><br>` +
+        dir3Data.slice(0, 15).map(d => `• <b>${d.director_name}</b> — ${d.client_name} | DIN: ${d.din || '-'} | FY: ${d.financial_year || '-'} | <span style="color:${d.status==='Filed'?'#10b981':'#f59e0b'}">${d.status}</span>`).join('<br>');
+    }
+    return `<b>📝 DIR-3 KYC Summary</b><br><br>
+      ✅ Filed: <b>${filed.length}</b><br>
+      ⏳ Pending: <b>${pending.length}</b><br>
+      📋 Total: <b>${dir3Data.length}</b>`;
+  }
+
+  // ── TASKS ──
+  if (q.includes('task') || q.includes('todo') || q.includes('work')) {
+    const done = tasks.filter(t => t.column_name === 'done');
+    const inprog = tasks.filter(t => t.column_name === 'inprogress');
+    const todo = tasks.filter(t => t.column_name === 'todo');
+    if (q.includes('pending') || q.includes('todo')) return !todo.length ? '🎉 No pending tasks!' :
+      `<b>📋 To Do Tasks (${todo.length})</b><br><br>` +
+      todo.map(t => `• <b>${t.title}</b> | 👤 ${t.assignee || '-'} | Due: ${t.due_date || 'TBD'}`).join('<br>');
+    if (q.includes('progress')) return !inprog.length ? 'No tasks in progress!' :
+      `<b>🔄 In Progress Tasks (${inprog.length})</b><br><br>` +
+      inprog.map(t => `• <b>${t.title}</b> | 👤 ${t.assignee || '-'} | Due: ${t.due_date || 'TBD'}`).join('<br>');
+    if (q.includes('done') || q.includes('complete') || q.includes('finish')) return !done.length ? 'No completed tasks yet!' :
+      `<b>✅ Completed Tasks (${done.length})</b><br><br>` +
+      done.slice(0, 15).map(t => `• <b>${t.title}</b> | 👤 ${t.assignee || '-'}`).join('<br>');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>✅ All Tasks (${tasks.length})</b><br><br>` +
+        tasks.slice(0, 15).map(t => `• <b>${t.title}</b> | ${t.column_name === 'done' ? '✅' : t.column_name === 'inprogress' ? '🔄' : '📋'} ${t.column_name} | 👤 ${t.assignee || '-'} | Due: ${t.due_date || 'TBD'}`).join('<br>');
+    }
+    const pct = tasks.length ? Math.round((done.length / tasks.length) * 100) : 0;
+    return `<b>✅ Task Summary</b><br><br>
+      ✅ Done: <b>${done.length}</b><br>
+      🔄 In Progress: <b>${inprog.length}</b><br>
+      📋 To Do: <b>${todo.length}</b><br>
+      📊 Completion Rate: <b>${pct}%</b><br>
+      📋 Total: <b>${tasks.length}</b><br><br>
+      <i>Try: "pending tasks", "in progress tasks", "completed tasks", "all tasks"</i>`;
+  }
+
+  // ── CALENDAR / DUE DATES ──
+  if (q.includes('calendar') || q.includes('due') || q.includes('upcoming') || q.includes('deadline') || q.includes('event') || q.includes('schedule')) {
+    const today = new Date();
+    const todayEvents = calendarEvents.filter(e => new Date(e.event_date).toDateString() === today.toDateString());
+    const upcoming7 = calendarEvents.filter(e => {
+      const diff = Math.ceil((new Date(e.event_date) - today) / (1000*60*60*24));
+      return diff >= 0 && diff <= 7;
+    });
+    const upcoming30 = calendarEvents.filter(e => {
+      const diff = Math.ceil((new Date(e.event_date) - today) / (1000*60*60*24));
+      return diff >= 0 && diff <= 30;
+    });
+    const overdue = calendarEvents.filter(e => new Date(e.event_date) < today);
+    if (q.includes('today')) return !todayEvents.length ? '📅 No events scheduled for today!' :
+      `<b>📅 Today\'s Events (${todayEvents.length})</b><br><br>` +
+      todayEvents.map(e => `• <b>${e.title}</b> — ${e.event_type || '-'} ${e.event_time ? '⏰ '+e.event_time : ''}`).join('<br>');
+    if (q.includes('week') || q.includes('7 day')) return !upcoming7.length ? '✅ No due dates this week!' :
+      `<b>📅 This Week\'s Events (${upcoming7.length})</b><br><br>` +
+      upcoming7.sort((a,b) => new Date(a.event_date)-new Date(b.event_date)).map(e => {
+        const diff = Math.ceil((new Date(e.event_date) - today) / (1000*60*60*24));
+        return `• <b>${e.title}</b> — ${e.event_type || '-'} | ${e.event_date} | <span style="color:${diff===0?'#ef4444':diff<=2?'#f59e0b':'#10b981'}">${diff===0?'Today':diff===1?'Tomorrow':diff+'d away'}</span>`;
+      }).join('<br>');
+    if (q.includes('overdue') || q.includes('missed')) return !overdue.length ? '✅ No overdue events!' :
+      `<b>🚨 Overdue Events (${overdue.length})</b><br><br>` +
+      overdue.slice(0, 10).sort((a,b) => new Date(b.event_date)-new Date(a.event_date))
+        .map(e => `• <b>${e.title}</b> — ${e.event_type || '-'} | Was due: ${e.event_date}`).join('<br>');
+    if (q.includes('list') || q.includes('all')) {
+      return `<b>📅 All Upcoming Events (${upcoming30.length})</b><br><br>` +
+        (upcoming30.length ? upcoming30.sort((a,b) => new Date(a.event_date)-new Date(b.event_date))
+          .slice(0, 15).map(e => {
+            const diff = Math.ceil((new Date(e.event_date) - today) / (1000*60*60*24));
+            return `• <b>${e.title}</b> — ${e.event_type || '-'} | ${e.event_date} | <span style="color:${diff<=3?'#ef4444':diff<=7?'#f59e0b':'#10b981'}">${diff===0?'Today':diff===1?'Tomorrow':diff+'d left'}</span>`;
+          }).join('<br>') : '✅ No upcoming events in next 30 days!');
+    }
+    return `<b>📅 Calendar Overview</b><br><br>
+      📌 Today: <b>${todayEvents.length} events</b><br>
+      📅 This Week: <b>${upcoming7.length} events</b><br>
+      🗓️ Next 30 Days: <b>${upcoming30.length} events</b><br>
+      🚨 Overdue: <b>${overdue.length} events</b><br><br>
+      <i>Try: "today events", "this week due", "all upcoming events", "overdue events"</i>`;
+  }
+
+  // ── ACCOUNTING / FINANCE ──
+  if (q.includes('account') || q.includes('revenue') || q.includes('expense') || q.includes('profit') || q.includes('finance') || q.includes('income') || q.includes('money')) {
+    const totalRev = accountingEntries.filter(t => t.entry_type === 'credit').reduce((s,t) => s+(t.amount||0), 0);
+    const totalExp = accountingEntries.filter(t => t.entry_type === 'debit').reduce((s,t) => s+(t.amount||0), 0);
+    const netProfit = totalRev - totalExp;
+    const margin = totalRev ? Math.round((netProfit/totalRev)*100) : 0;
+    if (q.includes('list') || q.includes('all') || q.includes('entries')) {
+      return `<b>🧮 All Accounting Entries (${accountingEntries.length})</b><br><br>` +
+        accountingEntries.slice(0, 15).map(e => `• <b>${e.narration || e.description || '-'}</b> — ${e.entry_type === 'credit' ? '<span style="color:#10b981">🟢 +</span>' : '<span style="color:#ef4444">🔴 -</span>'}₹${(e.amount||0).toLocaleString('en-IN')} | ${e.entry_date || '-'} | ${e.voucher_type || '-'}`).join('<br>') +
+        (accountingEntries.length > 15 ? `<br><br><i>...and ${accountingEntries.length - 15} more entries</i>` : '');
+    }
+    if (q.includes('revenue') || q.includes('income')) return `<b>💰 Revenue Details</b><br><br>Total Revenue: <b style="color:#10b981">₹${totalRev.toLocaleString('en-IN')}</b><br><br>` +
+      accountingEntries.filter(t => t.entry_type === 'credit').slice(0, 10)
+        .map(e => `• ${e.narration || e.description || '-'} — ₹${(e.amount||0).toLocaleString('en-IN')} | ${e.entry_date || '-'}`).join('<br>');
+    if (q.includes('expense')) return `<b>💸 Expense Details</b><br><br>Total Expenses: <b style="color:#ef4444">₹${totalExp.toLocaleString('en-IN')}</b><br><br>` +
+      accountingEntries.filter(t => t.entry_type === 'debit').slice(0, 10)
+        .map(e => `• ${e.narration || e.description || '-'} — ₹${(e.amount||0).toLocaleString('en-IN')} | ${e.entry_date || '-'}`).join('<br>');
+    return `<b>🧮 Financial Summary</b><br><br>
+      💰 Total Revenue: <b style="color:#10b981">₹${totalRev.toLocaleString('en-IN')}</b><br>
+      💸 Total Expenses: <b style="color:#ef4444">₹${totalExp.toLocaleString('en-IN')}</b><br>
+      📈 Net Profit: <b style="color:${netProfit>=0?'#10b981':'#ef4444'}">₹${Math.abs(netProfit).toLocaleString('en-IN')} ${netProfit>=0?'CR':'DR'}</b><br>
+      📊 Profit Margin: <b>${margin}%</b><br>
+      📋 Total Entries: <b>${accountingEntries.length}</b><br><br>
+      <i>Try: "all accounting entries", "revenue details", "expense details"</i>`;
+  }
+
+  // ── FULL OVERVIEW ──
+  if (q.includes('overview') || q.includes('summary') || q.includes('dashboard') || q.includes('full') || q.includes('all data') || q.includes('everything') || q.includes('report')) {
+    const today = new Date();
+    const totalRev = accountingEntries.filter(t => t.entry_type === 'credit').reduce((s,t) => s+(t.amount||0), 0);
+    const totalExp = accountingEntries.filter(t => t.entry_type === 'debit').reduce((s,t) => s+(t.amount||0), 0);
+    const pendingTasks = tasks.filter(t => t.column_name !== 'done').length;
+    const doneTasks = tasks.filter(t => t.column_name === 'done').length;
+    const upcoming7 = calendarEvents.filter(e => { const d = Math.ceil((new Date(e.event_date)-today)/(1000*60*60*24)); return d>=0&&d<=7; }).length;
+    const expDSC = dscRecords.filter(d => { if(!d.expiry_date) return false; const days=Math.ceil((new Date(d.expiry_date)-today)/(1000*60*60*24)); return days>=0&&days<=30; }).length;
+    const expiredDSC = dscRecords.filter(d => d.expiry_date && new Date(d.expiry_date) < today).length;
+    const totalFilings = gstReturns.length + itrFilings.length + tdsReturns.length + rocFilings.length;
+    const pct = tasks.length ? Math.round((doneTasks/tasks.length)*100) : 0;
+    return `<b>🏠 Complete Workspace Overview</b><br><br>
+      <b>👥 Clients</b><br>
+      &nbsp;&nbsp;Total: <b>${clients.length}</b> | Active: <b>${clients.filter(c=>c.status==='Active').length}</b> | Inactive: <b>${clients.filter(c=>c.status==='Inactive').length}</b><br><br>
+      <b>📊 GST Returns</b><br>
+      &nbsp;&nbsp;Filed: <b>${gstReturns.filter(g=>g.status==='Filed').length}</b> | Pending: <b>${gstReturns.filter(g=>g.status==='Pending').length}</b> | Overdue: <b>${gstReturns.filter(g=>g.status==='Overdue').length}</b> | Total: <b>${gstReturns.length}</b><br><br>
+      <b>💰 ITR Filings</b><br>
+      &nbsp;&nbsp;Filed: <b>${itrFilings.filter(i=>i.status==='Filed').length}</b> | Pending: <b>${itrFilings.filter(i=>i.status!=='Filed').length}</b> | Total: <b>${itrFilings.length}</b><br><br>
+      <b>🧾 TDS Returns</b><br>
+      &nbsp;&nbsp;Filed: <b>${tdsReturns.filter(t=>t.status==='Filed').length}</b> | Pending: <b>${tdsReturns.filter(t=>t.status==='Pending').length}</b> | Total: <b>${tdsReturns.length}</b><br><br>
+      <b>🏛️ ROC Filings</b><br>
+      &nbsp;&nbsp;Filed: <b>${rocFilings.filter(r=>r.status==='Filed').length}</b> | Pending: <b>${rocFilings.filter(r=>r.status!=='Filed').length}</b> | Total: <b>${rocFilings.length}</b><br><br>
+      <b>🛡️ Audits</b><br>
+      &nbsp;&nbsp;In Progress: <b>${audits.filter(a=>a.status==='In Progress').length}</b> | Completed: <b>${audits.filter(a=>a.status==='Completed').length}</b> | Total: <b>${audits.length}</b><br><br>
+      <b>✍️ DSC Records</b><br>
+      &nbsp;&nbsp;Total: <b>${dscRecords.length}</b> | Expiring (30d): <b style="color:#f59e0b">${expDSC}</b> | Expired: <b style="color:#ef4444">${expiredDSC}</b><br><br>
+      <b>✅ Tasks</b><br>
+      &nbsp;&nbsp;Done: <b>${doneTasks}</b> | Pending: <b>${pendingTasks}</b> | Completion: <b>${pct}%</b><br><br>
+      <b>📅 Calendar</b><br>
+      &nbsp;&nbsp;Due This Week: <b>${upcoming7}</b> | Total Events: <b>${calendarEvents.length}</b><br><br>
+      <b>🧮 Finance</b><br>
+      &nbsp;&nbsp;Revenue: <b style="color:#10b981">₹${totalRev.toLocaleString('en-IN')}</b> | Expenses: <b style="color:#ef4444">₹${totalExp.toLocaleString('en-IN')}</b> | Net: <b style="color:${(totalRev-totalExp)>=0?'#10b981':'#ef4444'}">₹${Math.abs(totalRev-totalExp).toLocaleString('en-IN')} ${(totalRev-totalExp)>=0?'CR':'DR'}</b><br><br>
+      <b>📋 Total Filings: ${totalFilings}</b>`;
+  }
+
+  // ── SEARCH BY CLIENT NAME ──
+  const matchedClient = clients.find(c => c.name && q.includes(c.name.toLowerCase()));
+  if (matchedClient) {
+    const c = matchedClient;
+    const cGST = gstReturns.filter(g => g.client_name === c.name);
+    const cITR = itrFilings.filter(i => i.client_name === c.name);
+    const cTDS = tdsReturns.filter(t => t.client_name === c.name);
+    const cROC = rocFilings.filter(r => r.company === c.name);
+    const cAudit = audits.filter(a => a.client === c.name);
+    const cDSC = dscRecords.filter(d => (d.client_name || d.name) === c.name);
+    return `<b>👥 ${c.name}</b><br><br>
+      <b>Client Details:</b><br>
+      📋 Type: ${c.type || '-'}<br>
+      🪪 PAN: ${c.pan || '-'}<br>
+      🏢 TAN: ${c.tan || '-'}<br>
+      🔢 CIN/LLPIN: ${c.cin || '-'}<br>
+      🏷️ GSTIN: ${c.gst || '-'}<br>
+      📞 Phone: ${c.phone || '-'}<br>
+      📧 Email: ${c.email || '-'}<br>
+      👤 Contact: ${c.contact_person || '-'}<br>
+      ✅ Status: <span style="color:${c.status==='Active'?'#10b981':'#f59e0b'}">${c.status || '-'}</span><br><br>
+      <b>Filing History:</b><br>
+      📊 GST Returns: <b>${cGST.length}</b> ${cGST.filter(g=>g.status==='Pending').length ? `<span style="color:#f59e0b">(${cGST.filter(g=>g.status==='Pending').length} pending)</span>` : ''}<br>
+      💰 ITR Filings: <b>${cITR.length}</b> ${cITR.filter(i=>i.status!=='Filed').length ? `<span style="color:#f59e0b">(${cITR.filter(i=>i.status!=='Filed').length} pending)</span>` : ''}<br>
+      🧾 TDS Returns: <b>${cTDS.length}</b> ${cTDS.filter(t=>t.status==='Pending').length ? `<span style="color:#f59e0b">(${cTDS.filter(t=>t.status==='Pending').length} pending)</span>` : ''}<br>
+      🏛️ ROC Filings: <b>${cROC.length}</b><br>
+      🛡️ Audits: <b>${cAudit.length}</b><br>
+      ✍️ DSC Records: <b>${cDSC.length}</b>`;
+  }
+
+  // ── DEFAULT HELP ──
+  return `<b>🤖 Ganga AI — What can I help you with?</b><br><br>
+    <b>👥 Clients:</b> "list all clients" · "active clients" · "company clients" · "llp clients"<br>
+    <b>📊 GST:</b> "pending gst" · "overdue gst" · "filed gst" · "all gst returns"<br>
+    <b>💰 ITR:</b> "pending itr" · "filed itr" · "all itr filings"<br>
+    <b>🧾 TDS:</b> "pending tds" · "overdue tds" · "all tds returns"<br>
+    <b>🏛️ ROC:</b> "pending roc" · "overdue roc" · "all roc filings"<br>
+    <b>✍️ DSC:</b> "expiring dsc" · "expired dsc" · "all dsc records"<br>
+    <b>🛡️ Audit:</b> "pending audit" · "all audits" · "completed audits"<br>
+    <b>✅ Tasks:</b> "pending tasks" · "in progress tasks" · "all tasks"<br>
+    <b>📅 Calendar:</b> "today events" · "this week due" · "all upcoming events"<br>
+    <b>🧮 Finance:</b> "revenue" · "expenses" · "profit" · "all accounting entries"<br>
+    <b>🏷️ PT:</b> "professional tax" · "pt filing"<br>
+    <b>👨‍💼 Payroll:</b> "payroll summary" · "all payroll"<br>
+    <b>📝 DIR-3:</b> "dir3 kyc" · "director kyc"<br>
+    <b>🏠 Overview:</b> "full dashboard summary" · "complete overview"<br><br>
+    <i>Or type any client name to see their complete profile!</i>`;
 }
-
-function sendAIMessage(presetMsg) {
-  const input = document.getElementById('aiInput');
-  const msg = presetMsg || input?.value.trim();
-  if (!msg) return;
-  const chatEl = document.getElementById('chatMessages');
-  if (!chatEl) return;
-  const name = getCurrentUserName();
-  const initial = name.charAt(0).toUpperCase();
-  chatEl.insertAdjacentHTML('beforeend', `<div class="chat-msg user"><div class="msg-avatar">${initial}</div><div class="msg-content">${escapeHtml(msg)}</div></div>`);
-  if (input) input.value = '';
-  chatEl.scrollTop = chatEl.scrollHeight;
-  const typingId = 'typing-'+Date.now();
-  chatEl.insertAdjacentHTML('beforeend', `<div class="chat-msg bot" id="${typingId}"><div class="msg-avatar">🤖</div><div class="msg-content"><em>Thinking...</em></div></div>`);
-  chatEl.scrollTop = chatEl.scrollHeight;
-  setTimeout(() => { const el=document.getElementById(typingId); if(el) el.querySelector('.msg-content').innerHTML=getAIResponse(msg); chatEl.scrollTop=chatEl.scrollHeight; }, 700);
-}
-
-function aiChip(text) { navigate('ai'); setTimeout(() => sendAIMessage(text), 200); }
-function openAI() { navigate('ai'); }
-
 /* =========================================================
    26. DOCUMENTS
    ========================================================= */
