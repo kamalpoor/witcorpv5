@@ -3000,10 +3000,17 @@ function openModal(type) {
         <button class="btn-primary" style="width:100%" onclick="submitNewAudit()">✅ Schedule Audit</button>`
     },
     newDSC: { title:'✍️ New DSC', body:`<div style="text-align:center;padding:20px"><div style="font-size:36px">✍️</div><p style="margin:12px 0">Use the DSC & eSign form</p><button class="btn-primary" onclick="closeModal();navigate('dsc')">Go to DSC & eSign</button></div>` },
-    addVaultItem: {
+   addVaultItem: {
   title: '🔐 Add New Credential',
   body: `
-    <div class="form-group"><label>Client Name *</label><input type="text" class="form-control" id="vaultLabel" placeholder="e.g. Ramesh Kumar, ABC Pvt Ltd" /></div>
+    <div class="form-group"><label>Client Name *</label>
+      <select class="form-control" id="vaultLabel">
+        ${getClientOptionsHtml()}
+      </select>
+    </div>
+    <div class="form-group"><label>Individual Name <span style="font-size:11px;color:var(--text-muted)">(optional)</span></label>
+      <input type="text" class="form-control" id="vaultIndividualName" placeholder="e.g. Ramesh Kumar (director/person name)" />
+    </div>
     <div class="form-group"><label>Folder / Category</label>
       <select class="form-control" id="vaultFolder">${VAULT_FOLDERS.map(f=>`<option>${f}</option>`).join('')}</select>
     </div>
@@ -3200,8 +3207,12 @@ async function submitNewAudit() {
 }
 
 async function submitVaultItem() {
-  const label = document.getElementById('vaultLabel')?.value.trim();
-  if (!label) { showToast('Client name is required'); return; }
+  const clientSel = document.getElementById('vaultLabel');
+  const clientId = clientSel?.value;
+  const clientName = clientId ? getClientNameById(clientId) : '';
+  if (!clientName) { showToast('Please select a client'); return; }
+  const individualName = document.getElementById('vaultIndividualName')?.value.trim() || '';
+  const label = individualName ? `${clientName} — ${individualName}` : clientName;
   const body = {
     label,
     folder: document.getElementById('vaultFolder')?.value || 'General',
