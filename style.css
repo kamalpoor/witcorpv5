@@ -1795,6 +1795,38 @@ opacity:1;
   color: #fff;
   border-color: var(--primary);
 }
+/* Accounting Hub Category Boxes */
+.acc-cat-box {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  transition: all 0.18s;
+  line-height: 1.6;
+}
+.acc-cat-box span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.acc-cat-box:hover,
+.acc-cat-box.active {
+  border-color: var(--primary);
+  background: var(--primary-glow);
+  color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(99,102,241,0.15);
+}
+.acc-cat-box.active span {
+  color: var(--primary);
+}
 /* =============================================================
    END OF style.css — WITCORP | Complete | All Bugs Fixed
    ============================================================= */
