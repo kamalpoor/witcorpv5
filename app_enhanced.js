@@ -336,7 +336,8 @@ function setTheme(themeName) {
 }
 
 function initTheme() {
-  // Body pe already lag chuka hai (head script se), sirf swatches sync karo
+  // index.html ne already theme laga di hai
+  // Sirf swatches sync karo, setTheme mat bulao (warna conflict)
   const savedBodyTheme = localStorage.getItem('witcorp-body-theme') || 'theme-violet';
   document.querySelectorAll('.swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.theme === savedBodyTheme);
