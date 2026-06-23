@@ -326,7 +326,7 @@ function initRealtimeNotifications() {
    ========================================================= */
 
 function setTheme(themeName) {
-  const themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold'];
+  const themes = ['theme-violet','theme-blue','theme-emerald','theme-rose','theme-amber','theme-cyan','theme-dark','theme-midnight','theme-forest','theme-sunset','theme-sakura','theme-gold','theme-teal','theme-grape'];
   themes.forEach(t => document.body.classList.remove(t));
   document.body.classList.add(themeName);
   localStorage.setItem('witcorp-body-theme', themeName);
