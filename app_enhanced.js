@@ -660,7 +660,7 @@ async function renderTeamContacts() {
   if (!el) return;
   const myEmail = getCurrentUserEmail();
   const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
-  const others = (profiles || []).filter(p => p.email !== myEmail);
+  const others = (profiles || []).filter(p => p.email !== myEmail && p.status === 'approved');
   if (!others.length) {
     el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet.</div>`;
     return;
@@ -2585,8 +2585,11 @@ function columnLabel(col) { return { todo:'To Do', inprogress:'In Progress', don
 async function addTask(col) {
   const myName = getCurrentUserName();
   // profiles table se saare members fetch karo
-  const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
-  const profileOpts = '<option value="">-- Select Assignee --</option>' +
+  const profiles = await supabaseQuery('profiles', { 
+  order: 'full_name.asc',
+  filters: 'status=eq.approved'
+});
+const profileOpts = '<option value="">-- Select Assignee --</option>' +
     (profiles || []).map(p => {
       const name = p.full_name || (p.email ? p.email.split('@')[0] : '');
       return `<option value="${escapeHtml(name)}" ${name === myName ? 'selected' : ''}>${escapeHtml(name)}</option>`;
@@ -3939,7 +3942,10 @@ function closeAccForm() {
 }
 
 async function loadAccTeamDropdowns() {
-  const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
+  const profiles = await supabaseQuery('profiles', { 
+    order: 'full_name.asc',
+    filters: 'status=eq.approved'
+  });
   const opts = '<option value="">-- Select --</option>' +
     (profiles || []).map(p => {
       const name = p.full_name || p.email?.split('@')[0] || '';
@@ -4524,7 +4530,7 @@ async function renderOnlinePanel() {
   STATE.userPresence[myEmail] = { is_online: true };
 
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=*`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=*&status=eq.approved`, {
     headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
   });
   const profiles = res.ok ? await res.json() : [];
