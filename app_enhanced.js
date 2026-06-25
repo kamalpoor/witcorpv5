@@ -1488,6 +1488,8 @@ async function saveClientEdit(id) {
   if (ok) {
     const idx = STATE.clients.findIndex(c => c.id === id);
     if (idx !== -1) STATE.clients[idx] = { ...STATE.clients[idx], ...updated, updated_by: getUpdatedByLabel(), updated_at: new Date().toISOString() };
+     const oldClient = STATE.clients.find(c => c.id === id);
+      logActivity('UPDATE', 'Clients', id, updated.name, oldClient, updated, `Client "${updated.name}" updated`);
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client updated!');
   } else { showToast('❌ Update failed.'); }
    sendNotifToAll('✏️ Client Updated', `${updated.name} updated by ${getCurrentUserName()}`, '👥');
@@ -1513,6 +1515,7 @@ async function deleteClientConfirmed(id) {
   const ok = await supabaseDelete('clients', id);
   if (ok) {
     STATE.clients = STATE.clients.filter(c => c.id !== id);
+     logActivity('DELETE', 'Clients', id, c.name, c, null, `Client "${c.name}" deleted`);
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('🗑️ Client deleted');
   } else { showToast('❌ Delete failed'); }
    sendNotifToAll('🗑️ Client Deleted', `${c.name} deleted by ${getCurrentUserName()}`, '👥');
@@ -3841,6 +3844,7 @@ async function submitAddClient() {
   const result = await supabaseInsert('clients', body);
   if (result && result[0]) {
     STATE.clients.unshift(result[0]);
+     logActivity('INSERT', 'Clients', result[0].id, body.name, null, body, `Client "${body.name}" added`);
     closeModal(); renderClientTable(); updateDashboardStats(); populateAllClientDropdowns(); showToast('✅ Client added!');
   } else { showToast('❌ Failed to add client'); }
    sendNotifToAll('👥 New Client Added', `${body.name} added by ${getCurrentUserName()}`, '👥');
@@ -6147,6 +6151,248 @@ function filterDeadlineAlerts() {
         </div>
       </div>`;
   }).join('');
+}
+/* =========================================================
+   AUDIT TRAIL / ACTIVITY LOG
+   ========================================================= */
+
+async function logActivity(action, module, recordId, recordName, oldValue, newValue, description) {
+  try {
+    const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+    const body = {
+      user_name: getCurrentUserName(),
+      user_email: getCurrentUserEmail(),
+      action,
+      module,
+      record_id: String(recordId || ''),
+      record_name: recordName || '',
+      old_value: oldValue || null,
+      new_value: newValue || null,
+      description: description || `${action} in ${module}`
+    };
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_logs`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(body)
+    });
+  } catch(e) { console.warn('logActivity error:', e); }
+}
+
+async function loadActivityLogs(filters = {}) {
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  let url = `${SUPABASE_URL}/rest/v1/activity_logs?order=created_at.desc&limit=200`;
+  if (filters.module) url += `&module=eq.${encodeURIComponent(filters.module)}`;
+  if (filters.user_email) url += `&user_email=eq.${encodeURIComponent(filters.user_email)}`;
+  if (filters.from) url += `&created_at=gte.${filters.from}`;
+  if (filters.to) url += `&created_at=lte.${filters.to}`;
+  try {
+    const res = await fetch(url, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+    });
+    return res.ok ? await res.json() : [];
+  } catch(e) { return []; }
+}
+
+async function renderActivityLog() {
+  const tbody = document.getElementById('activityLogBody');
+  const search = document.getElementById('actLogSearch')?.value.toLowerCase() || '';
+  const module = document.getElementById('actLogModule')?.value || '';
+  const from = document.getElementById('actLogFrom')?.value || '';
+  const to = document.getElementById('actLogTo')?.value ? document.getElementById('actLogTo').value + 'T23:59:59' : '';
+
+  const logs = await loadActivityLogs({ module, from, to });
+  STATE.activityLogs = logs;
+
+  const filtered = logs.filter(l =>
+    (!search || (l.user_name||'').toLowerCase().includes(search) ||
+     (l.record_name||'').toLowerCase().includes(search) ||
+     (l.description||'').toLowerCase().includes(search))
+  );
+
+  const countEl = document.getElementById('actLogCount');
+  if (countEl) countEl.textContent = `${filtered.length} records`;
+
+  if (!tbody) return;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No activity found</div></div></td></tr>`;
+    return;
+  }
+
+  const actionColor = { INSERT:'#10b981', UPDATE:'#f59e0b', DELETE:'#ef4444' };
+  const actionLabel = { INSERT:'➕ Added', UPDATE:'✏️ Updated', DELETE:'🗑️ Deleted' };
+  const moduleIcon = {
+    Clients:'👥', GST:'📊', TDS:'🧾', ITR:'💰', ROC:'🏛️',
+    DSC:'✍️', Audit:'🛡️', Tasks:'✅', Vault:'🔐', Accounting:'🧮',
+    PT:'🏷️', Payroll:'👨‍💼', DIR3:'📝', Calendar:'📅', Documents:'📁'
+  };
+
+  tbody.innerHTML = filtered.map(l => {
+    const oldVal = l.old_value ? JSON.stringify(l.old_value, null, 2) : '-';
+    const newVal = l.new_value ? JSON.stringify(l.new_value, null, 2) : '-';
+    const hasChanges = l.old_value && l.new_value;
+    return `
+      <tr>
+        <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">${formatDateTime(l.created_at)}</td>
+        <td>
+          <div style="font-weight:600;font-size:13px">${escapeHtml(l.user_name||'-')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(l.user_email||'')}</div>
+        </td>
+        <td>
+          <span style="font-size:13px">${moduleIcon[l.module]||'📋'}</span>
+          <span style="font-size:12px;font-weight:600;margin-left:4px">${escapeHtml(l.module||'-')}</span>
+        </td>
+        <td>
+          <span style="background:${actionColor[l.action]||'#6366f1'}22;color:${actionColor[l.action]||'#6366f1'};padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">
+            ${actionLabel[l.action]||l.action}
+          </span>
+        </td>
+        <td style="font-size:12px;font-weight:600">${escapeHtml(l.record_name||'-')}</td>
+        <td style="font-size:12px;color:var(--text-muted);max-width:180px">${escapeHtml(l.description||'-')}</td>
+        <td style="font-size:11px">
+          ${hasChanges ? `
+            <button onclick="showChangeLog(${l.id})" 
+              style="background:var(--primary-glow);color:var(--primary);border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">
+              🔍 View Changes
+            </button>` : '<span style="color:var(--text-muted)">-</span>'}
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function showChangeLog(id) {
+  const log = (STATE.activityLogs || []).find(l => l.id === id);
+  if (!log) return;
+  const oldVal = log.old_value || {};
+  const newVal = log.new_value || {};
+  const allKeys = [...new Set([...Object.keys(oldVal), ...Object.keys(newVal)])];
+  const changedKeys = allKeys.filter(k => JSON.stringify(oldVal[k]) !== JSON.stringify(newVal[k]));
+
+  openModalWithContent(`🔍 Change Log — ${escapeHtml(log.record_name||'')}`, `
+    <div style="margin-bottom:12px;font-size:12px;color:var(--text-muted)">
+      ${escapeHtml(log.module)} • ${escapeHtml(log.user_name)} • ${formatDateTime(log.created_at)}
+    </div>
+    ${changedKeys.length ? `
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--bg)">
+            <th style="padding:8px 12px;text-align:left;font-weight:700">Field</th>
+            <th style="padding:8px 12px;text-align:left;color:#ef4444;font-weight:700">Old Value</th>
+            <th style="padding:8px 12px;text-align:left;color:#10b981;font-weight:700">New Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${changedKeys.map(k => `
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 12px;font-weight:600;text-transform:capitalize">${escapeHtml(k.replace(/_/g,' '))}</td>
+              <td style="padding:8px 12px;color:#ef4444;background:#fee2e222">${escapeHtml(String(oldVal[k]||'-'))}</td>
+              <td style="padding:8px 12px;color:#10b981;background:#d1fae522">${escapeHtml(String(newVal[k]||'-'))}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>` : '<div style="text-align:center;padding:20px;color:var(--text-muted)">No field changes detected</div>'}
+    <button class="btn-primary" style="width:100%;margin-top:12px" onclick="closeModal()">Close</button>
+  `);
+}
+async function exportActivityPDF() {
+  const logs = STATE.activityLogs || [];
+  if (!logs.length) { showToast('❌ No logs to export'); return; }
+
+  const today = new Date();
+  const actionColor = { INSERT:'#10b981', UPDATE:'#f59e0b', DELETE:'#ef4444' };
+  const actionLabel = { INSERT:'Added', UPDATE:'Updated', DELETE:'Deleted' };
+
+  const rows = logs.map(l => `
+    <tr>
+      <td>${formatDateTime(l.created_at)}</td>
+      <td><strong>${escapeHtml(l.user_name||'-')}</strong><br><span style="font-size:11px;color:#64748b">${escapeHtml(l.user_email||'')}</span></td>
+      <td>${escapeHtml(l.module||'-')}</td>
+      <td><span style="color:${actionColor[l.action]||'#6366f1'};font-weight:700">${actionLabel[l.action]||l.action}</span></td>
+      <td>${escapeHtml(l.record_name||'-')}</td>
+      <td>${escapeHtml(l.description||'-')}</td>
+    </tr>`).join('');
+
+  const html = `
+    <!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Activity Log — WITCORP</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#0f172a;font-size:12px}
+      h1{color:#6366f1;margin-bottom:4px;font-size:20px}
+      .sub{color:#64748b;font-size:12px;margin-bottom:20px}
+      table{width:100%;border-collapse:collapse}
+      thead{background:#6366f1;color:#fff}
+      th{padding:10px 12px;text-align:left;font-weight:600;font-size:12px}
+      td{padding:8px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+      tr:nth-child(even){background:#f8fafc}
+      .summary{display:flex;gap:12px;margin-bottom:20px}
+      .sum-box{flex:1;padding:12px;border-radius:8px;text-align:center}
+      .sum-num{font-size:22px;font-weight:800}
+      .sum-label{font-size:11px;margin-top:4px}
+      .footer{margin-top:20px;font-size:10px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px}
+      @media print{body{padding:15px}}
+    </style></head><body>
+    <h1>📋 Audit Trail — Activity Log</h1>
+    <div class="sub">Generated by WITCORP India Advisors LLP • ${today.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>
+    <div class="summary">
+      <div class="sum-box" style="background:#d1fae5;color:#10b981">
+        <div class="sum-num">${logs.filter(l=>l.action==='INSERT').length}</div>
+        <div class="sum-label">➕ Added</div>
+      </div>
+      <div class="sum-box" style="background:#fef3c7;color:#f59e0b">
+        <div class="sum-num">${logs.filter(l=>l.action==='UPDATE').length}</div>
+        <div class="sum-label">✏️ Updated</div>
+      </div>
+      <div class="sum-box" style="background:#fee2e2;color:#ef4444">
+        <div class="sum-num">${logs.filter(l=>l.action==='DELETE').length}</div>
+        <div class="sum-label">🗑️ Deleted</div>
+      </div>
+      <div class="sum-box" style="background:#ede9fe;color:#6366f1">
+        <div class="sum-num">${logs.length}</div>
+        <div class="sum-label">📋 Total</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Date & Time</th><th>User</th><th>Module</th><th>Action</th><th>Record</th><th>Description</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="footer">WITCORP India Advisors LLP • Confidential • ${today.toLocaleString('en-IN')}</div>
+    </body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+  showToast('✅ PDF ready!');
+}
+
+function exportActivityCSV() {
+  const logs = STATE.activityLogs || [];
+  if (!logs.length) { showToast('❌ No logs to export'); return; }
+
+  const headers = ['Date & Time', 'User Name', 'User Email', 'Module', 'Action', 'Record Name', 'Description'];
+  const rows = logs.map(l => [
+    `"${formatDateTime(l.created_at)}"`,
+    `"${l.user_name||''}"`,
+    `"${l.user_email||''}"`,
+    `"${l.module||''}"`,
+    `"${l.action||''}"`,
+    `"${l.record_name||''}"`,
+    `"${(l.description||'').replace(/"/g,"'")}"`
+  ].join(','));
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `activity_log_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV exported!');
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
