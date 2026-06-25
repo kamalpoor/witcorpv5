@@ -216,6 +216,11 @@
     </div>
     <div class="topbar-actions">
       <button class="topbar-btn" onclick="openAI()">✨ Ask AI</button>
+      <!-- Deadline Alert Bell -->
+<div style="position:relative;cursor:pointer" onclick="openDeadlinePanel()">
+  <span style="font-size:20px">⏰</span>
+  <div id="deadlineBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;align-items:center;justify-content:center">0</div>
+</div>
       <button class="topbar-btn icon-btn" onclick="openNotifications()" id="notifBellBtn" style="position:relative">🔔
       <span id="notifCount" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;align-items:center;justify-content:center;">0</span>
       </button>
@@ -1316,7 +1321,45 @@
   <div class="notif-list" id="notifList" style="max-height:420px;overflow-y:auto"></div>
 </div>
 
-<!-- TOAST -->
+<!-- Deadline Alerts Panel -->
+<div id="deadlinePanel" style="display:none;position:fixed;top:60px;right:80px;width:420px;max-height:80vh;overflow-y:auto;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.25);z-index:9997;">
+  <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1">
+    <div>
+      <div style="font-weight:700;font-size:15px">⏰ Deadline Alerts</div>
+      <div style="font-size:11px;color:var(--text-muted)" id="deadlinePanelCount">Loading...</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="runDeadlineEngine().then(loadDeadlineAlerts).then(renderDeadlineAlertsPanel)" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600">🔄 Refresh</button>
+      <button onclick="closeDeadlinePanel()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">✕</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto">
+    <button id="dlTab_all" onclick="filterDeadlineTab('all')" style="flex:1;padding:10px 8px;border:none;background:none;font-size:12px;font-weight:700;color:var(--primary);border-bottom:2px solid var(--primary);cursor:pointer;white-space:nowrap">All</button>
+    <button id="dlTab_overdue" onclick="filterDeadlineTab('overdue')" style="flex:1;padding:10px 8px;border:none;background:none;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap">🚨 Overdue</button>
+    <button id="dlTab_today" onclick="filterDeadlineTab('today')" style="flex:1;padding:10px 8px;border:none;background:none;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap">📅 Today</button>
+    <button id="dlTab_week" onclick="filterDeadlineTab('week')" style="flex:1;padding:10px 8px;border:none;background:none;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap">📆 This Week</button>
+  </div>
+  <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+    <input type="text" id="deadlineSearch" placeholder="🔍 Search client..." oninput="filterDeadlineAlerts()" style="flex:1;min-width:140px;padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;outline:none" />
+    <select id="deadlineModuleFilter" onchange="filterDeadlineAlerts()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;outline:none">
+      <option value="">All Modules</option>
+      <option value="GST">📊 GST</option>
+      <option value="TDS">🧾 TDS</option>
+      <option value="ITR">💰 ITR</option>
+      <option value="ROC">🏛️ ROC</option>
+      <option value="DSC">✍️ DSC</option>
+    </select>
+    <select id="deadlineSortFilter" onchange="filterDeadlineAlerts()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;outline:none">
+      <option value="due_asc">Due Date ↑</option>
+      <option value="due_desc">Due Date ↓</option>
+      <option value="urgent">Most Urgent</option>
+    </select>
+  </div>
+  <div id="deadlineAlertList" style="padding:12px">
+    <div style="text-align:center;padding:30px;color:var(--text-muted)">Loading alerts...</div>
+  </div>
+</div>
+  <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <!-- SCRIPT: Populate AY dropdown after DOM loads -->
