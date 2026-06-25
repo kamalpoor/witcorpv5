@@ -1196,25 +1196,30 @@ function setCurrentDate() {
 
 function formatDateTime(isoString) {
   if (!isoString) return '-';
-  
-  const d = new Date(isoString);
-  
-  // भारत का time = UTC + 5 घंटे 30 मिनट
-  const istTime = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
-  
-  const day = String(istTime.getUTCDate()).padStart(2, '0');
-  const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
-  const year = istTime.getUTCFullYear();
-  const date = `${day}/${month}/${year}`;
-  
-  let hours = istTime.getUTCHours();
-  const mins = String(istTime.getUTCMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  
-  return `${date} ${hours}:${mins}${ampm}`;
-}
 
+  // Value pehle se IST hai (no Z, no offset) — directly use karo
+  // Z ya +offset hai toh UTC se convert karo
+  let d;
+  if (/Z|[+-]\d{2}:\d{2}$/.test(isoString)) {
+    // UTC hai — IST mein convert karo
+    const utc = new Date(isoString);
+    d = new Date(utc.getTime() + (5.5 * 60 * 60 * 1000));
+  } else {
+    // Already IST hai — directly parse karo, kuch add mat karo
+    d = new Date(isoString);
+  }
+
+  const day   = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year  = d.getFullYear();
+
+  let hours   = d.getHours();
+  const mins  = String(d.getMinutes()).padStart(2, '0');
+  const ampm  = hours >= 12 ? 'PM' : 'AM';
+  hours       = hours % 12 || 12;
+
+  return `${day}/${month}/${year} ${hours}:${mins} ${ampm}`;
+}
 /* =========================================================
    14. DASHBOARD STATS
    ========================================================= */
