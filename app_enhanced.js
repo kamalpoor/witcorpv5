@@ -2426,13 +2426,46 @@ function editDSC(id) {
   const d = STATE.dscRecords.find(x => x.id === id);
   if (!d) return;
   openModalWithContent(`✏️ Edit DSC — ${escapeHtml(d.client_name||d.name||'')}`, `
+    <div class="form-group"><label>Client Name</label>
+      <div class="form-control" style="background:var(--bg)">${escapeHtml(d.client_name||d.name||'-')}</div>
+    </div>
+    <div class="form-group"><label>Individual Name</label>
+      <input type="text" class="form-control" id="editDscIndividual" value="${escapeHtml(d.individual_name||'')}" placeholder="Enter individual name" />
+    </div>
+    <div class="form-group"><label>DSC Type</label>
+      <select class="form-control" id="editDscType">
+        ${['Class 2','Class 3'].map(t=>`<option ${(d.dsc_type||d.type)===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Purpose</label>
+      <select class="form-control" id="editDscPurpose">
+        ${['Income Tax','MCA/ROC','GST','Tender','Banking','Other'].map(p=>`<option ${d.purpose===p?'selected':''}>${p}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>PAN</label>
+      <input type="text" class="form-control" id="editDscPAN" value="${escapeHtml(d.pan||'')}" 
+        maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div class="form-group"><label>DIN</label>
+      <input type="text" class="form-control" id="editDscDIN" value="${escapeHtml(d.din||'')}" 
+        maxlength="8" placeholder="00000000" />
+    </div>
+    <div class="form-group"><label>Validity</label>
+      <select class="form-control" id="editDscValidity">
+        ${['1 Year','2 Years','3 Years'].map(v=>`<option ${d.validity===v?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Expiry Date</label>
+      <input type="date" class="form-control" id="editDscExpiry" value="${d.expiry_date||''}" />
+    </div>
     <div class="form-group"><label>Status</label>
       <select class="form-control" id="editDscStatus">
         ${['Active','Expired','Pending Renewal'].map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group"><label>Expiry Date</label><input type="date" class="form-control" id="editDscExpiry" value="${d.expiry_date||''}" /></div>
-    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="editDscRemarks" value="${escapeHtml(d.remarks||'')}" placeholder="Add remarks..." /></div>
+    <div class="form-group"><label>Remarks</label>
+      <input type="text" class="form-control" id="editDscRemarks" value="${escapeHtml(d.remarks||'')}" placeholder="Add remarks..." />
+    </div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveDSCEdit(${id})">💾 Save</button>
   `);
 }
@@ -2441,14 +2474,17 @@ async function saveDSCEdit(id) {
   const status = document.getElementById('editDscStatus')?.value;
   const expiry_date = document.getElementById('editDscExpiry')?.value;
   const remarks = document.getElementById('editDscRemarks')?.value.trim();
-  const ok = await supabaseUpdate('dsc_records', id, { status, expiry_date, remarks });
-  if (ok) {
-    const idx = STATE.dscRecords.findIndex(d => d.id === id);
-    if (idx !== -1) { STATE.dscRecords[idx].status = status; STATE.dscRecords[idx].expiry_date = expiry_date; STATE.dscRecords[idx].remarks = remarks; STATE.dscRecords[idx].updated_by = getUpdatedByLabel(); STATE.dscRecords[idx].updated_at = new Date().toISOString(); }
-    closeModal(); renderDSCAlerts(); showToast('✅ DSC updated!');
-     sendNotifToAll('✍️ DSC Updated', `DSC updated by ${getCurrentUserName()}`, '✍️');
-  }
-}
+  const individual_name = document.getElementById('editDscIndividual')?.value.trim();
+  const dsc_type = document.getElementById('editDscType')?.value;
+  const purpose = document.getElementById('editDscPurpose')?.value;
+  const pan = document.getElementById('editDscPAN')?.value.trim().toUpperCase();
+  const din = document.getElementById('editDscDIN')?.value.trim();
+  const validity = document.getElementById('editDscValidity')?.value;
+
+  const ok = await supabaseUpdate('dsc_records', id, { 
+    status, expiry_date, remarks, individual_name, 
+    dsc_type, purpose, pan, din, validity 
+  });
 
 function onDscClientChange() {
   const sel = document.getElementById('dscClientSel');
