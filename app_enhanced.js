@@ -1000,7 +1000,7 @@ async function loadAllData() {
       supabaseQuery('tds_returns', { order: 'client_name.asc' }),
       supabaseQuery('audits', { order: 'client.asc' }),
       supabaseQuery('dsc_records', { order: 'client_name.asc' }),
-      supabaseQuery('accounting_entries', { order: 'updated_at.desc' })
+      supabaseQuery('accounting_entries', { order: 'updated_at.desc' }),
       supabaseQuery('tasks', { order: 'title.asc' }),
       supabaseQuery('documents', { order: 'created_at.asc' }),
       supabaseQuery('calendar_events', { order: 'event_date.asc' }), // यह पहले से asc है
@@ -3449,7 +3449,7 @@ function renderActivity() {
   const el = document.getElementById('activityList');
   if (!el) return;
   const activities = [];
-  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => { activities.push({icon:'✅',color:'green',text:'GSTR filed for '+g.client_name,time:g.updated_at ? formatDateTime(g.updated_at) : (g.filed_date||'Recently'),by:g.updated_by||''}); });
+  STATE.gstReturns.filter(g=>g.status==='Filed').slice(0,2).forEach(g => { activities.push({icon:'✅',color:'green',text:'GSTR filed for '+g.client_name,time: g.updated_at ? formatDateTime(g.updated_at) : (g.filed_date ? formatDateTime(g.filed_date) : 'Recently'),by:g.updated_by||''}); });
   STATE.itrFilings.filter(i=>i.status==='Filed').slice(0,2).forEach(i => { activities.push({icon:'💰',color:'blue',text:'ITR filed for '+i.client_name,time:i.updated_at ? formatDateTime(i.updated_at) : (i.filed_date||'Recently'),by:i.updated_by||''}); });
   STATE.tasks.filter(t=>t.column_name==='done').slice(0,2).forEach(t => { activities.push({icon:'✅',color:'orange',text:t.title,time:t.updated_at ? formatDateTime(t.updated_at) : 'Completed',by:t.updated_by||''}); });
   el.innerHTML = activities.length ? activities.slice(0,6).map(a=>`
