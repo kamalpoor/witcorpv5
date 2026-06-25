@@ -5646,7 +5646,10 @@ function playMsgSound() {
     oscillator.stop(ctx.currentTime + 0.3);
   } catch(e) {}
 }
+let _pendingDeleteFn = null;
+
 function confirmDelete(message, onConfirm) {
+  _pendingDeleteFn = onConfirm;
   openModalWithContent('🗑️ Confirm Delete', `
     <div style="text-align:center;padding:10px 0">
       <div style="font-size:40px;margin-bottom:12px">⚠️</div>
@@ -5654,10 +5657,18 @@ function confirmDelete(message, onConfirm) {
       <div style="color:var(--text-muted);font-size:13px;margin-bottom:20px">This action is permanent and cannot be undone.</div>
       <div style="display:flex;gap:10px">
         <button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>
-        <button class="btn-primary" style="flex:1;background:#ef4444" onclick="closeModal();(${onConfirm})()">Delete</button>
+        <button class="btn-primary" style="flex:1;background:#ef4444" onclick="executePendingDelete()">Delete</button>
       </div>
     </div>
   `);
+}
+
+async function executePendingDelete() {
+  closeModal();
+  if (_pendingDeleteFn) {
+    await _pendingDeleteFn();
+    _pendingDeleteFn = null;
+  }
 }
 
 /* =========================================================
