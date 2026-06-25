@@ -2485,7 +2485,21 @@ async function saveDSCEdit(id) {
     status, expiry_date, remarks, individual_name, 
     dsc_type, purpose, pan, din, validity 
   });
-
+  if (ok) {
+    const idx = STATE.dscRecords.findIndex(d => d.id === id);
+    if (idx !== -1) { 
+      STATE.dscRecords[idx] = { 
+        ...STATE.dscRecords[idx], 
+        status, expiry_date, remarks, individual_name,
+        dsc_type, purpose, pan, din, validity,
+        updated_by: getUpdatedByLabel(), 
+        updated_at: new Date().toISOString() 
+      };
+    }
+    closeModal(); renderDSCAlerts(); showToast('✅ DSC updated!');
+    sendNotifToAll('✍️ DSC Updated', `DSC updated by ${getCurrentUserName()}`, '✍️');
+  }
+}
 function onDscClientChange() {
   const sel = document.getElementById('dscClientSel');
   const nameEl = document.getElementById('dscClientName');
