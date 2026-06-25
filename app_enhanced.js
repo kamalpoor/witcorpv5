@@ -993,20 +993,20 @@ function showPageLoader(show) {
 async function loadAllData() {
   try {
     const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events, pt, payroll, dir3] = await Promise.all([
-      supabaseQuery('clients', { order: 'created_at.desc' }),
-      supabaseQuery('gst_returns', { order: 'created_at.desc' }),
-      supabaseQuery('roc_filings', { order: 'created_at.desc' }),
-      supabaseQuery('itr_filings', { order: 'created_at.desc' }),
-      supabaseQuery('tds_returns', { order: 'created_at.desc' }),
-      supabaseQuery('audits', { order: 'created_at.desc' }),
-      supabaseQuery('dsc_records', { order: 'created_at.desc' }),
-      supabaseQuery('accounting_entries', { order: 'created_at.desc' }),
-      supabaseQuery('tasks', { order: 'created_at.desc' }),
-      supabaseQuery('documents', { order: 'created_at.desc' }),
-      supabaseQuery('calendar_events', { order: 'event_date.asc' }),
-      supabaseQuery('professional_tax', { order: 'created_at.desc' }),
-      supabaseQuery('payroll_entries', { order: 'created_at.desc' }),
-      supabaseQuery('dir3_kyc', { order: 'created_at.desc' }),
+      supabaseQuery('clients', { order: 'created_at.asc' }),
+      supabaseQuery('gst_returns', { order: 'created_at.asc' }),
+      supabaseQuery('roc_filings', { order: 'created_at.asc' }),
+      supabaseQuery('itr_filings', { order: 'created_at.asc' }),
+      supabaseQuery('tds_returns', { order: 'created_at.asc' }),
+      supabaseQuery('audits', { order: 'created_at.asc' }),
+      supabaseQuery('dsc_records', { order: 'created_at.asc' }),
+      supabaseQuery('accounting_entries', { order: 'created_at.asc' }),
+      supabaseQuery('tasks', { order: 'created_at.asc' }),
+      supabaseQuery('documents', { order: 'created_at.asc' }),
+      supabaseQuery('calendar_events', { order: 'event_date.asc' }), // यह पहले से asc है
+      supabaseQuery('professional_tax', { order: 'created_at.asc' }),
+      supabaseQuery('payroll_entries', { order: 'created_at.asc' }),
+      supabaseQuery('dir3_kyc', { order: 'created_at.asc' }),
     ]);
     STATE.clients = Array.isArray(clients) ? clients : [];
     STATE.gstReturns = Array.isArray(gst) ? gst : [];
@@ -1196,12 +1196,22 @@ function setCurrentDate() {
 
 function formatDateTime(isoString) {
   if (!isoString) return '-';
+  
   const d = new Date(isoString);
-  const date = d.toLocaleDateString('en-IN');
-  let hours = d.getHours();
-  const mins = String(d.getMinutes()).padStart(2, '0');
+  
+  // भारत का time = UTC + 5 घंटे 30 मिनट
+  const istTime = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+  
+  const day = String(istTime.getUTCDate()).padStart(2, '0');
+  const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
+  const year = istTime.getUTCFullYear();
+  const date = `${day}/${month}/${year}`;
+  
+  let hours = istTime.getUTCHours();
+  const mins = String(istTime.getUTCMinutes()).padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
+  
   return `${date} ${hours}:${mins}${ampm}`;
 }
 
