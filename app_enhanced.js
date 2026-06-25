@@ -2341,9 +2341,12 @@ function renderDSCAlerts() {
   if (!el) return;
   if (!STATE.dscRecords.length) {
     el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✍️</div><div class="empty-state-text">No DSC records</div></div>';
-    updateDashboardStats(); return;
+    updateDashboardStats(); 
+    return;
   }
+  
   const sorted = [...STATE.dscRecords].sort((a,b) => new Date(a.expiry_date||'9999')-new Date(b.expiry_date||'9999'));
+  
   el.innerHTML = sorted.map(d => {
     const days = dscDaysLeft(d.expiry_date);
     const urgent = days !== null && days <= 30;
@@ -2351,32 +2354,53 @@ function renderDSCAlerts() {
     const dscType = d.dsc_type || d.type || '-';
     const purpose = d.purpose || '-';
     const expiryDate = d.expiry_date || d.expiry || '-';
-   return `
-      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;">
-        <div style="width:42px;height:42px;border-radius:10px;background:${days !== null && days < 0 ? '#fee2e2' : urgent ? '#fef3c7' : 'var(--primary-glow)'};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">✍️</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">${escapeHtml(clientName)} <span style="font-size:12px;font-weight:500;color:var(--text-muted);">(${escapeHtml(dscType)})</span></div>
-          ${d.individual_name ? `<div style="font-size:12px;color:var(--primary);font-weight:600;margin-bottom:4px;">👤 ${escapeHtml(d.individual_name)}</div>` : ''}
-          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:4px;">
-            <span>📋 <strong style="color:var(--text)">Purpose:</strong> ${escapeHtml(purpose)}</span>
-            <span>📅 <strong style="color:var(--text)">Expiry:</strong> ${escapeHtml(expiryDate)}</span>
-            ${d.pan ? `<span>🪪 <strong style="color:var(--text)">PAN:</strong> ${escapeHtml(d.pan)}</span>` : ''}
+    
+    return `
+      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:start">
+          
+          <!-- ICON -->
+          <div style="width:48px;height:48px;border-radius:10px;background:${days !== null && days < 0 ? '#fee2e2' : urgent ? '#fef3c7' : 'var(--primary-glow)'};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">✍️</div>
+          
+          <!-- CONTENT -->
+          <div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+              <div style="font-size:15px;font-weight:700;color:var(--text)">${escapeHtml(clientName)}</div>
+              <span style="font-size:12px;font-weight:500;color:var(--text-muted);background:var(--border);padding:2px 8px;border-radius:4px">${escapeHtml(dscType)}</span>
+            </div>
+            
+            ${d.individual_name ? `<div style="font-size:13px;color:var(--primary);font-weight:600;margin-bottom:6px">👤 ${escapeHtml(d.individual_name)}</div>` : ''}
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:8px">
+              <span>📋 <strong style="color:var(--text)">Purpose:</strong> ${escapeHtml(purpose)}</span>
+              <span>📅 <strong style="color:var(--text)">Expiry:</strong> ${escapeHtml(expiryDate)}</span>
+              ${d.pan ? `<span>🪪 <strong style="color:var(--text)">PAN:</strong> ${escapeHtml(d.pan)}</span>` : ''}
+              ${d.din ? `<span>🔢 <strong style="color:var(--text)">DIN:</strong> ${escapeHtml(d.din)}</span>` : ''}
+            </div>
+            
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+              ${dscStatusLabel(expiryDate)}
+              ${d.remarks ? `<span style="font-size:11px;color:var(--text-muted);background:var(--bg);padding:2px 6px;border-radius:4px">📝 ${escapeHtml(d.remarks)}</span>` : ''}
+            </div>
+            
+            ${d.updated_by || d.updated_at ? `<div style="font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:6px;margin-top:6px">
+              🖊️ ${escapeHtml(d.updated_by||'')} 
+              ${d.updated_at ? '· 🕐 '+formatDateTime(d.updated_at) : ''}
+            </div>` : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            ${dscStatusLabel(expiryDate)}
-            ${d.remarks ? `<span style="font-size:11px;color:var(--text-muted);">📝 ${escapeHtml(d.remarks)}</span>` : ''}
+          
+          <!-- BUTTONS -->
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+            <button class="btn-outline" style="padding:6px 12px;font-size:12px;white-space:nowrap" onclick="editDSC(${d.id})">✏️ Edit</button>
+            <button class="btn-outline" style="padding:6px 12px;font-size:12px;border-color:#ef4444;color:#ef4444;white-space:nowrap" onclick="deleteDSC(${d.id})">🗑️ Delete</button>
           </div>
-          ${d.updated_by || d.updated_at ? `<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">🖊 ${escapeHtml(d.updated_by||'')} ${d.updated_at ? '· '+formatDateTime(d.updated_at) : ''}</div>` : ''}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-          <button class="btn-outline" style="padding:5px 12px;font-size:12px;" onclick="editDSC(${d.id})">✏️ Edit</button>
-          <button class="btn-outline" style="padding:5px 12px;font-size:12px;border-color:#ef4444;color:#ef4444;" onclick="deleteDSC(${d.id})">🗑️ Delete</button>
+          
         </div>
       </div>`;
   }).join('');
+  
   updateDashboardStats();
 }
-
 function editDSC(id) {
   const d = STATE.dscRecords.find(x => x.id === id);
   if (!d) return;
@@ -2436,6 +2460,7 @@ async function submitDSC() {
     client_name: clientName,
     client_id: clientId || null,
     individual_name: individualName,
+    din: document.getElementById('dscDIN')?.value.trim() || '',
     pan: panEl?.value.trim() || '',
     din: document.getElementById('dscDIN')?.value.trim() || '',
     dsc_type: typeSel?.value || 'Class 3',
