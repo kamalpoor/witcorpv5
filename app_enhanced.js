@@ -351,7 +351,7 @@ function initTheme() {
 const VAULT_FOLDERS = ['General', 'GST', 'MCA', 'TDS', 'ITR', 'Banking', 'Gmail', 'Clients', 'Other'];
 
 async function loadVaultData() {
-  const creds = await supabaseQuery('vault_credentials', { order: 'folder.asc,created_at.desc' });
+  const creds = await supabaseQuery('vault_credentials', { order: 'label.asc' });
   STATE.vaultCredentials = Array.isArray(creds) ? creds : [];
 }
 
@@ -993,20 +993,20 @@ function showPageLoader(show) {
 async function loadAllData() {
   try {
     const [clients, gst, roc, itr, tds, audits, dsc, acc, tasks, docs, events, pt, payroll, dir3] = await Promise.all([
-      supabaseQuery('clients', { order: 'created_at.asc' }),
-      supabaseQuery('gst_returns', { order: 'created_at.asc' }),
-      supabaseQuery('roc_filings', { order: 'created_at.asc' }),
-      supabaseQuery('itr_filings', { order: 'created_at.asc' }),
-      supabaseQuery('tds_returns', { order: 'created_at.asc' }),
-      supabaseQuery('audits', { order: 'created_at.asc' }),
-      supabaseQuery('dsc_records', { order: 'created_at.asc' }),
-      supabaseQuery('accounting_entries', { order: 'created_at.asc' }),
-      supabaseQuery('tasks', { order: 'created_at.asc' }),
+      supabaseQuery('clients', { order: 'name.asc' }),
+      supabaseQuery('gst_returns', { order: 'client_name.asc' }),
+      supabaseQuery('roc_filings', { order: 'company.asc' }),
+      supabaseQuery('itr_filings', { order: 'client_name.asc' }),
+      supabaseQuery('tds_returns', { order: 'client_name.asc' }),
+      supabaseQuery('audits', { order: 'client.asc' }),
+      supabaseQuery('dsc_records', { order: 'client_name.asc' }),
+      supabaseQuery('accounting_entries', { order: 'narration.asc' }),
+      supabaseQuery('tasks', { order: 'title.asc' }),
       supabaseQuery('documents', { order: 'created_at.asc' }),
       supabaseQuery('calendar_events', { order: 'event_date.asc' }), // यह पहले से asc है
-      supabaseQuery('professional_tax', { order: 'created_at.asc' }),
-      supabaseQuery('payroll_entries', { order: 'created_at.asc' }),
-      supabaseQuery('dir3_kyc', { order: 'created_at.asc' }),
+      supabaseQuery('professional_tax', { order: 'client_name.asc' }),
+      supabaseQuery('payroll_entries', { order: 'client_name.asc' }),
+      supabaseQuery('dir3_kyc', { order: 'client_name.asc' }),
     ]);
     STATE.clients = Array.isArray(clients) ? clients : [];
     STATE.gstReturns = Array.isArray(gst) ? gst : [];
