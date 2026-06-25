@@ -1000,7 +1000,7 @@ async function loadAllData() {
       supabaseQuery('tds_returns', { order: 'client_name.asc' }),
       supabaseQuery('audits', { order: 'client.asc' }),
       supabaseQuery('dsc_records', { order: 'client_name.asc' }),
-      supabaseQuery('accounting_entries', { order: 'narration.asc' }),
+      supabaseQuery('accounting_entries', { order: 'Client_name.asc' }),
       supabaseQuery('tasks', { order: 'title.asc' }),
       supabaseQuery('documents', { order: 'created_at.asc' }),
       supabaseQuery('calendar_events', { order: 'event_date.asc' }), // यह पहले से asc है
