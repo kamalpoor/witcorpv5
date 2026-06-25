@@ -1197,24 +1197,19 @@ function setCurrentDate() {
 function formatDateTime(isoString) {
   if (!isoString) return '-';
 
-  // Value pehle se IST hai (no Z, no offset) — directly use karo
-  // Z ya +offset hai toh UTC se convert karo
-  let d;
-  if (/Z|[+-]\d{2}:\d{2}$/.test(isoString)) {
-    // UTC hai — IST mein convert karo
-    const utc = new Date(isoString);
-    d = new Date(utc.getTime() + (5.5 * 60 * 60 * 1000));
-  } else {
-    // Already IST hai — directly parse karo, kuch add mat karo
-    d = new Date(isoString);
-  }
+  const normalized = isoString.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(isoString)
+    ? isoString
+    : isoString + 'Z';
 
-  const day   = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year  = d.getFullYear();
+  const utc = new Date(normalized);
+  const ist = new Date(utc.getTime() + (5.5 * 60 * 60 * 1000));
 
-  let hours   = d.getHours();
-  const mins  = String(d.getMinutes()).padStart(2, '0');
+  const day   = String(ist.getUTCDate()).padStart(2, '0');
+  const month = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const year  = ist.getUTCFullYear();
+
+  let hours   = ist.getUTCHours();
+  const mins  = String(ist.getUTCMinutes()).padStart(2, '0');
   const ampm  = hours >= 12 ? 'PM' : 'AM';
   hours       = hours % 12 || 12;
 
