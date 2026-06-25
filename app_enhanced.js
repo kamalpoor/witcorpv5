@@ -676,7 +676,7 @@ async function renderTeamContacts() {
     return `
       <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
-          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;overflow:hidden;background-image:${p.avatar_url?`url('${p.avatar_url}')`:'none'};background-size:cover;background-position:center">${p.avatar_url?'':initial}</div>
           <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${isOnline ? '#10b981' : '#9ca3af'};border:2px solid var(--surface)"></div>
         </div>
         <div style="flex:1;overflow:hidden;margin-left:10px">
@@ -692,6 +692,7 @@ function switchChatContact(email, name) {
   STATE.activeChatContact = email;
   // Unread clear karo jab contact open karo
   STATE.unreadCounts[email] = 0;
+   markMessagesAsSeen(email);
   const nameEl = document.getElementById('activeChatName');
   if (nameEl) nameEl.textContent = name || email.split('@')[0];
   cancelReply();
@@ -736,7 +737,10 @@ async function renderTeamMessages() {
             ${m.is_edited ? '<div style="font-size:10px;opacity:0.6;margin-top:2px">edited</div>' : ''}
             <button class="msgArrow" onclick="showMsgArrowMenu(event,${m.id},${isOwn})" style="position:absolute;top:50%;right:6px;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:50%;opacity:0;transition:opacity 0.15s;color:${isOwn ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'};line-height:1;" title="More">▾</button>
           </div>
-          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn ? 'right' : 'left'}">${timeStr}</div>
+          <div style="font-size:10.5px;opacity:0.6;margin-top:3px;text-align:${isOwn ? 'right' : 'left'};display:flex;align-items:center;justify-content:${isOwn?'flex-end':'flex-start'};gap:4px">
+  ${timeStr}
+  ${isOwn ? `<span style="font-size:11px;color:${m.is_seen?'#60a5fa':'rgba(255,255,255,0.4)'}">${m.is_seen?'✓✓':'✓'}</span>` : ''}
+</div>
         </div>
         ${isOwn ? `<div class="msg-avatar">${senderInitial}</div>` : ''}
       </div>`;
@@ -5719,6 +5723,24 @@ async function executePendingDelete() {
     await _pendingDeleteFn();
     _pendingDeleteFn = null;
   }
+}
+async function markMessagesAsSeen(senderEmail) {
+  const myEmail = getCurrentUserEmail();
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/team_messages?sender_email=eq.${encodeURIComponent(senderEmail)}&receiver_email=eq.${encodeURIComponent(myEmail)}&is_seen=eq.false`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_seen: true })
+      }
+    );
+  } catch(e) {}
 }
 
 /* =========================================================
