@@ -889,6 +889,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderBarChart();
   renderVaultFolders();
   renderVaultCredentials();
+  await runDeadlineEngine();
+  await loadDeadlineAlerts();
+  renderDeadlineAlertsPanel();
   populateAllClientDropdowns();
   renderPTTable();
   renderPayrollTable();
@@ -5775,6 +5778,375 @@ async function markMessagesAsSeen(senderEmail) {
     });
     renderTeamMessages();
   } catch(e) { console.error('markSeen error:', e); }
+}
+/* =========================================================
+   SMART DEADLINE ENGINE
+   ========================================================= */
+
+async function runDeadlineEngine() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const alerts = [];
+
+  // ── GST Returns ──
+  STATE.gstReturns.forEach(g => {
+    if (!g.due_date || g.status === 'Filed') return;
+    const due = new Date(g.due_date);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    if ([7, 3, 1, 0, -1].includes(diff)) {
+      alerts.push({
+        client_id: g.client_id || null,
+        client_name: g.client_name,
+        module: 'GST',
+        filing_id: g.id,
+        due_date: g.due_date,
+        alert_days: diff,
+        alert_type: diff < 0 ? 'overdue' : diff === 0 ? 'today' : diff + '_days',
+        status: 'pending'
+      });
+    }
+  });
+
+  // ── TDS Returns ──
+  STATE.tdsReturns.forEach(t => {
+    if (!t.due_date || t.status === 'Filed') return;
+    const due = new Date(t.due_date);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    if ([7, 3, 1, 0, -1].includes(diff)) {
+      alerts.push({
+        client_id: t.client_id || null,
+        client_name: t.client_name || t.deductor,
+        module: 'TDS',
+        filing_id: t.id,
+        due_date: t.due_date,
+        alert_days: diff,
+        alert_type: diff < 0 ? 'overdue' : diff === 0 ? 'today' : diff + '_days',
+        status: 'pending'
+      });
+    }
+  });
+
+  // ── ITR Filings ──
+  STATE.itrFilings.forEach(i => {
+    if (!i.due_date || i.status === 'Filed') return;
+    const due = new Date(i.due_date);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    if ([7, 3, 1, 0, -1].includes(diff)) {
+      alerts.push({
+        client_id: i.client_id || null,
+        client_name: i.client_name,
+        module: 'ITR',
+        filing_id: i.id,
+        due_date: i.due_date,
+        alert_days: diff,
+        alert_type: diff < 0 ? 'overdue' : diff === 0 ? 'today' : diff + '_days',
+        status: 'pending'
+      });
+    }
+  });
+
+  // ── ROC Filings ──
+  STATE.rocFilings.forEach(r => {
+    if (!r.due_date || r.status === 'Filed') return;
+    const due = new Date(r.due_date);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    if ([7, 3, 1, 0, -1].includes(diff)) {
+      alerts.push({
+        client_id: r.client_id || null,
+        client_name: r.company,
+        module: 'ROC',
+        filing_id: r.id,
+        due_date: r.due_date,
+        alert_days: diff,
+        alert_type: diff < 0 ? 'overdue' : diff === 0 ? 'today' : diff + '_days',
+        status: 'pending'
+      });
+    }
+  });
+
+  // ── DSC Records ──
+  STATE.dscRecords.forEach(d => {
+    if (!d.expiry_date || d.status === 'Expired') return;
+    const due = new Date(d.expiry_date);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    if ([30, 7, 3, 1].includes(diff)) {
+      alerts.push({
+        client_id: d.client_id || null,
+        client_name: d.client_name || d.name,
+        module: 'DSC',
+        filing_id: d.id,
+        due_date: d.expiry_date,
+        alert_days: diff,
+        alert_type: diff + '_days',
+        status: 'pending'
+      });
+    }
+  });
+
+  // ── Save to Supabase ──
+  if (alerts.length > 0) {
+    const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+    for (const alert of alerts) {
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/deadline_alerts`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=ignore-duplicates,return=minimal'
+          },
+          body: JSON.stringify(alert)
+        });
+      } catch(e) {}
+    }
+  }
+
+  console.log(`✅ Deadline Engine: ${alerts.length} alerts generated`);
+  return alerts;
+}
+
+// ── Deadline Alerts Load karo ──
+async function loadDeadlineAlerts() {
+  const data = await supabaseQuery('deadline_alerts', {
+    order: 'due_date.asc',
+    filters: 'status=eq.pending'
+  });
+  STATE.deadlineAlerts = Array.isArray(data) ? data : [];
+  updateDeadlineBadge();
+  return STATE.deadlineAlerts;
+}
+
+// ── Badge update karo ──
+function updateDeadlineBadge() {
+  const urgent = (STATE.deadlineAlerts || []).filter(a =>
+    a.alert_type === 'today' || a.alert_type === 'overdue' || a.alert_days <= 1
+  ).length;
+  const badge = document.getElementById('deadlineBadge');
+  if (badge) {
+    badge.style.display = urgent > 0 ? 'flex' : 'none';
+    badge.textContent = urgent > 9 ? '9+' : urgent;
+  }
+}
+
+// ── Alert dismiss karo ──
+async function dismissAlert(id) {
+  const ok = await supabaseUpdate('deadline_alerts', id, { status: 'dismissed' });
+  if (ok) {
+    STATE.deadlineAlerts = (STATE.deadlineAlerts || []).filter(a => a.id !== id);
+    updateDeadlineBadge();
+    renderDeadlineAlertsPanel();
+    showToast('✅ Alert dismissed');
+  }
+}
+/* =========================================================
+   DEADLINE PANEL UI
+   ========================================================= */
+
+let deadlineActiveTab = 'all';
+
+function openDeadlinePanel() {
+  const panel = document.getElementById('deadlinePanel');
+  if (!panel) return;
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    runDeadlineEngine().then(() => {
+      loadDeadlineAlerts().then(() => {
+        renderDeadlineAlertsPanel();
+      });
+    });
+  }
+}
+
+function closeDeadlinePanel() {
+  const panel = document.getElementById('deadlinePanel');
+  if (panel) panel.style.display = 'none';
+}
+
+function filterDeadlineTab(tab) {
+  deadlineActiveTab = tab;
+  // Tab buttons update
+  ['all','overdue','today','week'].forEach(t => {
+    const btn = document.getElementById('dlTab_' + t);
+    if (btn) {
+      btn.style.color = t === tab ? 'var(--primary)' : 'var(--text-muted)';
+      btn.style.borderBottomColor = t === tab ? 'var(--primary)' : 'transparent';
+      btn.style.fontWeight = t === tab ? '700' : '600';
+    }
+  });
+  renderDeadlineAlertsPanel();
+}
+
+function renderDeadlineAlertsPanel() {
+  const el = document.getElementById('deadlineAlertList');
+  const countEl = document.getElementById('deadlinePanelCount');
+  if (!el) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let alerts = STATE.deadlineAlerts || [];
+
+  // Filter by tab
+  if (deadlineActiveTab === 'overdue') {
+    alerts = alerts.filter(a => a.alert_type === 'overdue' || a.alert_days < 0);
+  } else if (deadlineActiveTab === 'today') {
+    alerts = alerts.filter(a => a.alert_type === 'today' || a.alert_days === 0);
+  } else if (deadlineActiveTab === 'week') {
+    alerts = alerts.filter(a => a.alert_days >= 0 && a.alert_days <= 7);
+  }
+
+  if (countEl) countEl.textContent = `${alerts.length} alerts found`;
+
+  if (!alerts.length) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:40px;margin-bottom:12px">✅</div>
+        <div style="font-weight:600;font-size:14px;color:var(--text)">No alerts!</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">All deadlines are on track</div>
+      </div>`;
+    return;
+  }
+
+  const moduleIcon = { GST:'📊', TDS:'🧾', ITR:'💰', ROC:'🏛️', DSC:'✍️' };
+
+  el.innerHTML = alerts.map(a => {
+    const due = new Date(a.due_date);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    const isOverdue = diff < 0;
+    const isToday = diff === 0;
+    const bgColor = isOverdue ? '#fee2e2' : isToday ? '#fef3c7' : diff <= 3 ? '#fef9c3' : 'var(--surface2)';
+    const textColor = isOverdue ? '#ef4444' : isToday ? '#f59e0b' : diff <= 3 ? '#d97706' : '#10b981';
+    const label = isOverdue ? `${Math.abs(diff)}d overdue` : isToday ? 'Due Today!' : `${diff} days left`;
+
+    return `
+      <div style="background:${bgColor};border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start;flex:1">
+            <div style="font-size:24px">${moduleIcon[a.module] || '📋'}</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:13px;color:var(--text)">${escapeHtml(a.client_name)}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+                ${escapeHtml(a.module)} • Due: ${escapeHtml(a.due_date)}
+              </div>
+              <div style="margin-top:6px">
+                <span style="font-size:11px;font-weight:700;color:${textColor};background:${textColor}22;padding:2px 8px;border-radius:99px">
+                  ${isOverdue ? '🚨' : isToday ? '⚠️' : '⏰'} ${label}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button onclick="dismissAlert(${a.id})" 
+            style="background:none;border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--text-muted);flex-shrink:0">
+            Dismiss
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Panel band karo bahar click karne pe
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('deadlinePanel');
+  if (panel && panel.style.display === 'block') {
+    if (!panel.contains(e.target) && !e.target.closest('[onclick*="openDeadlinePanel"]')) {
+      panel.style.display = 'none';
+    }
+  }
+});
+function filterDeadlineAlerts() {
+  const search = document.getElementById('deadlineSearch')?.value.toLowerCase().trim() || '';
+  const module = document.getElementById('deadlineModuleFilter')?.value || '';
+  const sort = document.getElementById('deadlineSortFilter')?.value || 'due_asc';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let alerts = STATE.deadlineAlerts || [];
+
+  // Tab filter
+  if (deadlineActiveTab === 'overdue') {
+    alerts = alerts.filter(a => a.alert_days < 0 || a.alert_type === 'overdue');
+  } else if (deadlineActiveTab === 'today') {
+    alerts = alerts.filter(a => a.alert_days === 0 || a.alert_type === 'today');
+  } else if (deadlineActiveTab === 'week') {
+    alerts = alerts.filter(a => a.alert_days >= 0 && a.alert_days <= 7);
+  }
+
+  // Search filter
+  if (search) {
+    alerts = alerts.filter(a =>
+      (a.client_name || '').toLowerCase().includes(search) ||
+      (a.module || '').toLowerCase().includes(search)
+    );
+  }
+
+  // Module filter
+  if (module) {
+    alerts = alerts.filter(a => a.module === module);
+  }
+
+  // Sort
+  if (sort === 'due_asc') {
+    alerts.sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+  } else if (sort === 'due_desc') {
+    alerts.sort((a, b) => new Date(b.due_date) - new Date(a.due_date));
+  } else if (sort === 'urgent') {
+    alerts.sort((a, b) => a.alert_days - b.alert_days);
+  }
+
+  // Render filtered
+  const el = document.getElementById('deadlineAlertList');
+  const countEl = document.getElementById('deadlinePanelCount');
+  if (!el) return;
+
+  if (countEl) countEl.textContent = `${alerts.length} alerts found`;
+
+  if (!alerts.length) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:40px;margin-bottom:12px">🔍</div>
+        <div style="font-weight:600;font-size:14px">No results found</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Try different search or filter</div>
+      </div>`;
+    return;
+  }
+
+  const moduleIcon = { GST:'📊', TDS:'🧾', ITR:'💰', ROC:'🏛️', DSC:'✍️' };
+
+  el.innerHTML = alerts.map(a => {
+    const due = new Date(a.due_date);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    const isOverdue = diff < 0;
+    const isToday = diff === 0;
+    const bgColor = isOverdue ? '#fee2e2' : isToday ? '#fef3c7' : diff <= 3 ? '#fef9c3' : 'var(--surface2)';
+    const textColor = isOverdue ? '#ef4444' : isToday ? '#f59e0b' : diff <= 3 ? '#d97706' : '#10b981';
+    const label = isOverdue ? `${Math.abs(diff)}d overdue` : isToday ? 'Due Today!' : `${diff} days left`;
+
+    return `
+      <div style="background:${bgColor};border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start;flex:1">
+            <div style="font-size:24px">${moduleIcon[a.module] || '📋'}</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:13px;color:var(--text)">${escapeHtml(a.client_name)}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+                ${escapeHtml(a.module)} • Due: ${escapeHtml(a.due_date)}
+              </div>
+              <div style="margin-top:6px">
+                <span style="font-size:11px;font-weight:700;color:${textColor};background:${textColor}22;padding:2px 8px;border-radius:99px">
+                  ${isOverdue ? '🚨' : isToday ? '⚠️' : '⏰'} ${label}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button onclick="dismissAlert(${a.id})"
+            style="background:none;border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--text-muted);flex-shrink:0">
+            Dismiss
+          </button>
+        </div>
+      </div>`;
+  }).join('');
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
