@@ -1141,6 +1141,7 @@ function navigate(page) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (page === 'reports') { setTimeout(renderBarChart, 100); setTimeout(updateDashboardStats, 200); }
   if (page === 'vault') { renderVaultFolders(); renderVaultCredentials(); }
+  if (page === 'activitylog') { renderActivityLog(); }
   if (page === 'teamchat') { STATE.unreadCounts = {}; updateChatSidebarBadge(); }
   if (page === 'mylocker') { setTimeout(initMyLocker, 100); }
   if (page === 'gst') renderGSTPage();
@@ -6393,6 +6394,13 @@ function exportActivityCSV() {
   a.click();
   URL.revokeObjectURL(url);
   showToast('✅ CSV exported!');
+}
+function clearActivityFilters() {
+  document.getElementById('actLogSearch').value = '';
+  document.getElementById('actLogModule').value = '';
+  document.getElementById('actLogFrom').value = '';
+  document.getElementById('actLogTo').value = '';
+  renderActivityLog();
 }
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
