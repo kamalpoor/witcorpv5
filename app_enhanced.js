@@ -2345,7 +2345,11 @@ function renderDSCAlerts() {
     return;
   }
   
-  const sorted = [...STATE.dscRecords].sort((a,b) => new Date(a.expiry_date||'9999')-new Date(b.expiry_date||'9999'));
+  const sorted = [...STATE.dscRecords].sort((a,b) => {
+  const nameA = (a.client_name || a.name || '').toLowerCase();
+  const nameB = (b.client_name || b.name || '').toLowerCase();
+  return nameA.localeCompare(nameB);
+});
   
   el.innerHTML = sorted.map(d => {
     const days = dscDaysLeft(d.expiry_date);
