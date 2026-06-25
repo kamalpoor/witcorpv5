@@ -5754,21 +5754,28 @@ async function markMessagesAsSeen(senderEmail) {
   const myEmail = getCurrentUserEmail();
   const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
   try {
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/team_messages?sender_email=eq.${encodeURIComponent(senderEmail)}&receiver_email=eq.${encodeURIComponent(myEmail)}&is_seen=eq.false`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ is_seen: true })
+    const url = `${SUPABASE_URL}/rest/v1/team_messages?sender_email=eq.${encodeURIComponent(senderEmail)}&receiver_email=eq.${encodeURIComponent(myEmail)}&is_seen=eq.false`;
+    console.log('Marking seen:', url);
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({ is_seen: true })
+    });
+    const result = await res.json();
+    console.log('Seen result:', result);
+    STATE.teamMessages.forEach(m => {
+      if (m.sender_email === senderEmail && m.receiver_email === myEmail) {
+        m.is_seen = true;
       }
-    );
-  } catch(e) {}
+    });
+    renderTeamMessages();
+  } catch(e) { console.error('markSeen error:', e); }
 }
-
 /* =========================================================
    END OF app_enhanced.js — WITCORP FIXED v4
    ✅ updated_at sahi variable se har jagah fix kiya
