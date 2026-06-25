@@ -493,13 +493,13 @@ async function saveVaultEdit(id) {
 async function deleteVaultItem(id) {
   const cred = STATE.vaultCredentials.find(c => c.id === id);
   if (!cred) return;
-  if (confirm(`Delete credential "${cred.label}"? This cannot be undone.`)) {
+  confirmDelete(`Delete credential "${cred.label}"?`, async () => {
     const ok = await supabaseDelete('vault_credentials', id);
     if (ok) {
       STATE.vaultCredentials = STATE.vaultCredentials.filter(c => c.id !== id);
       renderVaultFolders(); renderVaultCredentials(); showToast('🗑️ Credential deleted');
     }
-  }
+  });
 }
 
 function togglePasswordView(inputId, btn) {
@@ -783,10 +783,10 @@ async function saveEditMessage(msgId) {
 }
 
 async function deleteMessage(msgId) {
-  if (confirm('Delete this message?')) {
+  confirmDelete('Delete this message?', async () => {
     const ok = await supabaseUpdate('team_messages', msgId, { is_deleted: true, message: '[Message deleted]' });
     if (ok) { renderTeamMessages(); showToast('🗑️ Message deleted'); }
-  }
+  });
 }
 
 function openEmojiPicker() {
@@ -1691,11 +1691,14 @@ async function saveGSTEdit(id) {
 }
 
 async function deleteGSTReturn(id) {
-  const ok = await supabaseDelete('gst_returns', id);
-  if (ok) { STATE.gstReturns = STATE.gstReturns.filter(g => g.id !== id); renderGSTPage(); showToast('🗑️ GST return deleted'); }
-   sendNotifToAll('🗑️ GST Return Deleted', `Deleted by ${getCurrentUserName()}`, '📊');
+  const g = STATE.gstReturns.find(x => x.id === id);
+  if (!g) return;
+  confirmDelete(`Delete GST return for "${g.client_name}"?`, async () => {
+    const ok = await supabaseDelete('gst_returns', id);
+    if (ok) { STATE.gstReturns = STATE.gstReturns.filter(g => g.id !== id); renderGSTPage(); showToast('🗑️ GST return deleted'); }
+    sendNotifToAll('🗑️ GST Return Deleted', `Deleted by ${getCurrentUserName()}`, '📊');
+  });
 }
-
 /* =========================================================
    17. ROC FILINGS
    ========================================================= */
@@ -1809,11 +1812,14 @@ function onROCClientChange() {
 }
 
 async function deleteROC(id) {
-  const ok = await supabaseDelete('roc_filings', id);
-  if (ok) { STATE.rocFilings = STATE.rocFilings.filter(r => r.id !== id); renderROCTable(); showToast('🗑️ ROC filing deleted'); }
-   sendNotifToAll('🗑️ ROC Filing Deleted', `Deleted by ${getCurrentUserName()}`, '🏛️');
+  const r = STATE.rocFilings.find(x => x.id === id);
+  if (!r) return;
+  confirmDelete(`Delete ROC filing for "${r.company}"?`, async () => {
+    const ok = await supabaseDelete('roc_filings', id);
+    if (ok) { STATE.rocFilings = STATE.rocFilings.filter(r => r.id !== id); renderROCTable(); showToast('🗑️ ROC filing deleted'); }
+    sendNotifToAll('🗑️ ROC Filing Deleted', `Deleted by ${getCurrentUserName()}`, '🏛️');
+  });
 }
-
 async function submitROCFiling() {
   const clientSel = document.getElementById('rocClientSel');
   const clientId = clientSel?.value;
@@ -2028,11 +2034,14 @@ async function submitITR() {
   }
 }
 async function deleteITR(id) {
-  const ok = await supabaseDelete('itr_filings', id);
-  if (ok) { STATE.itrFilings = STATE.itrFilings.filter(i => i.id !== id); renderITRList(); showToast('🗑️ ITR filing deleted'); }
-   sendNotifToAll('🗑️ ITR Deleted', `Deleted by ${getCurrentUserName()}`, '💰');
+  const itr = STATE.itrFilings.find(x => x.id === id);
+  if (!itr) return;
+  confirmDelete(`Delete ITR for "${itr.client_name}"?`, async () => {
+    const ok = await supabaseDelete('itr_filings', id);
+    if (ok) { STATE.itrFilings = STATE.itrFilings.filter(i => i.id !== id); renderITRList(); showToast('🗑️ ITR filing deleted'); }
+    sendNotifToAll('🗑️ ITR Deleted', `Deleted by ${getCurrentUserName()}`, '💰');
+  });
 }
-
 /* =========================================================
    19. TDS RETURNS
    ========================================================= */
@@ -2140,9 +2149,13 @@ async function submitTDS() {
 }
 
 async function deleteTDS(id) {
-  const ok = await supabaseDelete('tds_returns', id);
-  if (ok) { STATE.tdsReturns = STATE.tdsReturns.filter(t => t.id !== id); renderTDSTable(); showToast('🗑️ TDS return deleted'); }
-   sendNotifToAll('🗑️ TDS Deleted', `Deleted by ${getCurrentUserName()}`, '🧾');
+  const t = STATE.tdsReturns.find(x => x.id === id);
+  if (!t) return;
+  confirmDelete(`Delete TDS return for "${t.client_name || t.deductor}"?`, async () => {
+    const ok = await supabaseDelete('tds_returns', id);
+    if (ok) { STATE.tdsReturns = STATE.tdsReturns.filter(t => t.id !== id); renderTDSTable(); showToast('🗑️ TDS return deleted'); }
+    sendNotifToAll('🗑️ TDS Deleted', `Deleted by ${getCurrentUserName()}`, '🧾');
+  });
 }
 /* =========================================================
    TDS PAYMENTS
@@ -2238,11 +2251,11 @@ async function saveTDSPaymentEdit(id) {
 }
 
 async function deleteTDSPayment(id) {
-  if (!confirm('Delete this payment?')) return;
-  const ok = await supabaseDelete('tds_payments', id);
-  if (ok) { STATE.tdsPayments = (STATE.tdsPayments||[]).filter(x => x.id !== id); renderTDSPaymentTable(); showToast('🗑️ Deleted'); }
+  confirmDelete('Delete this TDS payment?', async () => {
+    const ok = await supabaseDelete('tds_payments', id);
+    if (ok) { STATE.tdsPayments = (STATE.tdsPayments||[]).filter(x => x.id !== id); renderTDSPaymentTable(); showToast('🗑️ Deleted'); }
+  });
 }
-
 function onTDSPayClientChange() {
   const sel = document.getElementById('tdsPayClientSel');
   const clientId = sel?.value;
@@ -2311,9 +2324,13 @@ async function saveAuditStatus(id) {
 }
 
 async function deleteAudit(id) {
-  const ok = await supabaseDelete('audits', id);
-  if (ok) { STATE.audits = STATE.audits.filter(a => a.id !== id); renderAuditTable(); showToast('🗑️ Audit deleted'); }
-   sendNotifToAll('🗑️ Audit Deleted', `Deleted by ${getCurrentUserName()}`, '🛡️');
+  const a = STATE.audits.find(x => x.id === id);
+  if (!a) return;
+  confirmDelete(`Delete audit for "${a.client}"?`, async () => {
+    const ok = await supabaseDelete('audits', id);
+    if (ok) { STATE.audits = STATE.audits.filter(a => a.id !== id); renderAuditTable(); showToast('🗑️ Audit deleted'); }
+    sendNotifToAll('🗑️ Audit Deleted', `Deleted by ${getCurrentUserName()}`, '🛡️');
+  });
 }
 
 /* =========================================================
@@ -2506,9 +2523,13 @@ async function submitDSC() {
 }
 
 async function deleteDSC(id) {
-  const ok = await supabaseDelete('dsc_records', id);
-  if (ok) { STATE.dscRecords = STATE.dscRecords.filter(d => d.id !== id); renderDSCAlerts(); showToast('🗑️ DSC record deleted'); }
-   sendNotifToAll('🗑️ DSC Deleted', `Deleted by ${getCurrentUserName()}`, '✍️');
+  const d = STATE.dscRecords.find(x => x.id === id);
+  if (!d) return;
+  confirmDelete(`Delete DSC for "${d.client_name || d.name}"?`, async () => {
+    const ok = await supabaseDelete('dsc_records', id);
+    if (ok) { STATE.dscRecords = STATE.dscRecords.filter(d => d.id !== id); renderDSCAlerts(); showToast('🗑️ DSC record deleted'); }
+    sendNotifToAll('🗑️ DSC Deleted', `Deleted by ${getCurrentUserName()}`, '✍️');
+  });
 }
 
 /* =========================================================
@@ -2566,13 +2587,13 @@ async function submitJournalEntry() {
 }
 
 async function deleteAccEntry(id) {
-  const ok = await supabaseDelete('accounting_entries', id);
-  if (ok) {
-    STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id);
-    renderAccEntries();
-    renderAccountingList();
-    showToast('🗑️ Entry deleted');
-  }
+  confirmDelete('Delete this accounting entry?', async () => {
+    const ok = await supabaseDelete('accounting_entries', id);
+    if (ok) {
+      STATE.accountingEntries = STATE.accountingEntries.filter(t => t.id !== id);
+      renderAccEntries(); renderAccountingList(); showToast('🗑️ Entry deleted');
+    }
+  });
 }
 
 /* =========================================================
@@ -2705,8 +2726,12 @@ async function updateTask(id) {
 }
 
 async function deleteTask(id) {
-  const ok = await supabaseDelete('tasks', id);
-  if (ok) { STATE.tasks = STATE.tasks.filter(t => t.id !== id); closeModal(); renderKanban(); showToast('🗑️ Task deleted'); }
+  const t = STATE.tasks.find(x => x.id === id);
+  if (!t) return;
+  confirmDelete(`Delete task "${t.title}"?`, async () => {
+    const ok = await supabaseDelete('tasks', id);
+    if (ok) { STATE.tasks = STATE.tasks.filter(t => t.id !== id); closeModal(); renderKanban(); showToast('🗑️ Task deleted'); }
+  });
 }
 
 /* =========================================================
@@ -3305,10 +3330,13 @@ function renderDocuments() {
 }
 
 async function deleteDoc(id) {
-  const ok = await supabaseDelete('documents', id);
-  if (ok) { STATE.documents = STATE.documents.filter(d => d.id !== id); renderDocuments(); showToast('🗑️ Document deleted'); }
+  const d = STATE.documents.find(x => x.id === id);
+  if (!d) return;
+  confirmDelete(`Delete document "${d.name}"?`, async () => {
+    const ok = await supabaseDelete('documents', id);
+    if (ok) { STATE.documents = STATE.documents.filter(d => d.id !== id); renderDocuments(); showToast('🗑️ Document deleted'); }
+  });
 }
-
 /* =========================================================
    27. CALENDAR
    ========================================================= */
@@ -3413,8 +3441,12 @@ function renderEventList() {
 }
 
 async function deleteEvent(id) {
-  const ok = await supabaseDelete('calendar_events', id);
-  if (ok) { STATE.calendarEvents=STATE.calendarEvents.filter(e=>e.id!==id); renderCalendar(); renderEventList(); renderDueDates(); showToast('🗑️ Event deleted'); }
+  const e = STATE.calendarEvents.find(x => x.id === id);
+  if (!e) return;
+  confirmDelete(`Delete event "${e.title}"?`, async () => {
+    const ok = await supabaseDelete('calendar_events', id);
+    if (ok) { STATE.calendarEvents = STATE.calendarEvents.filter(e => e.id !== id); renderCalendar(); renderEventList(); renderDueDates(); showToast('🗑️ Event deleted'); }
+  });
 }
 
 /* =========================================================
@@ -4812,9 +4844,10 @@ async function savePTEdit(id) {
 }
 
 async function deletePT(id) {
-  if (!confirm('Delete this PT filing?')) return;
-  const ok = await supabaseDelete('professional_tax', id);
-  if (ok) { STATE.ptFilings = (STATE.ptFilings||[]).filter(x=>x.id!==id); renderPTTable(); showToast('🗑️ Deleted'); }
+  confirmDelete('Delete this PT filing?', async () => {
+    const ok = await supabaseDelete('professional_tax', id);
+    if (ok) { STATE.ptFilings = (STATE.ptFilings||[]).filter(x => x.id !== id); renderPTTable(); showToast('🗑️ Deleted'); }
+  });
 }
 
 async function submitNewPT() {
@@ -4915,9 +4948,10 @@ async function savePayrollEdit(id) {
 }
 
 async function deletePayroll(id) {
-  if (!confirm('Delete this payroll entry?')) return;
-  const ok = await supabaseDelete('payroll_entries', id);
-  if (ok) { STATE.payrollEntries = (STATE.payrollEntries||[]).filter(x=>x.id!==id); renderPayrollTable(); showToast('🗑️ Deleted'); }
+  confirmDelete('Delete this payroll entry?', async () => {
+    const ok = await supabaseDelete('payroll_entries', id);
+    if (ok) { STATE.payrollEntries = (STATE.payrollEntries||[]).filter(x => x.id !== id); renderPayrollTable(); showToast('🗑️ Deleted'); }
+  });
 }
 
 async function submitNewPayroll() {
@@ -5021,9 +5055,10 @@ async function saveDir3Edit(id) {
 }
 
 async function deleteDir3(id) {
-  if (!confirm('Delete this DIR-3 KYC filing?')) return;
-  const ok = await supabaseDelete('dir3_kyc', id);
-  if (ok) { STATE.dir3Filings = (STATE.dir3Filings||[]).filter(x=>x.id!==id); renderDir3Table(); showToast('🗑️ Deleted'); }
+  confirmDelete('Delete this DIR-3 KYC filing?', async () => {
+    const ok = await supabaseDelete('dir3_kyc', id);
+    if (ok) { STATE.dir3Filings = (STATE.dir3Filings||[]).filter(x => x.id !== id); renderDir3Table(); showToast('🗑️ Deleted'); }
+  });
 }
 
 async function submitNewDir3() {
@@ -5507,19 +5542,14 @@ async function updateLockerItem(id) {
 async function deleteLockerItem(id) {
   const item = lockerItems.find(x => x.id === id);
   if (!item) return;
-  if (!confirm(`Delete "${item.label}"? This cannot be undone.`)) return;
-  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
-
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/my_locker?id=eq.${id}`, {
-    method: 'DELETE',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+  confirmDelete(`Delete "${item.label}"?`, async () => {
+    const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/my_locker?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) { lockerItems = lockerItems.filter(x => x.id !== id); renderLockerTable(); showToast('🗑️ Deleted from locker'); }
   });
-
-  if (res.ok) {
-    lockerItems = lockerItems.filter(x => x.id !== id);
-    renderLockerTable();
-    showToast('🗑️ Deleted from locker');
-  }
 }
 
 function showLockerResetConfirm() {
@@ -5615,6 +5645,19 @@ function playMsgSound() {
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.3);
   } catch(e) {}
+}
+function confirmDelete(message, onConfirm) {
+  openModalWithContent('🗑️ Confirm Delete', `
+    <div style="text-align:center;padding:10px 0">
+      <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">${escapeHtml(message)}</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-bottom:20px">This action is permanent and cannot be undone.</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-outline" style="flex:1" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" style="flex:1;background:#ef4444" onclick="closeModal();(${onConfirm})()">Delete</button>
+      </div>
+    </div>
+  `);
 }
 
 /* =========================================================
