@@ -232,15 +232,27 @@ async function loadUserInfo() {
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=full_name`,
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
     );
-    if (profRes.ok) {
+   if (profRes.ok) {
       const profData = await profRes.json();
       if (profData?.[0]?.full_name) {
         displayName = profData[0].full_name;
-        // localStorage bhi update karo taaki consistent rahe
         const fresh = { ...user };
         fresh.user_metadata = fresh.user_metadata || {};
         fresh.user_metadata.full_name = displayName;
         localStorage.setItem('witcorp-user', JSON.stringify(fresh));
+      }
+      // Avatar URL profiles table mein save karo
+      const authAvatarUrl = user.user_metadata?.avatar_url || '';
+      if (authAvatarUrl) {
+        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ avatar_url: authAvatarUrl })
+        });
       }
     }
   } catch(e) { /* network error — fallback to stored name */ }
@@ -660,23 +672,38 @@ async function renderTeamContacts() {
   const el = document.getElementById('chatContacts');
   if (!el) return;
   const myEmail = getCurrentUserEmail();
-  const profiles = await supabaseQuery('profiles', { order: 'full_name.asc' });
-  const others = (profiles || []).filter(p => p.email !== myEmail && p.status === 'approved');
+  const token = localStorage.getItem('witcorp-access-token') || SUPABASE_ANON_KEY;
+
+  // profiles table se fetch karo with avatar_url
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?select=*&status=eq.approved`,
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } }
+  );
+  const profiles = res.ok ? await res.json() : [];
+  const others = profiles.filter(p => p.email !== myEmail);
+
   if (!others.length) {
     el.innerHTML = `<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No team members yet.</div>`;
     return;
   }
- el.innerHTML = others.map(p => {
+
+  el.innerHTML = others.map(p => {
     const name = p.full_name || p.email.split('@')[0];
-    const initial = (p.avatar_initial || name.charAt(0)).toUpperCase();
+    const initial = name.charAt(0).toUpperCase();
     const isActive = p.email === STATE.activeChatContact;
-    const myEmail = getCurrentUserEmail();
-    const isOnline = p.email === myEmail ? true : (STATE.userPresence[p.email]?.is_online || false);
+    const isOnline = STATE.userPresence[p.email]?.is_online || false;
     const unread = STATE.unreadCounts[p.email] || 0;
+    
+    // Avatar — photo ya initial
+    const avatarUrl = p.avatar_url || '';
+    const avatarHtml = avatarUrl
+      ? `<img src="${avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div style="display:none;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>`
+      : `<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initial}</div>`;
+
     return `
       <div class="contact-item ${isActive ? 'active' : ''}" onclick="switchChatContact('${p.email}', '${escapeHtml(name)}')">
         <div style="position:relative;width:38px;height:38px;flex-shrink:0">
-          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;overflow:hidden;background-image:${p.avatar_url?`url('${p.avatar_url}')`:'none'};background-size:cover;background-position:center">${p.avatar_url?'':initial}</div>
+          ${avatarHtml}
           <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${isOnline ? '#10b981' : '#9ca3af'};border:2px solid var(--surface)"></div>
         </div>
         <div style="flex:1;overflow:hidden;margin-left:10px">
@@ -687,7 +714,6 @@ async function renderTeamContacts() {
       </div>`;
   }).join('');
 }
-
 function switchChatContact(email, name) {
   STATE.activeChatContact = email;
   // Unread clear karo jab contact open karo
