@@ -1003,7 +1003,7 @@ async function loadAllData() {
       supabaseQuery('accounting_entries', { order: 'updated_at.desc' }),
       supabaseQuery('tasks', { order: 'title.asc' }),
       supabaseQuery('documents', { order: 'created_at.asc' }),
-      supabaseQuery('calendar_events', { order: 'event_date.asc' }), // यह पहले से asc है
+      supabaseQuery('calendar_events', { order: 'event_date.asc' }),
       supabaseQuery('professional_tax', { order: 'client_name.asc' }),
       supabaseQuery('payroll_entries', { order: 'client_name.asc' }),
       supabaseQuery('dir3_kyc', { order: 'client_name.asc' }),
