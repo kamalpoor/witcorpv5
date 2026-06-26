@@ -90,6 +90,7 @@ async function initializeAdvancedPortal() {
 // ================================================
 
 function buildAdvancedPortalHTML() {
+  return `
  
 
     <!-- HEADER -->
@@ -230,8 +231,6 @@ function buildAdvancedPortalHTML() {
         <div style="text-align:center;padding:30px;color:var(--text-muted)">Select a client to view UDIN history</div>
       </div>
     </div>
-
-  </div>`;
 }
 
 // ================================================
