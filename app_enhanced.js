@@ -3904,6 +3904,7 @@ async function submitVaultItem() {
   if (!clientName) { showToast('Please select a client'); return; }
   const individualName = document.getElementById('vaultIndividualName')?.value.trim() || '';
   const body = {
+    client_id: clientId,
     label: clientName,
     individual_name: individualName,
     folder: document.getElementById('vaultFolder')?.value || 'General',
