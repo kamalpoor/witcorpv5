@@ -48,6 +48,8 @@ async function initializeAdvancedPortal() {
   // Step 1: Poora page-advanced-portal innerHTML rebuild karo
   const page = document.getElementById('page-advanced-portal');
   if (!page) { console.error('page-advanced-portal element nahi mila!'); return; }
+  
+  page.style.cssText = 'width:100%;max-width:100%;overflow-x:hidden;';
 
   page.innerHTML = buildAdvancedPortalHTML();
 
