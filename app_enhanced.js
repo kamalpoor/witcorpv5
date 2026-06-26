@@ -1155,10 +1155,13 @@ if (page === 'advanced-portal') {
     if (typeof initializeAdvancedPortal === 'function') {
       await initializeAdvancedPortal();
     }
-    // Page top pe scroll karo
-    document.getElementById('page-advanced-portal')?.scrollIntoView({ behavior: 'instant', block: 'start' });
     window.scrollTo({ top: 0, behavior: 'instant' });
-    document.querySelector('.page-content')?.scrollTo({ top: 0, behavior: 'instant' });
+    // ✅ YEH ADD KAR
+    const pageEl = document.getElementById('page-advanced-portal');
+    if (pageEl) {
+      pageEl.style.width = '100%';
+      pageEl.style.maxWidth = '100%';
+    }
   }, 300);
 }
 }
