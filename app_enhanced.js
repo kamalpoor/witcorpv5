@@ -1151,13 +1151,14 @@ function navigate(page) {
   if (page === 'dir3kyc') renderDir3Table();
   populateAllClientDropdowns();
 if (page === 'advanced-portal') {
-  setTimeout(() => {
+  setTimeout(async () => {
     if (typeof initializeAdvancedPortal === 'function') {
-      initializeAdvancedPortal();
+      await initializeAdvancedPortal();
     }
-    if (typeof renderAdvancedPortalCards === 'function') {
-      renderAdvancedPortalCards();
-    }
+    // Page top pe scroll karo
+    document.getElementById('page-advanced-portal')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.querySelector('.page-content')?.scrollTo({ top: 0, behavior: 'instant' });
   }, 300);
 }
 }
