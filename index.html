@@ -1477,11 +1477,11 @@
     });
   }
 </script>
-  <!-- ================================================
+ <!-- ================================================
      ADVANCED ENTERPRISE PORTAL PAGE
      ================================================ -->
 <section class="page" id="page-advanced-portal">
-  <div style="padding:20px 20px 20px 20px;max-width:100%;box-sizing:border-box">
+  <div style="padding:20px;width:100%;box-sizing:border-box;overflow-x:hidden">
     
     <!-- HEADER -->
     <div style="margin-bottom:24px">
@@ -1512,8 +1512,8 @@
     </div>
 
     <!-- PORTAL GRID -->
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px;max-width:calc(100% - 20px)" id="advPortalCardsContainer">
-      <!-- Portal cards will render here -->
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:20px;width:100%;box-sizing:border-box" id="advPortalCardsContainer">
+      <!-- Portal cards render here via JS -->
     </div>
 
     <!-- UDIN GENERATION SECTION -->
@@ -1654,7 +1654,7 @@
     </div>
 
   </div>
-</div>
+</section>
 
 <script>
 // Auto-filing checkbox handler
@@ -1712,7 +1712,7 @@ async function loadUDINHistory() {
           </div>
           <button onclick="copyAdvancedUDIN('${r.udin_number}')" class="btn-outline" style="padding:4px 8px;font-size:11px">📋</button>
         </div>
-      </section>
+      </div>
     `).join('');
     
     container.innerHTML = html || '<div style="text-align:center;color:var(--text-muted);padding:20px">No UDINs found</div>';
@@ -1722,6 +1722,5 @@ async function loadUDINHistory() {
   }
 }
 </script>
-
 </body>
 </html>
