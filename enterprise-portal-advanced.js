@@ -91,8 +91,6 @@ async function initializeAdvancedPortal() {
 
 function buildAdvancedPortalHTML() {
   return `
- 
-
     <!-- HEADER -->
     <div style="margin-bottom:24px">
       <h1 style="font-size:26px;font-weight:800;margin:0;color:var(--text)">🚀 Advanced Enterprise Portal</h1>
@@ -230,7 +228,7 @@ function buildAdvancedPortalHTML() {
       <div id="advUDINHistoryContainer">
         <div style="text-align:center;padding:30px;color:var(--text-muted)">Select a client to view UDIN history</div>
       </div>
-    </div>
+    </div>`;
 }
 
 // ================================================
