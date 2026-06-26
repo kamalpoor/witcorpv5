@@ -184,9 +184,9 @@
 </span>
 <span class="nav-label">Team Chat</span>
 </a>
-    <a class="nav-item" data-page="advanced-portal" onclick="navigate('advanced-portal')">
-  <span style="font-size:18px;margin-right:8px">🚀</span>
-  <span>Advanced Portal</span>
+   <a class="nav-item" data-page="advanced-portal" onclick="navigate('advanced-portal')">
+  <span class="nav-icon">🚀</span>
+  <span class="nav-label">Advanced Portal</span>
 </a>
   </nav>
 
@@ -1479,7 +1479,7 @@
   <!-- ================================================
      ADVANCED ENTERPRISE PORTAL PAGE
      ================================================ -->
-<div id="page-advanced-portal" class="page">
+<section class="page" id="page-advanced-portal">
   <div style="padding:20px;max-width:1600px;margin:0 auto">
     
     <!-- HEADER -->
@@ -1711,7 +1711,7 @@ async function loadUDINHistory() {
           </div>
           <button onclick="copyAdvancedUDIN('${r.udin_number}')" class="btn-outline" style="padding:4px 8px;font-size:11px">📋</button>
         </div>
-      </div>
+      </section>
     `).join('');
     
     container.innerHTML = html || '<div style="text-align:center;color:var(--text-muted);padding:20px">No UDINs found</div>';
