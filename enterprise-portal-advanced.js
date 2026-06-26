@@ -104,6 +104,7 @@ async function initializeAdvancedPortal() {
     
     // Populate dropdowns
     populateClientSelector();
+     renderAdvancedPortalCards();
     
     console.log('✅ Advanced portal initialized');
   } catch (error) {
@@ -684,3 +685,43 @@ window.logPortalSession = logPortalSession;
 window.createNotification = createNotification;
 
 console.log('✅ enterprise-portal-advanced.js loaded');
+function renderAdvancedPortalCards() {
+  const container = document.getElementById('advPortalCardsContainer');
+  if (!container) return;
+
+  container.innerHTML = Object.entries(ADVANCED_PORTALS).map(([key, portal]) => `
+    <div style="
+      background:var(--surface);border:1.5px solid var(--border);
+      border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;
+    ">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:28px">${portal.icon}</span>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--text)">${portal.name}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Click to open</div>
+        </div>
+      </div>
+      <button
+        onclick="openPortalWithAutoLogin('${key}', document.getElementById('advClientSelector')?.value)"
+        style="
+          width:100%;padding:10px;border:none;border-radius:8px;
+          font-weight:600;font-size:13px;cursor:pointer;color:#fff;
+          background:${portal.color};
+        "
+      >
+        🔓 Open Portal
+      </button>
+      <button
+        onclick="managePortalCredentialsAdvanced('${key}', document.getElementById('advClientSelector')?.value)"
+        style="
+          width:100%;padding:8px;background:none;border:1.5px solid var(--border);
+          border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-muted);
+        "
+      >
+        🔐 Credentials
+      </button>
+    </div>
+  `).join('');
+}
+
+window.renderAdvancedPortalCards = renderAdvancedPortalCards;
