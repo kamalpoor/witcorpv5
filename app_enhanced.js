@@ -1130,6 +1130,17 @@ function getClientNameById(id) {
 
 function navigate(page) {
   STATE.currentPage = page;
+
+  const rightPanel = document.getElementById('rightPanel');
+  const mainWrapper = document.querySelector('.main-wrapper');
+  if (page === 'advanced-portal') {
+    if (rightPanel) rightPanel.style.display = 'none';
+    if (mainWrapper) mainWrapper.style.marginRight = '0';
+  } else {
+    if (rightPanel) rightPanel.style.display = '';
+    if (mainWrapper) mainWrapper.style.marginRight = '';
+  }
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
@@ -1150,20 +1161,19 @@ function navigate(page) {
   if (page === 'payroll') renderPayrollTable();
   if (page === 'dir3kyc') renderDir3Table();
   populateAllClientDropdowns();
-if (page === 'advanced-portal') {
-  setTimeout(async () => {
-    if (typeof initializeAdvancedPortal === 'function') {
-      await initializeAdvancedPortal();
-    }
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    // ✅ YEH ADD KAR
-    const pageEl = document.getElementById('page-advanced-portal');
-    if (pageEl) {
-      pageEl.style.width = '100%';
-      pageEl.style.maxWidth = '100%';
-    }
-  }, 300);
-}
+  if (page === 'advanced-portal') {
+    setTimeout(async () => {
+      if (typeof initializeAdvancedPortal === 'function') {
+        await initializeAdvancedPortal();
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      const pageEl = document.getElementById('page-advanced-portal');
+      if (pageEl) {
+        pageEl.style.width = '100%';
+        pageEl.style.maxWidth = '100%';
+      }
+    }, 300);
+  }
 }
 
 function switchTDSTab(tab) {
