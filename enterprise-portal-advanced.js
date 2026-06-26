@@ -1,4 +1,29 @@
 'use strict';
+// Vault se credentials fetch karo
+async function getVaultCredentials(clientId, portalCode) {
+  const token = localStorage.getItem('witcorp-access-token');
+  const SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
+  
+  // Portal code se folder match karo
+  const folderMap = {
+    'GST': 'GST',
+    'MCA': 'MCA', 
+    'ITR': 'ITR',
+    'TDS': 'TDS',
+    'PT': 'General'
+  };
+  
+  const folder = folderMap[portalCode] || 'General';
+  
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/vault_credentials?client_id=eq.${clientId}&folder=eq.${folder}&select=*`,
+    { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }}
+  );
+  
+  const data = res.ok ? await res.json() : [];
+  return data[0] || null;
+}
 
 const ADVANCED_PORTALS = {
   gst: {
@@ -400,34 +425,43 @@ function populateCASelector() {
 // CREDENTIALS MANAGEMENT
 // ================================================
 
-function managePortalCredentialsAdvanced(portalKey, clientId) {
+async function managePortalCredentialsAdvanced(portalKey, clientId) {
   const portal = ADVANCED_PORTALS[portalKey];
   if (!portal) return;
-
-  if (!clientId) {
-    showToast('❌ Pehle client select karo');
-    return;
-  }
+  if (!clientId) { showToast('❌ Pehle client select karo'); return; }
 
   const client = STATE.clients.find(c => String(c.id) === String(clientId));
-  const existing = (STATE.portalVault || []).find(c =>
-    String(c.client_id) === String(clientId) && c.portal_id === portal.id
-  );
+  
+  // Vault se auto fetch karo
+  showToast('⏳ Vault se credentials fetch ho rahe hain...');
+  const vaultCred = await getVaultCredentials(clientId, portal.code);
 
   openModalWithContent(`🔐 ${portal.name} — Credentials`, `
     <div style="background:var(--primary-glow);padding:12px;border-radius:10px;margin-bottom:16px">
       <div style="font-size:11px;color:var(--text-muted)">Client</div>
       <div style="font-weight:700;color:var(--primary);font-size:15px">${escapeHtml(client?.name || '')}</div>
     </div>
+    
+    ${vaultCred ? `
+    <div style="background:#d1fae5;border:1px solid #10b981;border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:#065f46">
+      ✅ Vault se auto-fetch hua! Username aur Password already fill hai.
+    </div>` : `
+    <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:#92400e">
+      ⚠️ Vault mein ${portal.code} folder mein is client ka credential nahi mila. Manually enter karo.
+    </div>`}
+    
     <div class="form-group">
       <label>Username *</label>
-      <input type="text" class="form-control" id="advCredUsername" placeholder="Username / User ID" value="${existing?.username || ''}" />
+      <input type="text" class="form-control" id="advCredUsername" 
+        placeholder="Username / User ID" 
+        value="${vaultCred?.username || ''}" />
     </div>
     <div class="form-group">
       <label>Password *</label>
       <div style="display:flex;gap:8px">
-        <input type="password" class="form-control" id="advCredPassword" placeholder="••••••••" style="flex:1"
-          value="${existing ? '••••••••' : ''}" />
+        <input type="password" class="form-control" id="advCredPassword" 
+          placeholder="••••••••" style="flex:1"
+          value="${vaultCred?.password || ''}" />
         <button class="btn-outline" style="padding:8px 12px"
           onclick="const el=document.getElementById('advCredPassword');el.type=el.type==='password'?'text':'password'">
           👁️
@@ -435,14 +469,34 @@ function managePortalCredentialsAdvanced(portalKey, clientId) {
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn-primary" onclick="saveAdvancedCredentials('${portalKey}','${clientId}')" style="flex:1;padding:10px">
-        💾 Save
+      <button class="btn-primary" 
+        onclick="openPortalWithCredentials('${portal.url}', '${portal.name}')"
+        style="flex:1;padding:10px;background:#10b981">
+        🚀 Open & Auto Login
       </button>
-      <button class="btn-outline" onclick="closeModal()" style="flex:1;padding:10px">
+      <button class="btn-outline" onclick="closeModal()"
+        style="flex:1;padding:10px">
         ❌ Cancel
       </button>
     </div>
   `);
+}
+
+function openPortalWithCredentials(url, name) {
+  const username = document.getElementById('advCredUsername')?.value;
+  const password = document.getElementById('advCredPassword')?.value;
+  
+  if (username) {
+    navigator.clipboard.writeText(username).then(() => {
+      showToast(`📋 Username copied! Password bhi copy karo phir portal open hoga`);
+    });
+  }
+  
+  setTimeout(() => {
+    window.open(url, '_blank');
+    closeModal();
+    showToast(`🌐 ${name} opening...`);
+  }, 1000);
 }
 
 async function saveAdvancedCredentials(portalKey, clientId) {
