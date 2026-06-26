@@ -1,29 +1,40 @@
 'use strict';
-// Vault se credentials fetch karo
+
+// ================================================
+// VAULT SE CREDENTIALS AUTO FETCH
+// ================================================
+
 async function getVaultCredentials(clientId, portalCode) {
   const token = localStorage.getItem('witcorp-access-token');
   const SUPABASE_URL = 'https://yqbvdbsbuycxlsfkijhc.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_5qNAkAQrO5yzGnDcNERPxg_pm2Jv8bw';
-  
-  // Portal code se folder match karo
+
   const folderMap = {
     'GST': 'GST',
-    'MCA': 'MCA', 
+    'MCA': 'MCA',
     'ITR': 'ITR',
     'TDS': 'TDS',
     'PT': 'General'
   };
-  
+
   const folder = folderMap[portalCode] || 'General';
-  
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/vault_credentials?client_id=eq.${clientId}&folder=eq.${folder}&select=*`,
-    { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }}
-  );
-  
-  const data = res.ok ? await res.json() : [];
-  return data[0] || null;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/vault_credentials?client_id=eq.${clientId}&folder=eq.${folder}&select=*`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` } }
+    );
+    const data = res.ok ? await res.json() : [];
+    return data[0] || null;
+  } catch (e) {
+    console.error('Vault fetch error:', e);
+    return null;
+  }
 }
+
+// ================================================
+// PORTAL CONFIG
+// ================================================
 
 const ADVANCED_PORTALS = {
   gst: {
@@ -64,27 +75,21 @@ const PORTAL_STATE = {
 };
 
 // ================================================
-// MAIN INIT — page-advanced-portal ko fully rebuild karta hai
+// MAIN INIT
 // ================================================
 
 async function initializeAdvancedPortal() {
   console.log('🚀 Initializing Advanced Enterprise Portal...');
 
-  // Step 1: Poora page-advanced-portal innerHTML rebuild karo
   const page = document.getElementById('page-advanced-portal');
-  if (!page) { console.error('page-advanced-portal element nahi mila!'); return; }
-  
-  page.style.cssText = 'width:100%;max-width:100%;overflow-x:hidden;';
+  if (!page) { console.error('page-advanced-portal element not found!'); return; }
 
+  page.style.cssText = 'width:100%;max-width:100%;overflow-x:hidden;';
   page.innerHTML = buildAdvancedPortalHTML();
 
-  // Step 2: Client selector populate karo
   populateClientSelector();
-
-  // Step 3: Portal cards render karo
   renderAdvancedPortalCards();
 
-  // Step 4: CA Masters load karo
   try {
     const cas = await supabaseQuery('ca_masters', { order: 'created_at.desc' });
     STATE.caMasters = Array.isArray(cas) ? cas : [];
@@ -93,7 +98,6 @@ async function initializeAdvancedPortal() {
   }
   populateCASelector();
 
-  // Step 5: Auto file toggle
   const autoFileEl = document.getElementById('advAutoFile');
   if (autoFileEl) {
     autoFileEl.addEventListener('change', function () {
@@ -102,10 +106,8 @@ async function initializeAdvancedPortal() {
     });
   }
 
-  // Step 6: UDIN history load
   await loadUDINHistory();
 
-  // Step 7: Default doc date aaj ka
   const docDateEl = document.getElementById('advDocDate');
   if (docDateEl) docDateEl.value = new Date().toISOString().split('T')[0];
 
@@ -119,7 +121,7 @@ async function initializeAdvancedPortal() {
 function buildAdvancedPortalHTML() {
   return `
   <div style="padding:20px;width:100%;box-sizing:border-box;overflow-x:hidden">
-  
+
     <!-- HEADER -->
     <div style="margin-bottom:24px">
       <h1 style="font-size:26px;font-weight:800;margin:0;color:var(--text)">🚀 Advanced Enterprise Portal</h1>
@@ -156,7 +158,6 @@ function buildAdvancedPortalHTML() {
       </div>
       <div id="advPortalCardsContainer"
         style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
-        <!-- Cards render here -->
       </div>
     </div>
 
@@ -168,7 +169,6 @@ function buildAdvancedPortalHTML() {
         <span style="margin-left:auto;font-size:11px;color:var(--primary);background:var(--primary-glow);padding:5px 12px;border-radius:6px;font-weight:600">⚡ Real-Time</span>
       </div>
 
-      <!-- CA Selector -->
       <div style="margin-bottom:16px">
         <label style="display:block;font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">Chartered Accountant *</label>
         <select class="form-control" id="advCASelector" style="font-size:14px;padding:10px">
@@ -176,7 +176,6 @@ function buildAdvancedPortalHTML() {
         </select>
       </div>
 
-      <!-- Fields Grid -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
         <div>
           <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Document Type *</label>
@@ -207,7 +206,6 @@ function buildAdvancedPortalHTML() {
         </div>
       </div>
 
-      <!-- Audit Period + Turnover -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
         <div>
           <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Audit From</label>
@@ -223,13 +221,11 @@ function buildAdvancedPortalHTML() {
         </div>
       </div>
 
-      <!-- Remarks -->
       <div style="margin-bottom:16px">
         <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Remarks</label>
         <textarea class="form-control" id="advRemarks" rows="2" placeholder="Add any notes..."></textarea>
       </div>
 
-      <!-- Buttons -->
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn-primary" onclick="generateAdvancedUDIN()"
           style="flex:1;min-width:160px;padding:12px;font-weight:700;background:#7c3aed">
@@ -241,7 +237,6 @@ function buildAdvancedPortalHTML() {
         </button>
       </div>
 
-      <!-- UDIN Result -->
       <div id="advUDINResultContainer" style="margin-top:20px"></div>
     </div>
 
@@ -258,7 +253,7 @@ function buildAdvancedPortalHTML() {
         <div style="text-align:center;padding:30px;color:var(--text-muted)">Select a client to view UDIN history</div>
       </div>
     </div>
-    </div>`;
+  </div>`;
 }
 
 // ================================================
@@ -283,7 +278,6 @@ function renderAdvancedPortalCards() {
     onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'"
     onmouseout="this.style.transform='none';this.style.boxShadow='none'">
 
-      <!-- Portal Header -->
       <div style="display:flex;align-items:center;gap:12px">
         <div style="
           width:46px;height:46px;border-radius:12px;
@@ -297,7 +291,6 @@ function renderAdvancedPortalCards() {
         </div>
       </div>
 
-      <!-- Open Portal Button -->
       <button
         onclick="openPortalDirect('${portal.url}', '${portal.name}')"
         style="
@@ -312,7 +305,6 @@ function renderAdvancedPortalCards() {
         🔓 Open ${portal.code} Portal
       </button>
 
-      <!-- Credentials Button -->
       <button
         onclick="managePortalCredentialsAdvanced('${key}', document.getElementById('advClientSelector')?.value)"
         style="
@@ -332,11 +324,14 @@ function renderAdvancedPortalCards() {
   `).join('');
 }
 
-// Simple direct open - no auto login complexity
+// ================================================
+// PORTAL DIRECT OPEN
+// ================================================
+
 function openPortalDirect(url, name) {
   const clientId = document.getElementById('advClientSelector')?.value;
   if (!clientId) {
-    showToast('⚠️ Pehle client select karo');
+    showToast('⚠️ Please select a client first');
   }
   window.open(url, '_blank');
   showToast(`🌐 ${name} opening...`);
@@ -386,7 +381,7 @@ function displayClientInfo(client) {
 
 function selectClientAndOpenPortals() {
   const clientId = document.getElementById('advClientSelector')?.value;
-  if (!clientId) { showToast('❌ Pehle client select karo'); return; }
+  if (!clientId) { showToast('❌ Please select a client first'); return; }
   const client = STATE.clients.find(c => String(c.id) === String(clientId));
   if (!client) return;
 
@@ -422,18 +417,22 @@ function populateCASelector() {
 }
 
 // ================================================
-// CREDENTIALS MANAGEMENT
+// CREDENTIALS MANAGEMENT — VAULT SE AUTO FETCH
 // ================================================
 
 async function managePortalCredentialsAdvanced(portalKey, clientId) {
   const portal = ADVANCED_PORTALS[portalKey];
   if (!portal) return;
-  if (!clientId) { showToast('❌ Pehle client select karo'); return; }
+
+  if (!clientId) {
+    showToast('❌ Please select a client first');
+    return;
+  }
 
   const client = STATE.clients.find(c => String(c.id) === String(clientId));
-  
+
   // Vault se auto fetch karo
-  showToast('⏳ Vault se credentials fetch ho rahe hain...');
+  showToast('⏳ Fetching credentials from the Vault...');
   const vaultCred = await getVaultCredentials(clientId, portal.code);
 
   openModalWithContent(`🔐 ${portal.name} — Credentials`, `
@@ -441,25 +440,25 @@ async function managePortalCredentialsAdvanced(portalKey, clientId) {
       <div style="font-size:11px;color:var(--text-muted)">Client</div>
       <div style="font-weight:700;color:var(--primary);font-size:15px">${escapeHtml(client?.name || '')}</div>
     </div>
-    
+
     ${vaultCred ? `
     <div style="background:#d1fae5;border:1px solid #10b981;border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:#065f46">
-      ✅ Vault se auto-fetch hua! Username aur Password already fill hai.
+      ✅ Credentials auto-fetched from the Vault! Username and password have been filled automatically.
     </div>` : `
     <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:#92400e">
-      ⚠️ Vault mein ${portal.code} folder mein is client ka credential nahi mila. Manually enter karo.
+      ⚠️ Vault mein ${portal.code} The client's credentials were not found in the folder. Please enter them manually or add them to the Vault first.
     </div>`}
-    
+
     <div class="form-group">
       <label>Username *</label>
-      <input type="text" class="form-control" id="advCredUsername" 
-        placeholder="Username / User ID" 
+      <input type="text" class="form-control" id="advCredUsername"
+        placeholder="Username / User ID"
         value="${vaultCred?.username || ''}" />
     </div>
     <div class="form-group">
       <label>Password *</label>
       <div style="display:flex;gap:8px">
-        <input type="password" class="form-control" id="advCredPassword" 
+        <input type="password" class="form-control" id="advCredPassword"
           placeholder="••••••••" style="flex:1"
           value="${vaultCred?.password || ''}" />
         <button class="btn-outline" style="padding:8px 12px"
@@ -468,14 +467,20 @@ async function managePortalCredentialsAdvanced(portalKey, clientId) {
         </button>
       </div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn-primary" 
+
+    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn-primary"
         onclick="openPortalWithCredentials('${portal.url}', '${portal.name}')"
-        style="flex:1;padding:10px;background:#10b981">
-        🚀 Open & Auto Login
+        style="flex:1;min-width:140px;padding:10px;background:#10b981">
+        🚀 Open Portal
+      </button>
+      <button class="btn-outline"
+        onclick="copyCredAndOpen('${portal.url}','${portal.name}')"
+        style="flex:1;min-width:140px;padding:10px">
+        📋 Copy & Open
       </button>
       <button class="btn-outline" onclick="closeModal()"
-        style="flex:1;padding:10px">
+        style="flex:1;min-width:100px;padding:10px">
         ❌ Cancel
       </button>
     </div>
@@ -483,19 +488,33 @@ async function managePortalCredentialsAdvanced(portalKey, clientId) {
 }
 
 function openPortalWithCredentials(url, name) {
-  const username = document.getElementById('advCredUsername')?.value;
-  const password = document.getElementById('advCredPassword')?.value;
-  
+  const username = document.getElementById('advCredUsername')?.value || '';
+  const password = document.getElementById('advCredPassword')?.value || '';
+
   if (username) {
     navigator.clipboard.writeText(username).then(() => {
-      showToast(`📋 Username copied! Password bhi copy karo phir portal open hoga`);
+      showToast(`📋 Username copied successfully! Opening the portal...`);
     });
   }
-  
+
   setTimeout(() => {
     window.open(url, '_blank');
     closeModal();
-    showToast(`🌐 ${name} opening...`);
+  }, 800);
+}
+
+function copyCredAndOpen(url, name) {
+  const username = document.getElementById('advCredUsername')?.value || '';
+  const password = document.getElementById('advCredPassword')?.value || '';
+
+  const text = `Username: ${username}\nPassword: ${password}`;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`📋 Username + Password copied!`);
+  });
+
+  setTimeout(() => {
+    window.open(url, '_blank');
+    closeModal();
   }, 1000);
 }
 
@@ -555,19 +574,18 @@ async function generateAdvancedUDIN() {
   const auditType = document.getElementById('advAuditType')?.value;
   const remarks = document.getElementById('advRemarks')?.value?.trim();
 
-  if (!clientId) { showToast('❌ Client select karo'); return; }
-  if (!caId) { showToast('❌ CA select karo'); return; }
-  if (!docDate) { showToast('❌ Document date bharo'); return; }
-  if (!fy) { showToast('❌ Financial Year bharo'); return; }
+  if (!clientId) { showToast('❌ Please select a client'); return; }
+  if (!caId) { showToast('❌ Please select a CA'); return; }
+  if (!docDate) { showToast('❌ Please enter the document date'); return; }
+  if (!fy) { showToast('❌ Please enter the financial year'); return; }
 
-  showToast('⏳ UDIN generate ho raha hai...');
+  showToast('⏳ Generating UDIN...');
 
   const clientName = getClientNameById(clientId);
   const ca = (STATE.caMasters || []).find(c => String(c.id) === String(caId));
   const caName = ca?.ca_name || 'CA';
   const caICAI = ca?.icai_regno || '000000';
 
-  // UDIN format: ICAINO + DDMMYYYY + 9digit random
   const d = new Date(docDate);
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -602,9 +620,8 @@ async function generateAdvancedUDIN() {
       await loadUDINHistory();
       showToast('✅ UDIN Successfully Generated!');
     } else {
-      // DB save fail hua but UDIN dikhao
       displayUDINResult(generatedUDIN, body);
-      showToast('✅ UDIN Generated! (udin_master table check karo)');
+      showToast('✅ UDIN Generated! (Please check the udin_master table)');
     }
   } catch (e) {
     console.error('UDIN error:', e);
@@ -663,7 +680,6 @@ function displayUDINResult(udin, record) {
     </div>
   `;
 
-  // Scroll to result
   container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -682,7 +698,7 @@ function printAdvancedUDIN(udin, caName) {
   <p><strong>CA:</strong> ${caName}</p>
   <div class="udin">${udin}</div>
   <p>Generated: ${new Date().toLocaleString('en-IN')}</p>
-  <script>window.onload=()=>window.print()</script>
+  <script>window.onload=()=>window.print()<\/script>
   </body></html>`);
   w.document.close();
 }
@@ -745,7 +761,7 @@ async function loadUDINHistory() {
             margin-bottom:6px
           ">${escapeHtml(r.udin_number || '-')}</div>
           <div style="font-size:11px;color:var(--text-muted)">
-            📄 ${r.document_type || '-'} • 📅 FY ${r.financial_year || '-'} • 
+            📄 ${r.document_type || '-'} • 📅 FY ${r.financial_year || '-'} •
             🕐 ${r.generated_at ? formatDateTime(r.generated_at) : '-'}
           </div>
         </div>
@@ -798,6 +814,8 @@ window.selectClientAndOpenPortals = selectClientAndOpenPortals;
 window.openPortalDirect = openPortalDirect;
 window.managePortalCredentialsAdvanced = managePortalCredentialsAdvanced;
 window.saveAdvancedCredentials = saveAdvancedCredentials;
+window.openPortalWithCredentials = openPortalWithCredentials;
+window.copyCredAndOpen = copyCredAndOpen;
 window.generateAdvancedUDIN = generateAdvancedUDIN;
 window.displayUDINResult = displayUDINResult;
 window.copyAdvancedUDIN = copyAdvancedUDIN;
@@ -805,5 +823,6 @@ window.printAdvancedUDIN = printAdvancedUDIN;
 window.shareAdvancedUDIN = shareAdvancedUDIN;
 window.loadUDINHistory = loadUDINHistory;
 window.clearAdvancedForm = clearAdvancedForm;
+window.getVaultCredentials = getVaultCredentials;
 
-console.log('✅ enterprise-portal-advanced.js v3.0 loaded');
+console.log('✅ enterprise-portal-advanced.js v4.0 loaded');
