@@ -66,8 +66,7 @@ body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
-   display: flex;
-  display: flex;
+  display: block;
   min-height: 100vh;
   transition: background var(--transition), color var(--transition);
   overflow-x: hidden;
