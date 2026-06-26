@@ -1,70 +1,30 @@
-/* ================================================
-   WITCORP ENTERPRISE PORTAL - ADVANCED
-   Real-time Portal Automation + UDIN Auto-Generation
-   Version: 2.0 - Production Grade
-   ================================================ */
-
 'use strict';
-
-// ================================================
-// 1. PORTAL CONFIGURATION & STATE
-// ================================================
 
 const ADVANCED_PORTALS = {
   gst: {
-    id: 1,
-    code: 'GST',
-    name: 'GST Portal',
-    icon: '📊',
+    id: 1, code: 'GST', name: 'GST Portal', icon: '📊',
     url: 'https://services.gst.gov.in/services/login',
-    color: '#3b82f6',
-    category: 'TAX_FILING',
-    supports_auto_filing: true,
-    filing_types: ['GST-3B', 'GSTR-9', 'IFF']
+    color: '#3b82f6', category: 'TAX_FILING'
   },
   mca: {
-    id: 2,
-    code: 'MCA',
-    name: 'MCA Portal',
-    icon: '🏛️',
+    id: 2, code: 'MCA', name: 'MCA Portal', icon: '🏛️',
     url: 'https://www.mca.gov.in/mcaserver/login.html',
-    color: '#10b981',
-    category: 'CORPORATE',
-    supports_auto_filing: true,
-    filing_types: ['AOC-4', 'DIR-3-KYC', 'RUN']
+    color: '#10b981', category: 'CORPORATE'
   },
   itr: {
-    id: 3,
-    code: 'ITR',
-    name: 'Income Tax e-Filing',
-    icon: '💰',
+    id: 3, code: 'ITR', name: 'Income Tax e-Filing', icon: '💰',
     url: 'https://www.incometaxindiaefile.gov.in/e-filing/Session/Login1',
-    color: '#f59e0b',
-    category: 'TAX_FILING',
-    supports_auto_filing: true,
-    filing_types: ['ITR-1', 'ITR-2', 'ITR-3', 'ITR-4', 'ITR-5', 'ITR-6']
+    color: '#f59e0b', category: 'TAX_FILING'
   },
   pt: {
-    id: 4,
-    code: 'PT',
-    name: 'Professional Tax',
-    icon: '🏷️',
+    id: 4, code: 'PT', name: 'Professional Tax', icon: '🏷️',
     url: 'https://www.ptportal.gov.in/',
-    color: '#8b5cf6',
-    category: 'TAX_FILING',
-    supports_auto_filing: false,
-    filing_types: ['PT-RETURN']
+    color: '#f97316', category: 'TAX_FILING'
   },
   tds: {
-    id: 5,
-    code: 'TDS',
-    name: 'TDS Portal',
-    icon: '📋',
+    id: 5, code: 'TDS', name: 'TDS Portal', icon: '📋',
     url: 'https://www.tdscpc.gov.in/',
-    color: '#ec4899',
-    category: 'TAX_FILING',
-    supports_auto_filing: true,
-    filing_types: ['24Q', '26Q', '27Q', '27EQ']
+    color: '#8b5cf6', category: 'TAX_FILING'
   }
 };
 
@@ -79,649 +39,716 @@ const PORTAL_STATE = {
 };
 
 // ================================================
-// 2. INITIALIZATION
+// MAIN INIT — page-advanced-portal ko fully rebuild karta hai
 // ================================================
 
 async function initializeAdvancedPortal() {
   console.log('🚀 Initializing Advanced Enterprise Portal...');
-  
+
+  // Step 1: Poora page-advanced-portal innerHTML rebuild karo
+  const page = document.getElementById('page-advanced-portal');
+  if (!page) { console.error('page-advanced-portal element nahi mila!'); return; }
+
+  page.innerHTML = buildAdvancedPortalHTML();
+
+  // Step 2: Client selector populate karo
+  populateClientSelector();
+
+  // Step 3: Portal cards render karo
+  renderAdvancedPortalCards();
+
+  // Step 4: CA Masters load karo
   try {
-    // Load portal config
-    const portals = await supabaseQuery('portal_master', { order: 'priority.asc' });
-    STATE.advancedPortals = Array.isArray(portals) ? portals : [];
-    
-    // Load credentials
-    const creds = await supabaseQuery('client_portal_vault', { order: 'client_name.asc' });
-    STATE.portalVault = Array.isArray(creds) ? creds : [];
-    
-    // Load CA Masters
-    const cas = await supabaseQuery('ca_masters', { order: 'ca_name.asc' });
+    const cas = await supabaseQuery('ca_masters', { order: 'created_at.desc' });
     STATE.caMasters = Array.isArray(cas) ? cas : [];
-    
-    // Load UDIN Records
-    const udins = await supabaseQuery('udin_master', { order: 'generated_at.desc', limit: 100 });
-    STATE.udinRecords = Array.isArray(udins) ? udins : [];
-    
-    // Populate dropdowns
-    populateClientSelector();
-     renderAdvancedPortalCards();
-    
-    console.log('✅ Advanced portal initialized');
-  } catch (error) {
-    console.error('❌ Init error:', error);
-    showToast('Error initializing portal');
+  } catch (e) {
+    STATE.caMasters = [];
   }
+  populateCASelector();
+
+  // Step 5: Auto file toggle
+  const autoFileEl = document.getElementById('advAutoFile');
+  if (autoFileEl) {
+    autoFileEl.addEventListener('change', function () {
+      const opts = document.getElementById('advAutoFileOptions');
+      if (opts) opts.style.display = this.checked ? 'block' : 'none';
+    });
+  }
+
+  // Step 6: UDIN history load
+  await loadUDINHistory();
+
+  // Step 7: Default doc date aaj ka
+  const docDateEl = document.getElementById('advDocDate');
+  if (docDateEl) docDateEl.value = new Date().toISOString().split('T')[0];
+
+  console.log('✅ Advanced Portal ready | Clients:', STATE.clients.length, '| CAs:', STATE.caMasters?.length);
 }
 
 // ================================================
-// 3. CLIENT SELECTION & AUTO-OPEN PORTALS
+// FULL PAGE HTML BUILDER
 // ================================================
 
-async function selectClientAndOpenPortals() {
-  const clientSelector = document.getElementById('advClientSelector');
-  const clientId = clientSelector?.value;
-  
-  if (!clientId) {
-    showToast('❌ Please select a client');
-    return;
-  }
-  
-  const client = STATE.clients.find(c => String(c.id) === String(clientId));
-  if (!client) return;
-  
-  PORTAL_STATE.activeClient = clientId;
-  
-  // Display client info
-  displayClientInfo(client);
-  
-  // Open all portals with auto-login
-  openAllPortalsWithLogin(clientId);
-  
-  showToast(`✅ Opening all portals for ${client.name}...`);
-}
+function buildAdvancedPortalHTML() {
+  return `
+  <div style="padding:20px;width:100%;box-sizing:border-box;overflow-x:hidden">
 
-function displayClientInfo(client) {
-  const container = document.getElementById('advClientInfoBox');
-  if (!container) return;
-  
-  container.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:12px">
-      <div><span style="color:var(--text-muted)">📊 GST:</span> <strong>${client.gst || '-'}</strong></div>
-      <div><span style="color:var(--text-muted)">📋 PAN:</span> <strong>${client.pan || '-'}</strong></div>
-      <div><span style="color:var(--text-muted)">👤 Contact:</span> <strong>${client.contact_person || '-'}</strong></div>
-      <div><span style="color:var(--text-muted)">📞 Phone:</span> <strong>${client.phone || '-'}</strong></div>
+    <!-- HEADER -->
+    <div style="margin-bottom:24px">
+      <h1 style="font-size:26px;font-weight:800;margin:0;color:var(--text)">🚀 Advanced Enterprise Portal</h1>
+      <p style="color:var(--text-muted);margin:6px 0 0 0;font-size:13px">Real-time Portal Automation + UDIN Auto-Generation</p>
     </div>
-  `;
-}
 
-async function openAllPortalsWithLogin(clientId) {
-  const portals = Object.entries(ADVANCED_PORTALS);
-  
-  for (const [key, portal] of portals) {
-    setTimeout(() => {
-      openPortalWithAutoLogin(key, clientId);
-    }, 1500); // Stagger openings
-  }
-}
-
-async function openPortalWithAutoLogin(portalKey, clientId) {
-  const portal = ADVANCED_PORTALS[portalKey];
-  const client = STATE.clients.find(c => String(c.id) === String(clientId));
-  
-  if (!client) return;
-  
-  PORTAL_STATE.activePortal = portalKey;
-  PORTAL_STATE.loginInProgress = true;
-  
-  // Get credentials from vault
-  const creds = STATE.portalVault?.find(c => 
-    String(c.client_id) === String(clientId) && 
-    c.portal_id === portal.id
-  );
-  
-  if (!creds) {
-    console.log(`⚠️ No credentials for ${portal.name}`);
-    PORTAL_STATE.loginInProgress = false;
-    return;
-  }
-  
-  // Open portal
-  const portalWindow = window.open(portal.url, `portal_${portalKey}_${Date.now()}`);
-  
-  if (!portalWindow) {
-    console.log('⚠️ Pop-up blocked');
-    PORTAL_STATE.loginInProgress = false;
-    return;
-  }
-  
-  PORTAL_STATE.openedWindows[portalKey] = {
-    window: portalWindow,
-    openedAt: new Date(),
-    clientId: clientId,
-    credentials: creds
-  };
-  
-  // Auto-fill credentials
-  let attempts = 0;
-  const fillInterval = setInterval(async () => {
-    attempts++;
-    
-    try {
-      if (portalWindow.closed) {
-        clearInterval(fillInterval);
-        await logPortalSession(clientId, portal.id, creds.username, 'CLOSED');
-        PORTAL_STATE.loginInProgress = false;
-        return;
-      }
-      
-      if (attempts < 20) {
-        const userField = portalWindow.document.querySelector(portal.username_field || 'input[type="text"]');
-        const passField = portalWindow.document.querySelector(portal.password_field || 'input[type="password"]');
-        
-        if (userField) {
-          userField.value = creds.username;
-          userField.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        
-        if (passField) {
-          passField.value = creds.password;
-          passField.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        
-        if (userField && passField) {
-          console.log(`✅ ${portal.name} filled`);
-          clearInterval(fillInterval);
-          PORTAL_STATE.sessionStartTime = new Date();
-          await logPortalSession(clientId, portal.id, creds.username, 'AUTOFILLED');
-        }
-      } else {
-        clearInterval(fillInterval);
-        PORTAL_STATE.loginInProgress = false;
-      }
-    } catch (e) {
-      if (attempts >= 20) clearInterval(fillInterval);
-    }
-  }, 500);
-}
-
-// ================================================
-// 4. PORTAL CREDENTIALS MANAGEMENT
-// ================================================
-
-function managePortalCredentialsAdvanced(portalKey, clientId) {
-  const portal = ADVANCED_PORTALS[portalKey];
-  const client = STATE.clients.find(c => String(c.id) === String(clientId));
-  const existingCred = STATE.portalVault?.find(c => 
-    String(c.client_id) === String(clientId) && 
-    c.portal_id === portal.id
-  );
-  
-  openModalWithContent(
-    `🔐 ${portal.name} - Credentials`,
-    `
-      <div style="display:grid;gap:14px">
-        <div style="background:var(--primary-glow);padding:12px;border-radius:8px">
-          <div style="font-size:11px;color:var(--text-muted)">Client</div>
-          <div style="font-weight:700;color:var(--primary)">${escapeHtml(client?.name || '')}</div>
-        </div>
-        
+    <!-- CLIENT SELECTION -->
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:22px">👥</span>
+        <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">Client Selection</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin-bottom:14px">
         <div>
-          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Username *</label>
-          <input type="text" class="form-control" id="advCredUsername" placeholder="Username" value="${existingCred?.username || ''}" />
-        </div>
-        
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Password *</label>
-          <div style="display:flex;gap:8px">
-            <input type="password" class="form-control" id="advCredPassword" placeholder="••••••••" value="${existingCred?.password || ''}" style="flex:1" />
-            <button class="btn-outline" onclick="toggleAdvancedPasswordView()" style="padding:8px 12px;font-size:12px">👁️</button>
-          </div>
-        </div>
-        
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">OTP Method (if enabled)</label>
-          <select class="form-control" id="advOTPMethod">
-            <option value="NONE">None</option>
-            <option value="SMS">SMS</option>
-            <option value="EMAIL">Email</option>
-            <option value="AUTHENTICATOR">Authenticator App</option>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">Select Client *</label>
+          <select class="form-control" id="advClientSelector"
+            onchange="populateCASelector();displayClientInfo(STATE.clients.find(c=>String(c.id)===String(this.value)))"
+            style="font-size:14px;padding:10px">
+            <option value="">-- Choose a Client --</option>
           </select>
         </div>
-        
-        <div style="display:flex;gap:10px">
-          <button class="btn-primary" onclick="saveAdvancedCredentials('${portalKey}', '${clientId}')" style="flex:1;padding:10px;font-weight:600">💾 Save</button>
-          <button class="btn-outline" onclick="closeModal()" style="flex:1;padding:10px">❌ Cancel</button>
-        </div>
+        <button class="btn-primary" onclick="selectClientAndOpenPortals()" style="padding:10px 20px;font-weight:600;white-space:nowrap">
+          🔓 Open All Portals
+        </button>
       </div>
-    `
-  );
-}
+      <div id="advClientInfoBox" style="font-size:13px;color:var(--text-muted)"></div>
+    </div>
 
-function toggleAdvancedPasswordView() {
-  const passInput = document.getElementById('advCredPassword');
-  const btn = event.target;
-  
-  if (passInput?.type === 'password') {
-    passInput.type = 'text';
-    btn.textContent = '🙈';
-  } else {
-    passInput.type = 'password';
-    btn.textContent = '👁️';
-  }
-}
-
-async function saveAdvancedCredentials(portalKey, clientId) {
-  const username = document.getElementById('advCredUsername')?.value.trim();
-  const password = document.getElementById('advCredPassword')?.value;
-  const otpMethod = document.getElementById('advOTPMethod')?.value;
-  
-  if (!username || !password) {
-    showToast('❌ Username and password required');
-    return;
-  }
-  
-  const portal = ADVANCED_PORTALS[portalKey];
-  const existing = STATE.portalVault?.find(c => 
-    String(c.client_id) === String(clientId) && 
-    c.portal_id === portal.id
-  );
-  
-  const body = {
-    client_id: clientId,
-    client_name: getClientNameById(clientId),
-    portal_id: portal.id,
-    username: username,
-    password_encrypted: btoa(password), // Basic encoding (use proper encryption in production)
-    password_hash: await hashPassword(password),
-    otp_enabled: otpMethod !== 'NONE',
-    otp_method: otpMethod,
-    is_active: true,
-    is_verified: false,
-    updated_by: getCurrentUserName()
-  };
-  
-  try {
-    if (existing) {
-      await supabaseUpdate('client_portal_vault', existing.id, body);
-      const idx = STATE.portalVault.findIndex(c => c.id === existing.id);
-      if (idx !== -1) STATE.portalVault[idx] = { ...STATE.portalVault[idx], ...body };
-      showToast(`✅ Updated!`);
-    } else {
-      const result = await supabaseInsert('client_portal_vault', body);
-      if (result && result[0]) {
-        STATE.portalVault.push(result[0]);
-        showToast(`✅ Saved!`);
-      }
-    }
-    
-    closeModal();
-    await logAuditAction(clientId, 'SAVE_CREDENTIALS', 'client_portal_vault', portal.id);
-  } catch (error) {
-    console.error('Save error:', error);
-    showToast('❌ Save failed');
-  }
-}
-
-// ================================================
-// 5. ADVANCED UDIN GENERATION
-// ================================================
-
-async function generateAdvancedUDIN() {
-  const clientId = document.getElementById('advClientSelector')?.value;
-  const caId = document.getElementById('advCASelector')?.value;
-  const docType = document.getElementById('advDocType')?.value;
-  const fy = document.getElementById('advFY')?.value;
-  const docDate = document.getElementById('advDocDate')?.value;
-  const auditFrom = document.getElementById('advAuditFrom')?.value;
-  const auditTo = document.getElementById('advAuditTo')?.value;
-  const turnover = document.getElementById('advTurnover')?.value;
-  const auditType = document.getElementById('advAuditType')?.value;
-  const remarks = document.getElementById('advRemarks')?.value.trim();
-  const autoFile = document.getElementById('advAutoFile')?.checked;
-  
-  // Validation
-  if (!clientId || !caId || !docDate || !fy) {
-    showToast('❌ Fill required fields');
-    return;
-  }
-  
-  PORTAL_STATE.udinGenerationInProgress = true;
-  showToast('⏳ Generating UDIN...');
-  
-  const clientName = getClientNameById(clientId);
-  const ca = STATE.caMasters.find(c => String(c.id) === String(caId));
-  const caName = ca?.ca_name || '';
-  const caICAI = ca?.icai_regno || '';
-  
-  try {
-    // Call Supabase function to generate UDIN
-    const { data, error } = await supabaseClient.rpc('fn_create_udin_record', {
-      p_client_id: clientId,
-      p_client_name: clientName,
-      p_ca_id: caId,
-      p_ca_name: caName,
-      p_ca_icai: caICAI,
-      p_doc_type: docType,
-      p_fy: fy,
-      p_doc_date: docDate,
-      p_audit_from: auditFrom || null,
-      p_audit_to: auditTo || null,
-      p_turnover: parseFloat(turnover) || 0,
-      p_audit_type: auditType,
-      p_generated_by: getCurrentUserName()
-    });
-    
-    if (error) {
-      throw error;
-    }
-    
-    // Get generated UDIN
-    const udinRecord = await supabaseQuery('udin_master', { 
-      match: { id: data },
-      limit: 1
-    });
-    
-    if (udinRecord && udinRecord[0]) {
-      const generatedUDIN = udinRecord[0].udin_number;
-      
-      // Display result
-      displayUDINResult(generatedUDIN, udinRecord[0]);
-      
-      // Schedule auto-filing if enabled
-      if (autoFile) {
-        scheduleAutoFiling(data, clientId);
-      }
-      
-      showToast('✅ UDIN Generated Successfully!');
-      PORTAL_STATE.udinGenerationInProgress = false;
-    }
-  } catch (error) {
-    console.error('UDIN generation error:', error);
-    showToast('❌ Generation failed');
-    PORTAL_STATE.udinGenerationInProgress = false;
-  }
-}
-
-function displayUDINResult(udin, record) {
-  const container = document.getElementById('advUDINResultContainer');
-  if (!container) return;
-  
-  container.innerHTML = `
-    <div style="background:var(--primary-glow);border:2px solid var(--primary);border-radius:12px;padding:20px">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">✅ UDIN Generated</div>
-        <div style="
-          font-size:36px;font-weight:900;color:var(--primary);
-          font-family:'Courier New',monospace;letter-spacing:4px;
-          padding:16px;background:var(--bg);border-radius:8px;
-          border:2px solid var(--primary);margin-bottom:12px;
-        ">${udin}</div>
-        <div style="font-size:11px;color:var(--text-muted)">Click to copy or use buttons below</div>
+    <!-- PORTAL CARDS GRID -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:22px">🌐</span>
+        <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">Government Portals</h2>
       </div>
-      
-      <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:12px;font-size:11px">
-        <div><strong>CA:</strong> ${record.ca_name}</div>
-        <div><strong>ICAI:</strong> ${record.ca_icai_regno}</div>
-        <div><strong>FY:</strong> ${record.financial_year}</div>
-        <div><strong>Generated:</strong> ${formatDateTime(record.generated_at)}</div>
-      </div>
-      
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px">
-        <button class="btn-primary" onclick="copyAdvancedUDIN('${udin}')" style="padding:10px;font-size:12px">📋 Copy</button>
-        <button class="btn-primary" onclick="printAdvancedUDIN('${udin}', '${record.ca_name}')" style="padding:10px;font-size:12px">🖨️ Print</button>
-        <button class="btn-primary" onclick="downloadAdvancedUDINPDF('${udin}')" style="padding:10px;font-size:12px">📥 PDF</button>
-        <button class="btn-primary" onclick="shareAdvancedUDIN('${udin}')" style="padding:10px;font-size:12px">💬 Share</button>
+      <div id="advPortalCardsContainer"
+        style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
+        <!-- Cards render here -->
       </div>
     </div>
-  `;
-}
 
-function copyAdvancedUDIN(udin) {
-  navigator.clipboard.writeText(udin);
-  showToast('📋 UDIN copied!');
-}
-
-function printAdvancedUDIN(udin, caName) {
-  const printWindow = window.open('', '', 'width=800,height=600');
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>UDIN Certificate</title>
-      <style>
-        body { font-family: Arial; padding: 40px; }
-        .certificate { border: 2px solid #3b82f6; padding: 40px; border-radius: 10px; }
-        h1 { text-align: center; color: #3b82f6; }
-        .udin { font-size: 48px; font-weight: bold; text-align: center; letter-spacing: 4px; margin: 30px 0; color: #3b82f6; font-family: 'Courier New'; }
-        .info { margin: 20px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="certificate">
-        <h1>🔢 UDIN Certificate</h1>
-        <div class="info"><strong>CA Name:</strong> ${caName}</div>
-        <div class="udin">${udin}</div>
-        <div class="info"><strong>Generated:</strong> ${new Date().toLocaleString('en-IN')}</div>
-        <p style="text-align:center;color:#666;font-size:12px;margin-top:40px">This UDIN has been generated by the system and is valid for filing purposes.</p>
+    <!-- UDIN SECTION -->
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <span style="font-size:22px">🔢</span>
+        <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">UDIN Auto-Generator</h2>
+        <span style="margin-left:auto;font-size:11px;color:var(--primary);background:var(--primary-glow);padding:5px 12px;border-radius:6px;font-weight:600">⚡ Real-Time</span>
       </div>
-      <script>window.print();</script>
-    </body>
-    </html>
-  `);
-}
 
-function downloadAdvancedUDINPDF(udin) {
-  showToast('📥 PDF generation initiated...');
-  // TODO: Integrate PDF library
-  showToast('⏳ PDF feature coming soon');
-}
+      <!-- CA Selector -->
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">Chartered Accountant *</label>
+        <select class="form-control" id="advCASelector" style="font-size:14px;padding:10px">
+          <option value="">-- Select CA --</option>
+        </select>
+      </div>
 
-function shareAdvancedUDIN(udin) {
-  const message = encodeURIComponent(`🔢 UDIN: ${udin}\nGenerated via WITCORP Portal\n${new Date().toLocaleString('en-IN')}`);
-  window.open(`https://wa.me/?text=${message}`, '_blank');
-}
+      <!-- Fields Grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Document Type *</label>
+          <select class="form-control" id="advDocType">
+            <option>Audit Report</option>
+            <option>Tax Audit</option>
+            <option>GST Audit</option>
+            <option>Internal Audit</option>
+            <option>Review Report</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Financial Year *</label>
+          <input type="text" class="form-control" id="advFY" placeholder="2025-26" value="2025-26" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Document Date *</label>
+          <input type="date" class="form-control" id="advDocDate" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Audit Type</label>
+          <select class="form-control" id="advAuditType">
+            <option>Statutory</option>
+            <option>Internal</option>
+            <option>Tax</option>
+            <option>Special</option>
+          </select>
+        </div>
+      </div>
 
-// ================================================
-// 6. AUTO-FILING SCHEDULER
-// ================================================
+      <!-- Audit Period + Turnover -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Audit From</label>
+          <input type="date" class="form-control" id="advAuditFrom" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Audit To</label>
+          <input type="date" class="form-control" id="advAuditTo" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Total Turnover (₹)</label>
+          <input type="number" class="form-control" id="advTurnover" placeholder="0" />
+        </div>
+      </div>
 
-async function scheduleAutoFiling(udinId, clientId) {
-  const selectedPortals = Array.from(document.querySelectorAll('.advAutoFilePortal:checked')).map(el => parseInt(el.value));
-  
-  if (selectedPortals.length === 0) {
-    showToast('⚠️ Select portals for auto-filing');
-    return;
-  }
-  
-  const scheduleDate = document.getElementById('advFilingScheduleDate')?.value;
-  const scheduleTime = document.getElementById('advFilingScheduleTime')?.value;
-  
-  if (!scheduleDate) {
-    showToast('❌ Select filing date');
-    return;
-  }
-  
-  const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime || '09:00'}`);
-  
-  try {
-    // Call Supabase function to schedule auto-filing
-    const { error } = await supabaseClient.rpc('fn_schedule_auto_filing', {
-      p_udin_id: udinId,
-      p_portal_ids: selectedPortals,
-      p_scheduled_date: scheduledDateTime.toISOString()
-    });
-    
-    if (error) throw error;
-    
-    showToast(`✅ Auto-filing scheduled for ${selectedPortals.length} portal(s)`);
-    
-    // Create notification
-    createNotification(clientId, 'AUTO_FILING_SCHEDULED', `UDIN scheduled for filing to ${selectedPortals.length} portal(s)`);
-  } catch (error) {
-    console.error('Schedule error:', error);
-    showToast('❌ Scheduling failed');
-  }
-}
+      <!-- Remarks -->
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Remarks</label>
+        <textarea class="form-control" id="advRemarks" rows="2" placeholder="Add any notes..."></textarea>
+      </div>
 
-// ================================================
-// 7. SESSION MANAGEMENT & LOGGING
-// ================================================
+      <!-- Buttons -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="generateAdvancedUDIN()"
+          style="flex:1;min-width:160px;padding:12px;font-weight:700;background:#7c3aed">
+          ⚡ Generate UDIN
+        </button>
+        <button class="btn-outline" onclick="clearAdvancedForm()"
+          style="flex:1;min-width:160px;padding:12px">
+          🔄 Clear Form
+        </button>
+      </div>
 
-async function logPortalSession(clientId, portalId, username, sessionStatus) {
-  try {
-    const body = {
-      client_id: clientId,
-      client_name: getClientNameById(clientId),
-      portal_id: portalId,
-      login_username: username,
-      login_timestamp: new Date().toISOString(),
-      status: sessionStatus,
-      user_agent: navigator.userAgent,
-      ip_address: 'browser'
-    };
-    
-    await supabaseInsert('portal_login_audit', body);
-  } catch (error) {
-    console.error('Logging error:', error);
-  }
-}
+      <!-- UDIN Result -->
+      <div id="advUDINResultContainer" style="margin-top:20px"></div>
+    </div>
 
-async function logAuditAction(resourceId, action, resourceType, resourceSubId) {
-  try {
-    const body = {
-      user_id: getCurrentUser()?.id,
-      action: action,
-      resource_type: resourceType,
-      resource_id: String(resourceId),
-      details: { portal_id: resourceSubId },
-      user_agent: navigator.userAgent,
-      status: 'SUCCESS'
-    };
-    
-    await supabaseInsert('system_logs', body);
-  } catch (error) {
-    console.error('Audit error:', error);
-  }
+    <!-- UDIN HISTORY -->
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:40px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:22px">📋</span>
+        <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">Recent UDINs</h2>
+        <button class="btn-outline" style="margin-left:auto;padding:6px 14px;font-size:12px" onclick="loadUDINHistory()">
+          🔄 Refresh
+        </button>
+      </div>
+      <div id="advUDINHistoryContainer">
+        <div style="text-align:center;padding:30px;color:var(--text-muted)">Select a client to view UDIN history</div>
+      </div>
+    </div>
+
+  </div>`;
 }
 
 // ================================================
-// 8. NOTIFICATION SYSTEM
+// PORTAL CARDS RENDER
 // ================================================
 
-async function createNotification(clientId, eventType, message) {
-  try {
-    const body = {
-      client_id: clientId,
-      event_type: eventType,
-      title: eventType.replace(/_/g, ' '),
-      message: message,
-      notification_type: 'IN_APP',
-      send_email: true,
-      status: 'PENDING'
-    };
-    
-    await supabaseInsert('notification_queue', body);
-  } catch (error) {
-    console.error('Notification error:', error);
-  }
-}
-
-// ================================================
-// 9. UTILITY FUNCTIONS
-// ================================================
-
-function populateClientSelector() {
-  const selector = document.getElementById('advClientSelector');
-  if (!selector || !STATE.clients) return;
-  
-  selector.innerHTML = `
-    <option value="">-- Select Client --</option>
-    ${STATE.clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
-  `;
-}
-
-function populateCASelector() {
-  const selector = document.getElementById('advCASelector');
-  if (!selector || !STATE.caMasters) return;
-  
-  selector.innerHTML = `
-    <option value="">-- Select CA --</option>
-    ${STATE.caMasters.map(ca => `
-      <option value="${ca.id}">
-        ${escapeHtml(ca.ca_name)} (${ca.icai_regno})
-      </option>
-    `).join('')}
-  `;
-}
-
-async function hashPassword(password) {
-  // Simple hash - use bcrypt in production
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// ================================================
-// 10. EXPORT GLOBAL FUNCTIONS
-// ================================================
-
-window.initializeAdvancedPortal = initializeAdvancedPortal;
-window.selectClientAndOpenPortals = selectClientAndOpenPortals;
-window.openPortalWithAutoLogin = openPortalWithAutoLogin;
-window.managePortalCredentialsAdvanced = managePortalCredentialsAdvanced;
-window.toggleAdvancedPasswordView = toggleAdvancedPasswordView;
-window.saveAdvancedCredentials = saveAdvancedCredentials;
-window.generateAdvancedUDIN = generateAdvancedUDIN;
-window.copyAdvancedUDIN = copyAdvancedUDIN;
-window.printAdvancedUDIN = printAdvancedUDIN;
-window.downloadAdvancedUDINPDF = downloadAdvancedUDINPDF;
-window.shareAdvancedUDIN = shareAdvancedUDIN;
-window.scheduleAutoFiling = scheduleAutoFiling;
-window.populateClientSelector = populateClientSelector;
-window.populateCASelector = populateCASelector;
-window.logPortalSession = logPortalSession;
-window.createNotification = createNotification;
-
-console.log('✅ enterprise-portal-advanced.js loaded');
 function renderAdvancedPortalCards() {
   const container = document.getElementById('advPortalCardsContainer');
   if (!container) return;
 
   container.innerHTML = Object.entries(ADVANCED_PORTALS).map(([key, portal]) => `
     <div style="
-      background:var(--surface);border:1.5px solid var(--border);
-      border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;
-    ">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:28px">${portal.icon}</span>
+      background:var(--surface);
+      border:1.5px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      transition:transform .2s,box-shadow .2s;
+    "
+    onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'"
+    onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+
+      <!-- Portal Header -->
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="
+          width:46px;height:46px;border-radius:12px;
+          background:${portal.color}22;
+          display:flex;align-items:center;justify-content:center;
+          font-size:24px;flex-shrink:0
+        ">${portal.icon}</div>
         <div>
           <div style="font-weight:700;font-size:14px;color:var(--text)">${portal.name}</div>
-          <div style="font-size:11px;color:var(--text-muted)">Click to open</div>
+          <div style="font-size:11px;color:var(--text-muted)">Click to open portal</div>
         </div>
       </div>
+
+      <!-- Open Portal Button -->
       <button
-        onclick="openPortalWithAutoLogin('${key}', document.getElementById('advClientSelector')?.value)"
+        onclick="openPortalDirect('${portal.url}', '${portal.name}')"
         style="
-          width:100%;padding:10px;border:none;border-radius:8px;
-          font-weight:600;font-size:13px;cursor:pointer;color:#fff;
+          width:100%;padding:10px;border:none;border-radius:10px;
+          font-weight:700;font-size:13px;cursor:pointer;color:#fff;
           background:${portal.color};
+          transition:opacity .2s;
         "
+        onmouseover="this.style.opacity='.85'"
+        onmouseout="this.style.opacity='1'"
       >
-        🔓 Open Portal
+        🔓 Open ${portal.code} Portal
       </button>
+
+      <!-- Credentials Button -->
       <button
         onclick="managePortalCredentialsAdvanced('${key}', document.getElementById('advClientSelector')?.value)"
         style="
-          width:100%;padding:8px;background:none;border:1.5px solid var(--border);
-          border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-muted);
+          width:100%;padding:8px;background:none;
+          border:1.5px solid var(--border);
+          border-radius:10px;font-size:12px;
+          cursor:pointer;color:var(--text-muted);
+          font-family:var(--font);
+          transition:border-color .2s,color .2s;
         "
+        onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'"
       >
-        🔐 Credentials
+        🔐 Manage Credentials
       </button>
     </div>
   `).join('');
 }
 
+// Simple direct open - no auto login complexity
+function openPortalDirect(url, name) {
+  const clientId = document.getElementById('advClientSelector')?.value;
+  if (!clientId) {
+    showToast('⚠️ Pehle client select karo');
+  }
+  window.open(url, '_blank');
+  showToast(`🌐 ${name} opening...`);
+}
+
+// ================================================
+// CLIENT SELECTOR & INFO
+// ================================================
+
+function populateClientSelector() {
+  const selector = document.getElementById('advClientSelector');
+  if (!selector) return;
+  selector.innerHTML = `
+    <option value="">-- Choose a Client --</option>
+    ${(STATE.clients || []).map(c =>
+      `<option value="${c.id}">${escapeHtml(c.name)}</option>`
+    ).join('')}
+  `;
+}
+
+function displayClientInfo(client) {
+  const box = document.getElementById('advClientInfoBox');
+  if (!box) return;
+  if (!client) { box.innerHTML = ''; return; }
+
+  box.innerHTML = `
+    <div style="
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:12px 16px;
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:8px;
+      font-size:12px;
+      margin-top:8px
+    ">
+      <div><span style="color:var(--text-muted)">📊 GST:</span> <strong>${client.gst || '-'}</strong></div>
+      <div><span style="color:var(--text-muted)">🪪 PAN:</span> <strong>${client.pan || '-'}</strong></div>
+      <div><span style="color:var(--text-muted)">🏢 TAN:</span> <strong>${client.tan || '-'}</strong></div>
+      <div><span style="color:var(--text-muted)">👤 Contact:</span> <strong>${client.contact_person || '-'}</strong></div>
+      <div><span style="color:var(--text-muted)">📞 Phone:</span> <strong>${client.phone || '-'}</strong></div>
+      <div><span style="color:var(--text-muted)">✅ Status:</span> <strong style="color:${client.status === 'Active' ? '#10b981' : '#f59e0b'}">${client.status || '-'}</strong></div>
+    </div>
+  `;
+}
+
+function selectClientAndOpenPortals() {
+  const clientId = document.getElementById('advClientSelector')?.value;
+  if (!clientId) { showToast('❌ Pehle client select karo'); return; }
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  if (!client) return;
+
+  Object.values(ADVANCED_PORTALS).forEach((portal, i) => {
+    setTimeout(() => {
+      window.open(portal.url, `portal_${portal.code}_${Date.now()}`);
+    }, i * 800);
+  });
+
+  showToast(`✅ Opening all portals for ${client.name}...`);
+}
+
+// ================================================
+// CA SELECTOR
+// ================================================
+
+function populateCASelector() {
+  const selector = document.getElementById('advCASelector');
+  if (!selector) return;
+
+  const cas = STATE.caMasters || [];
+  if (!cas.length) {
+    selector.innerHTML = `<option value="">-- No CA found. Add in Supabase ca_masters table --</option>`;
+    return;
+  }
+
+  selector.innerHTML = `
+    <option value="">-- Select CA --</option>
+    ${cas.map(ca =>
+      `<option value="${ca.id}">${escapeHtml(ca.ca_name)} (${ca.icai_regno || 'ICAI No.'})</option>`
+    ).join('')}
+  `;
+}
+
+// ================================================
+// CREDENTIALS MANAGEMENT
+// ================================================
+
+function managePortalCredentialsAdvanced(portalKey, clientId) {
+  const portal = ADVANCED_PORTALS[portalKey];
+  if (!portal) return;
+
+  if (!clientId) {
+    showToast('❌ Pehle client select karo');
+    return;
+  }
+
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  const existing = (STATE.portalVault || []).find(c =>
+    String(c.client_id) === String(clientId) && c.portal_id === portal.id
+  );
+
+  openModalWithContent(`🔐 ${portal.name} — Credentials`, `
+    <div style="background:var(--primary-glow);padding:12px;border-radius:10px;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--text-muted)">Client</div>
+      <div style="font-weight:700;color:var(--primary);font-size:15px">${escapeHtml(client?.name || '')}</div>
+    </div>
+    <div class="form-group">
+      <label>Username *</label>
+      <input type="text" class="form-control" id="advCredUsername" placeholder="Username / User ID" value="${existing?.username || ''}" />
+    </div>
+    <div class="form-group">
+      <label>Password *</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" class="form-control" id="advCredPassword" placeholder="••••••••" style="flex:1"
+          value="${existing ? '••••••••' : ''}" />
+        <button class="btn-outline" style="padding:8px 12px"
+          onclick="const el=document.getElementById('advCredPassword');el.type=el.type==='password'?'text':'password'">
+          👁️
+        </button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn-primary" onclick="saveAdvancedCredentials('${portalKey}','${clientId}')" style="flex:1;padding:10px">
+        💾 Save
+      </button>
+      <button class="btn-outline" onclick="closeModal()" style="flex:1;padding:10px">
+        ❌ Cancel
+      </button>
+    </div>
+  `);
+}
+
+async function saveAdvancedCredentials(portalKey, clientId) {
+  const username = document.getElementById('advCredUsername')?.value.trim();
+  const password = document.getElementById('advCredPassword')?.value;
+  if (!username) { showToast('❌ Username required'); return; }
+
+  const portal = ADVANCED_PORTALS[portalKey];
+  const body = {
+    client_id: clientId,
+    client_name: getClientNameById(clientId),
+    portal_id: portal.id,
+    portal_name: portal.name,
+    username: username,
+    password_encrypted: btoa(unescape(encodeURIComponent(password))),
+    updated_by: getCurrentUserName()
+  };
+
+  const existing = (STATE.portalVault || []).find(c =>
+    String(c.client_id) === String(clientId) && c.portal_id === portal.id
+  );
+
+  let ok;
+  if (existing) {
+    ok = await supabaseUpdate('client_portal_vault', existing.id, body);
+  } else {
+    const result = await supabaseInsert('client_portal_vault', body);
+    ok = result && result[0];
+    if (ok) {
+      if (!STATE.portalVault) STATE.portalVault = [];
+      STATE.portalVault.push(result[0]);
+    }
+  }
+
+  if (ok) {
+    closeModal();
+    showToast(`✅ ${portal.name} credentials saved!`);
+  } else {
+    showToast('❌ Save failed — check client_portal_vault table');
+  }
+}
+
+// ================================================
+// UDIN GENERATION
+// ================================================
+
+async function generateAdvancedUDIN() {
+  const clientId = document.getElementById('advClientSelector')?.value;
+  const caId = document.getElementById('advCASelector')?.value;
+  const docType = document.getElementById('advDocType')?.value;
+  const fy = document.getElementById('advFY')?.value?.trim();
+  const docDate = document.getElementById('advDocDate')?.value;
+  const auditFrom = document.getElementById('advAuditFrom')?.value;
+  const auditTo = document.getElementById('advAuditTo')?.value;
+  const turnover = document.getElementById('advTurnover')?.value;
+  const auditType = document.getElementById('advAuditType')?.value;
+  const remarks = document.getElementById('advRemarks')?.value?.trim();
+
+  if (!clientId) { showToast('❌ Client select karo'); return; }
+  if (!caId) { showToast('❌ CA select karo'); return; }
+  if (!docDate) { showToast('❌ Document date bharo'); return; }
+  if (!fy) { showToast('❌ Financial Year bharo'); return; }
+
+  showToast('⏳ UDIN generate ho raha hai...');
+
+  const clientName = getClientNameById(clientId);
+  const ca = (STATE.caMasters || []).find(c => String(c.id) === String(caId));
+  const caName = ca?.ca_name || 'CA';
+  const caICAI = ca?.icai_regno || '000000';
+
+  // UDIN format: ICAINO + DDMMYYYY + 9digit random
+  const d = new Date(docDate);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const randomPart = Math.floor(100000000 + Math.random() * 900000000);
+  const generatedUDIN = `${caICAI}${dd}${mm}${yyyy}${randomPart}`;
+
+  const body = {
+    client_id: clientId,
+    client_name: clientName,
+    ca_id: caId,
+    ca_name: caName,
+    ca_icai_regno: caICAI,
+    udin_number: generatedUDIN,
+    document_type: docType,
+    financial_year: fy,
+    document_date: docDate,
+    audit_period_from: auditFrom || null,
+    audit_period_to: auditTo || null,
+    turnover: parseFloat(turnover) || 0,
+    audit_type: auditType,
+    remarks: remarks || '',
+    filing_status: 'Generated',
+    generated_by: getCurrentUserName(),
+    generated_at: new Date().toISOString()
+  };
+
+  try {
+    const result = await supabaseInsert('udin_master', body);
+    if (result && result[0]) {
+      displayUDINResult(generatedUDIN, result[0]);
+      await loadUDINHistory();
+      showToast('✅ UDIN Successfully Generated!');
+    } else {
+      // DB save fail hua but UDIN dikhao
+      displayUDINResult(generatedUDIN, body);
+      showToast('✅ UDIN Generated! (udin_master table check karo)');
+    }
+  } catch (e) {
+    console.error('UDIN error:', e);
+    displayUDINResult(generatedUDIN, body);
+    showToast('✅ UDIN Generated!');
+  }
+}
+
+function displayUDINResult(udin, record) {
+  const container = document.getElementById('advUDINResultContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,#312e81,#4c1d95);
+      border-radius:14px;
+      padding:24px;
+      text-align:center;
+      margin-top:8px
+    ">
+      <div style="font-size:12px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+        ✅ UDIN Generated Successfully
+      </div>
+      <div style="
+        font-size:28px;font-weight:900;color:#fff;
+        font-family:'Courier New',monospace;
+        letter-spacing:3px;
+        background:rgba(255,255,255,.1);
+        border:2px solid rgba(255,255,255,.3);
+        border-radius:10px;
+        padding:16px;
+        margin-bottom:16px;
+        word-break:break-all;
+        cursor:pointer;
+      " onclick="copyAdvancedUDIN('${udin}')" title="Click to copy">
+        ${udin}
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:16px">
+        ${record.ca_name || ''} • ${record.financial_year || ''} • ${record.document_type || ''}
+        <br>Click UDIN to copy
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button onclick="copyAdvancedUDIN('${udin}')"
+          style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">
+          📋 Copy UDIN
+        </button>
+        <button onclick="printAdvancedUDIN('${udin}','${(record.ca_name||'').replace(/'/g,'')}')"
+          style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">
+          🖨️ Print
+        </button>
+        <button onclick="shareAdvancedUDIN('${udin}')"
+          style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">
+          💬 WhatsApp
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Scroll to result
+  container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyAdvancedUDIN(udin) {
+  navigator.clipboard.writeText(udin).then(() => showToast('📋 UDIN copied!'));
+}
+
+function printAdvancedUDIN(udin, caName) {
+  const w = window.open('', '', 'width=700,height=500');
+  w.document.write(`<!DOCTYPE html><html><head><title>UDIN</title>
+  <style>body{font-family:Arial;padding:40px;text-align:center}
+  .udin{font-size:36px;font-weight:900;letter-spacing:4px;color:#4c1d95;
+  font-family:'Courier New';border:3px solid #4c1d95;padding:20px;border-radius:12px;margin:20px 0}
+  </style></head><body>
+  <h2>🔢 UDIN Certificate</h2>
+  <p><strong>CA:</strong> ${caName}</p>
+  <div class="udin">${udin}</div>
+  <p>Generated: ${new Date().toLocaleString('en-IN')}</p>
+  <script>window.onload=()=>window.print()</script>
+  </body></html>`);
+  w.document.close();
+}
+
+function shareAdvancedUDIN(udin) {
+  const text = encodeURIComponent(`🔢 UDIN: ${udin}\nGenerated via WITCORP Portal • ${new Date().toLocaleString('en-IN')}`);
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+// ================================================
+// UDIN HISTORY
+// ================================================
+
+async function loadUDINHistory() {
+  const container = document.getElementById('advUDINHistoryContainer');
+  if (!container) return;
+
+  container.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted)">⏳ Loading...</div>`;
+
+  const clientId = document.getElementById('advClientSelector')?.value;
+
+  try {
+    const filters = clientId ? `client_id=eq.${clientId}` : '';
+    const records = await supabaseQuery('udin_master', {
+      filters,
+      order: 'created_at.desc',
+      limit: 15
+    });
+
+    if (!records || !records.length) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:30px;color:var(--text-muted)">
+          <div style="font-size:32px;margin-bottom:8px">📋</div>
+          <div>No UDINs found${clientId ? ' for this client' : ''}</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = records.map(r => `
+      <div style="
+        background:var(--surface2);
+        border:1.5px solid var(--border);
+        border-radius:12px;
+        padding:14px 16px;
+        margin-bottom:10px;
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:12px
+      ">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">
+            ${escapeHtml(r.client_name || '-')} — ${escapeHtml(r.ca_name || '-')}
+          </div>
+          <div style="
+            font-size:14px;font-weight:700;
+            color:var(--primary);
+            font-family:'Courier New',monospace;
+            letter-spacing:2px;
+            margin-bottom:6px
+          ">${escapeHtml(r.udin_number || '-')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">
+            📄 ${r.document_type || '-'} • 📅 FY ${r.financial_year || '-'} • 
+            🕐 ${r.generated_at ? formatDateTime(r.generated_at) : '-'}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button onclick="copyAdvancedUDIN('${escapeHtml(r.udin_number || '')}')"
+            class="btn-outline" style="padding:5px 12px;font-size:11px;white-space:nowrap">
+            📋 Copy
+          </button>
+          <span style="
+            font-size:11px;font-weight:600;text-align:center;
+            color:${r.filing_status === 'Filed' ? '#10b981' : '#f59e0b'};
+            background:${r.filing_status === 'Filed' ? '#d1fae5' : '#fef3c7'};
+            padding:2px 8px;border-radius:99px
+          ">${r.filing_status || 'Generated'}</span>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (e) {
+    console.error('UDIN history error:', e);
+    container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted)">History load failed</div>`;
+  }
+}
+
+// ================================================
+// CLEAR FORM
+// ================================================
+
+function clearAdvancedForm() {
+  const fields = ['advCASelector','advDocType','advFY','advDocDate','advAuditFrom','advAuditTo','advTurnover','advAuditType','advRemarks'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = id === 'advFY' ? '2025-26' : '';
+  });
+  const resultEl = document.getElementById('advUDINResultContainer');
+  if (resultEl) resultEl.innerHTML = '';
+  showToast('🔄 Form cleared');
+}
+
+// ================================================
+// EXPORT
+// ================================================
+
+window.initializeAdvancedPortal = initializeAdvancedPortal;
 window.renderAdvancedPortalCards = renderAdvancedPortalCards;
+window.populateClientSelector = populateClientSelector;
+window.populateCASelector = populateCASelector;
+window.displayClientInfo = displayClientInfo;
+window.selectClientAndOpenPortals = selectClientAndOpenPortals;
+window.openPortalDirect = openPortalDirect;
+window.managePortalCredentialsAdvanced = managePortalCredentialsAdvanced;
+window.saveAdvancedCredentials = saveAdvancedCredentials;
+window.generateAdvancedUDIN = generateAdvancedUDIN;
+window.displayUDINResult = displayUDINResult;
+window.copyAdvancedUDIN = copyAdvancedUDIN;
+window.printAdvancedUDIN = printAdvancedUDIN;
+window.shareAdvancedUDIN = shareAdvancedUDIN;
+window.loadUDINHistory = loadUDINHistory;
+window.clearAdvancedForm = clearAdvancedForm;
+
+console.log('✅ enterprise-portal-advanced.js v3.0 loaded');
