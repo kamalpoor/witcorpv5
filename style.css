@@ -1830,6 +1830,11 @@ opacity:1;
 .acc-cat-box.active span {
   color: var(--primary);
 }
+#page-advanced-portal {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 /* =============================================================
    END OF style.css — WITCORP | Complete | All Bugs Fixed
    ============================================================= */
