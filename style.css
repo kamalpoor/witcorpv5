@@ -66,7 +66,7 @@ body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
-  display: block;
+  display: flex;
   min-height: 100vh;
   transition: background var(--transition), color var(--transition);
   overflow-x: hidden;
@@ -234,7 +234,6 @@ body {
   min-width: 0;
   overflow-x: hidden;
   transition: margin var(--transition);
-   width: calc(100% - var(--sidebar-w) - var(--right-w));
   
 }
 
