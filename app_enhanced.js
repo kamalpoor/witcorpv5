@@ -1151,8 +1151,11 @@ function navigate(page) {
   if (page === 'dir3kyc') renderDir3Table();
   populateAllClientDropdowns();
    if (page === 'advanced-portal') {
-    setTimeout(initializeAdvancedPortal, 100);
-  }
+  setTimeout(() => {
+    initializeAdvancedPortal();
+    renderAdvancedPortalCards();   // ← yeh line add karo
+  }, 100);
+}
 }
 
 function switchTDSTab(tab) {
