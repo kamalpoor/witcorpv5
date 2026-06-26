@@ -1832,23 +1832,6 @@ opacity:1;
 .acc-cat-box.active span {
   color: var(--primary);
 }
-/* Advanced Portal Fix */
-#page-advanced-portal {
-  overflow-x: hidden;
-}
-
-#page-advanced-portal > div {
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-#advPortalCardsContainer {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 14px;
-  width: 100%;
-  box-sizing: border-box;
-}
 /* =============================================================
    END OF style.css — WITCORP | Complete | All Bugs Fixed
    ============================================================= */
