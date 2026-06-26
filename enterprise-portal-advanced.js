@@ -446,7 +446,7 @@ async function managePortalCredentialsAdvanced(portalKey, clientId) {
       ✅ Credentials auto-fetched from the Vault! Username and password have been filled automatically.
     </div>` : `
     <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-bottom:12px;font-size:12px;color:#92400e">
-      ⚠️ Vault mein ${portal.code} The client's credentials were not found in the folder. Please enter them manually or add them to the Vault first.
+      ⚠️ No credentials found for ${portal.code} in the Vault. Please enter them manually or add them to the Vault first.
     </div>`}
 
     <div class="form-group">
