@@ -90,8 +90,7 @@ async function initializeAdvancedPortal() {
 // ================================================
 
 function buildAdvancedPortalHTML() {
-  return `
-  <div style="padding:20px;width:100%;box-sizing:border-box;overflow-x:hidden">
+ 
 
     <!-- HEADER -->
     <div style="margin-bottom:24px">
