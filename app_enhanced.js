@@ -1150,10 +1150,14 @@ function navigate(page) {
   if (page === 'payroll') renderPayrollTable();
   if (page === 'dir3kyc') renderDir3Table();
   populateAllClientDropdowns();
-   if (page === 'advanced-portal') {
+  if (page === 'advanced-portal') {
   setTimeout(() => {
-    initializeAdvancedPortal();
-    renderAdvancedPortalCards();   // ← yeh line add karo
+    if (typeof initializeAdvancedPortal === 'function') {
+      initializeAdvancedPortal();
+    }
+    if (typeof renderAdvancedPortalCards === 'function') {
+      renderAdvancedPortalCards();
+    }
   }, 100);
 }
 }
